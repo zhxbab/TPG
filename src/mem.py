@@ -90,13 +90,13 @@ class Mem:
         cond["start"] = int(align*math.ceil(cond["start"]/align))       
         if cond["start"] >= mem["start"] and cond["start"]+size <= cond["end"] <= mem["start"]+mem["size"]:#included case
             debug("mem match type 1")
-            return {"start":random.randrange(cond["start"],cond["end"]-size,align),"size":size, "name":cond["name"]}
+            return {"start":random.randrange(cond["start"],cond["end"]-size+1,align),"size":size, "name":cond["name"]}
         elif mem["start"] <= cond["start"] and mem["size"]+mem["start"] >= cond["start"] + size:
             debug("mem match type 2")
-            return {"start":random.randrange(cond["start"],mem["start"]+mem["size"]-size,align),"size":size, "name":cond["name"]}
+            return {"start":random.randrange(cond["start"],mem["start"]+mem["size"]-size+1,align),"size":size, "name":cond["name"]}
         elif cond["end"] >= mem["start"] >= cond["start"] and mem["start"]+size <= cond["end"]:
             mem["start"] = int(align*math.ceil(mem["start"]/align)) # test again
             if mem["start"]+size <= cond["end"]:
                 debug("mem match type 3")
-                return {"start":random.randrange(mem["start"],cond["end"]-size,align),"size":size, "name":cond["name"]}
+                return {"start":random.randrange(mem["start"],cond["end"]-size+1,align),"size":size, "name":cond["name"]}
                 

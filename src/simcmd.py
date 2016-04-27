@@ -1,0 +1,1 @@
+//rem: $y0 28 "//runlog: Instr 28 - WRMSR IA32_MTRR_DEF_TYPE 0x02ff 0x00000000 0x00000806"

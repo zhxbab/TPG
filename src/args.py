@@ -14,13 +14,16 @@ class Args:
     def __init__(self,args):
             self.current_dir_path = os.path.abspath(".") # current dir path
             self.realbin_path = sys.path[0] # realbin path 
-            self.realbin_name = os.path.realpath(sys.argv[0]).split(".")[0].split("/")[-1] # realbin name 
+            self.realbin_name = os.path.realpath(sys.argv[0]).split(".")[0].split("/")[-1] # realbin name
+            self.tpg_path = os.getenv("LOCATION_TPG") 
             self.Parse_input(args)
             self.Set_logging() #Set logging
             
     def Parse_input(self,args):
         args_parser = OptionParser(usage="%tpg *args, **kwargs", version="%tpg 0.1") #2016-04-25 version 0.1
         args_parser.add_option("-m","--mode", dest="mode", help="The vector mode. [default: %default]\n0x0: 64bit mode\n0x1: 32bit mode\n0x2: compatibility mode"\
+                          , type = "int", default = 0)
+        args_parser.add_option("-p","--page", dest="page_mode", help="The page mode. [default: %default]\n0x0: normal(4KB in 32/64bit)\n0x1: big(2MB in 64bit and 4MB in 32bit)\n0x2: huge(1G in 64bit)"\
                           , type = "int", default = 0)
         args_parser.add_option("-n","--nums", dest="nums", help="The vector nums."\
                           , type = "int", default = 1)
@@ -37,10 +40,32 @@ class Args:
             
         if self.args_option.mode == 0:
             self.mode = "long_mode"
+            if self.args_option.page_mode == 0:
+                self.page_mode = "4KB_64bit"
+            elif self.args_option.page_mode == 1:
+                self.page_mode = "2MB"
+            elif self.args_option.page_mode == 2:
+                self.page_mode = "1GB"
+            else:
+                Util.Error_exit("Invalid Page mode for long mode!")
         elif self.args_option.mode == 1:
             self.mode = "protect_mode"
+            if self.args_option.page_mode == 0:
+                self.page_mode = "4KB_32bit"
+            elif self.args_option.page_mode == 1:
+                self.page_mode = "4MB"
+            else:
+                Util.Error_exit("Invalid Page mode for protect mode!")
         elif self.args_option.mode == 2:
             self.mode = "compatibility_mode"
+            if self.args_option.page_mode == 0:
+                self.page_mode = "4KB_64bit"
+            elif self.args_option.page_mode == 1:
+                self.page_mode = "2MB"
+            elif self.args_option.page_mode == 2:
+                self.page_mode = "1GB"
+            else:
+                Util.Error_exit("Invalid Page mode for compatibility mode!")
         else:
             Util.Error_exit("Invalid Mode!")
 
