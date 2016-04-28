@@ -19,10 +19,11 @@ from logging import info, error, debug, warning, critical
 
 
 #################################################Classes########################################
-class Mem:
+class Mem(Util):
     def __init__(self):
         self.spare_range = [{"start":0x0,"size":0xFFFFFFFF}]
         self.selected = []
+        self.asm_file = ""
     def check_selected_mem(self,name=""):
         if eq(name,""):
             for mem in self.selected:
@@ -30,7 +31,8 @@ class Mem:
         else:
             for mem in self.selected:
                 if eq(mem["name"],name):
-                    info("%s: start addr is 0x%x and size is 0x%x"%(mem["name"],mem["start"],mem["size"]))
+                    debug("%s: start addr is 0x%x and size is 0x%x"%(mem["name"],mem["start"],mem["size"]))
+                    self.Comment("#### %s: start addr is 0x%x and size is 0x%x"%(mem["name"],mem["start"],mem["size"]))
                     
     def check_spare_mem(self):
         for mem in self.spare_range:
@@ -43,7 +45,7 @@ class Mem:
             if tmp_mem:
                 mems.append(tmp_mem)
         if not mems:
-            Util.Error_exit("For start 0x%x, size 0x%x and align 0x%x, there is no matched mem in spare range!"%(cond["start"],size,align))
+            self.Error_exit("For start 0x%x, size 0x%x and align 0x%x, there is no matched mem in spare range!"%(cond["start"],size,align))
         selected_mem = random.choice(mems)
         self.selected.append(selected_mem)
         self.Update_mem(selected_mem)
@@ -72,7 +74,7 @@ class Mem:
                     self.spare_range.insert(i,update_mem_0)
                     self.spare_range.insert(i+1,update_mem_1)
         if n > 1:
-            Util.Error_exit("Update mem error!")
+            self.Error_exit("Update mem error!")
         
        
     def Find_mem(self,size,align,mem,**cond):

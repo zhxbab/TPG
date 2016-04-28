@@ -27,7 +27,7 @@ class Args:
                           , type = "int", default = 0)
         args_parser.add_option("-n","--nums", dest="nums", help="The vector nums."\
                           , type = "int", default = 1)
-        args_parser.add_option("--thread", dest="thread_nums", help="The vector thread nums."\
+        args_parser.add_option("--threads", dest="thread_nums", help="The vector thread nums."\
                           , type = "int", default = 1)
         args_parser.add_option("--seed", dest="seed", help="Set the seed. [default: %default]\nFor the default value, tpg will generate random seed instead."\
                           , type = "int", default = 0x0)
@@ -68,7 +68,8 @@ class Args:
                 Util.Error_exit("Invalid Page mode for compatibility mode!")
         else:
             Util.Error_exit("Invalid Mode!")
-
+            
+        self.threads = self.args_parser.thread_nums
         
     def Set_logging(self):
         if self.args_option._debug == True: plevel = logging.DEBUG #plevel is the print information level

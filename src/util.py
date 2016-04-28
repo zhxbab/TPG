@@ -15,6 +15,7 @@ class Util:
     def Sigint_handler(self, signal, frame):
         critical("Ctrl+C pressed and Exit!!!")
         sys.exit(0)
+        
     @classmethod
     def Error_exit(cls,cmd):
         error(cmd)
@@ -32,29 +33,34 @@ class Util:
         self.asm_file.write("%s\n"%(comment))
         
     
-    def Instr_write(self,instr_cmd):
-        self.instr_manager.Add_instr()
-        self.asm_file.write("\t%s; #Instr:%d\n"%(instr_cmd,self.instr_manager.Get_instr()))
+    def Instr_write(self,instr_cmd,thread=0x0):
+        self.instr_manager.Add_instr(thread)
+        self.asm_file.write("\t%s;\n"%(instr_cmd,self))
     
     def Tag_write(self,tag):
         self.asm_file.write(":%s\n"%(tag))
         
-    def Msr_Read(self,msr):
-        self.Instr_write("mov ecx,0x%x"%(msr))
-        self.Instr_write("rdmsr")
-    
-    def Msr_Write(self,msr,**value):
-        self.Instr_write("mov ecx,0x%x"%(msr))
-        self.Instr_write("rdmsr")
-        if "eax" in value.keys():
-            self.Instr_write("mov eax,0x%x"%(value["eax"]))
-        if "edx" in value.keys():
-            self.Instr_write("mov edx,0x%x"%(value["edx"]))
-        self.Instr_write("wrmsr")
+    def Msr_Read(self,msr,thread=0x0):
+        self.Comment("#RDMSR 0x%x")
+        self.Instr_write("mov ecx,0x%x"%(msr),thread)
+        self.Instr_write("rdmsr",thread)
+        self.Runlog("RDMSR 0x%x"%(msr))
         
-    def Msr_Rmw(self,msr,rmwcmd):
-        self.Instr_write("mov ecx,0x%x"%(msr))
-        self.Instr_write("rdmsr")
+    def Msr_Write(self,msr,thread=0x0,**value):
+        self.Comment("#WRMSR 0x%x"%(msr))
+        self.Instr_write("mov ecx,0x%x"%(msr),thread)
+        self.Instr_write("rdmsr",thread)
+        if "eax" in value.keys():
+            self.Instr_write("mov eax,0x%x"%(value["eax"]),thread)
+        if "edx" in value.keys():
+            self.Instr_write("mov edx,0x%x"%(value["edx"]),thread)
+        self.Instr_write("wrmsr",thread)
+        self.Runlog("WRMSR 0x%x"%(msr))
+        
+    def Msr_Rmw(self,msr,rmwcmd,thread=0x0):
+        self.Comment("#RMWMSR 0x%x %s"%(msr,rmwcmd))
+        self.Instr_write("mov ecx,0x%x"%(msr),thread)
+        self.Instr_write("rdmsr",thread)
         s_pattern = re.compile('s[0-9]{1,2}')
         r_pattern = re.compile('r[0-9]{1,2}')
         sbits = s_pattern.findall(rmwcmd)
@@ -62,18 +68,20 @@ class Util:
         for i in sbits:
             num = i[1:]
             if int(num) >= 32:
-                self.Instr_write("bts edx,%d"%(int(num)-32))
+                self.Instr_write("bts edx,%d"%(int(num)-32),thread)
             else:
-                self.Instr_write("bts eax,%d"%(int(num)))
+                self.Instr_write("bts eax,%d"%(int(num)),thread)
         for i in rbits:
             num = i[1:]
             if int(num) >= 32:
-                self.Instr_write("btr edx,%d"%(int(num)-32))
+                self.Instr_write("btr edx,%d"%(int(num)-32),thread)
             else:
-                self.Instr_write("btr eax,%d"%(int(num)))
-        self.Instr_write("wrmsr")
-
-    
+                self.Instr_write("btr eax,%d"%(int(num)),thread)
+        self.Instr_write("wrmsr",thread)
+        self.Runlog("RMWMSR 0x%x %s"%(msr,rmwcmd))
+        
+    def Runlog(self,runlog_cmd,thread=0x0):
+        self.asm_file.write("//rem: $y%d %d \"//runlog: Instr %d - %s\"\n"%(thread,self.instr_manager.Get_instr(thread),self.instr_manager.Get_instr(thread),runlog_cmd))
 
         
     

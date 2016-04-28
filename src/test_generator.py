@@ -23,7 +23,6 @@ class Test_generator(Args,Util):
         self.asm_list = []
         self.inc_path = "%s/include"%(self.tpg_path)
         self.bin_path = "%s/bin"%(self.tpg_path)
-        self.ptg = Page(self.page_mode,self.tpg_path)
         #self.Create_asm()
     def Create_dir(self):
         cmd = "mkdir %s/%s"%(self.realbin_path,self.avp_dir_name)
@@ -37,6 +36,7 @@ class Test_generator(Args,Util):
         self.asm_file = open(self.asm_path,"w")
         self.asm_list.append(self.asm_path)
         self.ptg.asm_file = self.asm_file
+        self.mpg.asm_file = self.asm_file
         self.Text_write("include \"%s/std.inc\""%(self.inc_path))
 
         
@@ -44,7 +44,7 @@ class Test_generator(Args,Util):
         self.mode_code = Mode(self.mpg,self.instr_manager,self.ptg)
         self.mode_code.asm_file = self.asm_file
         if(self.mode,"long_mode"):
-            self.mode_code.Long_mode()
+            self.T0_code = self.mode_code.Long_mode()
         elif(self.mode,"protect_mode"):
             pass
         elif(self.mode, "compatibility_mode"):
@@ -53,8 +53,8 @@ class Test_generator(Args,Util):
             self.Error_exit("Invalid mode!")
 
     def Gen_hlt_code(self):
-        self.mpg.check_spare_mem()
-        hlt_code = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x100000,name="hlt_code")
+        #self.mpg.check_spare_mem()
+        hlt_code = self.mpg.Apply_mem(0x100,16,start=0x0,end=0xA0000,name="hlt_code")
         self.Instr_write("jmp $%s"%(hlt_code["name"]))
         self.Text_write("org 0x%x"%(hlt_code["start"]))
         self.Tag_write(hlt_code["name"])
@@ -66,8 +66,8 @@ class Test_generator(Args,Util):
         
     def Reset_asm(self):
         self.mpg = Mem()
-        self.instr_manager = Instr()
-
+        self.instr_manager = Instr(self.threads)
+        self.ptg = Page(self.page_mode,self.tpg_path,self.mpg,self.instr_manager)
         
     def Gen_del_file(self):
         self.del_file_name = "%s.del"%(self.avp_dir_path)
@@ -89,7 +89,7 @@ class Test_generator(Args,Util):
             ret = rasm_p.poll()
             while ret == None:
                 ret = rasm_p.poll()
-            cnsim_cmd = "%s/cnsim %s"%(self.bin_path,avp_file)
+            cnsim_cmd = "%s/cnsim -mem 0xF4 -short %s"%(self.bin_path,avp_file)
             info(cnsim_cmd)
             cnsim_p = subprocess.Popen(cnsim_cmd,stdout=None, stderr=None, shell=True)
             ret = cnsim_p.poll()
