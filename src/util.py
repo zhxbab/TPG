@@ -35,7 +35,7 @@ class Util:
     
     def Instr_write(self,instr_cmd,thread=0x0):
         self.instr_manager.Add_instr(thread)
-        self.asm_file.write("\t%s;\n"%(instr_cmd,self))
+        self.asm_file.write("\t%s;\n"%(instr_cmd))
     
     def Tag_write(self,tag):
         self.asm_file.write(":%s\n"%(tag))
@@ -44,7 +44,7 @@ class Util:
         self.Comment("#RDMSR 0x%x")
         self.Instr_write("mov ecx,0x%x"%(msr),thread)
         self.Instr_write("rdmsr",thread)
-        self.Runlog("RDMSR 0x%x"%(msr))
+        #self.Runlog("RDMSR 0x%x"%(msr))
         
     def Msr_Write(self,msr,thread=0x0,**value):
         self.Comment("#WRMSR 0x%x"%(msr))
@@ -55,7 +55,7 @@ class Util:
         if "edx" in value.keys():
             self.Instr_write("mov edx,0x%x"%(value["edx"]),thread)
         self.Instr_write("wrmsr",thread)
-        self.Runlog("WRMSR 0x%x"%(msr))
+        #self.Runlog("WRMSR 0x%x"%(msr))
         
     def Msr_Rmw(self,msr,rmwcmd,thread=0x0):
         self.Comment("#RMWMSR 0x%x %s"%(msr,rmwcmd))
@@ -78,10 +78,11 @@ class Util:
             else:
                 self.Instr_write("btr eax,%d"%(int(num)),thread)
         self.Instr_write("wrmsr",thread)
-        self.Runlog("RMWMSR 0x%x %s"%(msr,rmwcmd))
+        #self.Runlog("RMWMSR 0x%x %s"%(msr,rmwcmd))
         
-    def Runlog(self,runlog_cmd,thread=0x0):
-        self.asm_file.write("//rem: $y%d %d \"//runlog: Instr %d - %s\"\n"%(thread,self.instr_manager.Get_instr(thread),self.instr_manager.Get_instr(thread),runlog_cmd))
+#    def Runlog(self,runlog_cmd,thread=0x0):
+#        self.asm_file.write("//rem: $y%d %d \"//runlog: Instr %d - %s\"\n"%(thread,self.instr_manager.Get_instr(thread),self.instr_manager.Get_instr(thread),runlog_cmd))
+
 
         
     

@@ -7,13 +7,15 @@ __author__ = 'Ken Zhao'
 ########################################################
 from operator import eq, ne
 from util import Util
+from logging import info, error, debug, warning, critical
 class Mode(Util):
-    def __init__(self, mpg, instr_manager, ptg, threads):
+    def __init__(self, mpg, instr_manager, ptg, threads, simcmd, intel):
         self.mpg = mpg
         self.instr_manager = instr_manager
         self.ptg = ptg
         self.threads = threads
-        
+        self.simcmd = simcmd
+        self.intel = intel
     def Set_table_pointer(self,table_name):
         table_pointer = self.mpg.Apply_mem(0x10,16,start=0x0,end=0x10000,name="%s_pointer"%(table_name)) #0x10000 = 64KB, in real mode(B=0), the limit of segment is 0xFFFF
         self.Text_write("org 0x%x"%(table_pointer["start"]))
@@ -21,7 +23,27 @@ class Mode(Util):
         self.Text_write("@%s.base = $%s"%(table_pointer["name"],table_name))
         self.Text_write("@%s.limit = 0xFFFF"%(table_pointer["name"]))
         return table_pointer
-        
+    
+    def Set_user_code_stack(self):
+        self.Comment("###########################Thread Info######################")
+        self.stack_segs = []
+        self.user_code_segs = []
+        self.thread_info_pointer = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="thread_info_pointer")
+        self.Text_write("org 0x%x"%(self.thread_info_pointer["start"]))
+        self.Text_write("@%s = new std::thread_info[%d]"%(self.thread_info_pointer["name"],8))#support 8 threads
+        for i in range(0,self.threads):
+            self.stack_seg = self.mpg.Apply_mem(0x40000,16,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
+            self.stack_segs.append(self.stack_seg)
+            self.user_code_seg = self.mpg.Apply_mem(0x100000,16,start=0x1000000,end=0x80000000,name="user_code_seg_T%d"%(i))
+            self.user_code_segs.append(self.user_code_seg)
+            if self.intel:
+                intel_id = i * 2
+                self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],intel_id,self.stack_seg["start"]))
+                self.Text_write("@%s[%d].code = 0x%016x"%(self.thread_info_pointer["name"],intel_id,self.user_code_seg["start"]))
+            else:
+                self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],i,self.stack_seg["start"]))
+                self.Text_write("@%s[%d].code = 0x%016x"%(self.thread_info_pointer["name"],i,self.user_code_seg["start"]))
+    
     def Long_mode(self):
         self.Comment("###########################vars definition######################")
         gdt_table_base = self.mpg.Apply_mem(0x1000,16,start=0,end=0x10000,name="gdt_table_base") # for 512 gdt descriptor
@@ -31,9 +53,10 @@ class Mode(Util):
         self.gdt_table_base_pointer = self.Set_table_pointer(gdt_table_base["name"])
         self.idt_table_base_pointer = self.Set_table_pointer(idt_table_base["name"])
         self.Set_gdt_table(gdt_table_base)
+        self.Set_user_code_stack()
         self.Text_write("&TO_MEMORY_ALL()")
         self.Main_code()
-        return self.code_start
+        return [self.stack_segs,self.user_code_segs]
         
         
     def Set_gdt_table(self,gdt_table_base):
@@ -67,6 +90,15 @@ class Mode(Util):
         self.Text_write("use 16")
         real_mode_code_start = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="real_mode_code_start")
         self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
+        ########################################################################
+        if self.threads > 1:
+            self.Comment("##########AP init address and code###############")
+            self.apic_jmp_addr = self.mpg.Apply_mem(0x100,0x1000,start=0x0,end=0xA0000,name="apic_jmp_addr") # used for apic jmp
+            self.Text_write("org 0x%x"%(self.apic_jmp_addr["start"]))
+            self.Text_write("use 16")
+            self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
+        ########################################################################
+        self.Comment("##real mode code")    
         self.Text_write("org 0x%x"%(real_mode_code_start["start"]))
         self.Instr_write("lgdt [&@%s]"%(self.gdt_table_base_pointer["name"]))
         self.Instr_write("lidt [&@%s]"%(self.idt_table_base_pointer["name"]))
@@ -93,12 +125,19 @@ class Mode(Util):
         self.Instr_write("mov ss,ebx")
         #################################For multi threads#####################################
         if self.threads > 1:
-        	self.Msr_write(0x200,0,edx=0x0,eax=0xfee00000)
-        	self.Msr_write(0x201,0,edx=0xF,eax=0xfffff800)
-        	self.Instr_write("mov eax,0xfee00000")
-        	self.Instr_write("mov eax,dword [eax]") # get apic id
-        	self.Instr_write("cmp eax,0x0")
-        	self.Instr_write("jne $SKIP_WAKUP")
+            self.Msr_Write(0x200,0,edx=0x0,eax=0xfee00000)
+            self.Msr_Write(0x201,0,edx=0xF,eax=0xfffff800)
+            self.Instr_write("mov eax,0xfee00020")
+            self.Instr_write("mov eax,dword [eax]") # get apic id
+            self.Instr_write("cmp eax,0x0")
+            self.Instr_write("jne $SKIP_WAKEUP")
+            self.Comment("#####Set ICR(0x300,0x310), and INIT AP")
+            self.Instr_write("mov eax,0xfee00310")
+            self.Instr_write("mov dword [eax],(0<<24)")
+            self.Instr_write("mov eax,0xfee00300")
+            self.Instr_write("mov dword [eax],0xc06%02x"%(self.apic_jmp_addr["start"]/0x1000))
+            self.Tag_write("SKIP_WAKEUP")
+        #######################################################################################
         self.Comment("##enable xsave(xset/xget), this will fail in intel celeron platform")
         self.Instr_write("mov eax,cr4")
         self.Instr_write("bts eax,0x12")
@@ -131,14 +170,25 @@ class Mode(Util):
         self.Instr_write("mov ebx,&SELECTOR($%s)"%(self.selector_name_ds64_0))
         self.Instr_write("mov ds,ebx")
         self.Instr_write("mov ss,ebx")
+        self.Instr_write("mov eax,0xfee00020")
+        self.Instr_write("mov eax,dword [eax]") # get apic id        
+        self.Instr_write("shr eax, 24 - (8 / 2)")
+        if self.intel:
+            for i in range(0,self.threads):
+                if i == 0x0:
+                    self.instr_manager.Set_instr(69,0)
+                    self.simcmd.Add_sim_cmd("at $y%d >= %d set register EAX to 0x000000%02x"%(i,self.instr_manager.Get_instr(i),i*0x20),i)
+                else:
+                    self.instr_manager.Set_instr(65,i)
+                    self.simcmd.Add_sim_cmd("at $y%d >= %d set register EAX to 0x000000%02x"%(i,self.instr_manager.Get_instr(i),i*0x20),i)
+                    
         self.Comment("##set stack")
-        self.stack_seg = self.mpg.Apply_mem(0x80000,16,start=0xB00000,end=0x1000000,name="stack_seg")
-        self.Instr_write("mov esp,0x%x"%(self.stack_seg["start"]))
+        self.Instr_write("mov rsp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
         self.Comment("##Usr code")
-        self.code_start = self.mpg.Apply_mem(0x100000,16,start=0x1000000,end=0xB0000000,name="code_start")
-        self.Instr_write("call $%s"%(self.code_start["name"]))
-
-        #self.Instr_write("push rax")
+        self.Instr_write("call [eax+&@%s]"%(self.thread_info_pointer["name"]))
         
-        
-        
+        for i in range(0,self.threads):
+            if i == 0x0:
+                self.instr_manager.Set_instr(74,0)
+            else:
+                self.instr_manager.Set_instr(70,i)

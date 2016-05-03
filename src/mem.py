@@ -1,14 +1,17 @@
 #!/usr/bin/env python2.7
+from __future__ import division 
 # -*- coding: utf-8 -*-
 ' mem module '
 __author__ = 'Ken Zhao'
 ########################################################
 # mem module is used to generate different mem parten
 ########################################################
+
 from operator import eq, ne
 from util import Util
 import math, random
 from logging import info, error, debug, warning, critical
+
 #############################################Decorator##########################################
 #def deFind_mem(cls):
 #    def _deFind_mem(func):
@@ -60,6 +63,8 @@ class Mem(Util):
         pass
     def Update_mem(self,selected_mem):
         n = 0
+        #self.check_spare_mem()
+        #self.check_selected_mem()
         for i,mem in enumerate(self.spare_range):
             if selected_mem["start"] >= mem["start"] and (selected_mem["start"]+selected_mem["size"]) <= (mem["start"]+mem["size"]):
                 n = n + 1
@@ -73,7 +78,12 @@ class Mem(Util):
                     del self.spare_range[i]
                     self.spare_range.insert(i,update_mem_0)
                     self.spare_range.insert(i+1,update_mem_1)
+                    #self.check_spare_mem()
+                    #debug("update mem type 2")
+                    #debug("update_mem_0 start addr is 0x%x, end addr is 0x%x and size is 0x%x"%(update_mem_0["start"],update_mem_0["start"]+update_mem_0["size"],update_mem_0["size"]))
+                    #debug("update_mem_1 start addr is 0x%x, end addr is 0x%x and size is 0x%x"%(update_mem_1["start"],update_mem_1["start"]+update_mem_1["size"],update_mem_1["size"]))
         if n > 1:
+            warning("Error mem %s start is %x and size is %x"%(selected_mem["name"],selected_mem["start"],selected_mem["size"]))
             self.Error_exit("Update mem error!")
         
        
@@ -89,16 +99,17 @@ class Mem(Util):
         if "name" not in cond.keys():
             cond["name"] = "No_Name"
         size = size
-        cond["start"] = int(align*math.ceil(cond["start"]/align))       
+        cond["start"] = int(align*math.ceil(cond["start"]/align))
+        tmp_mem_start = int(align*math.ceil(mem["start"]/align))  
         if cond["start"] >= mem["start"] and cond["start"]+size <= cond["end"] <= mem["start"]+mem["size"]:#included case
             debug("mem match type 1")
             return {"start":random.randrange(cond["start"],cond["end"]-size+1,align),"size":size, "name":cond["name"]}
         elif mem["start"] <= cond["start"] and mem["size"]+mem["start"] >= cond["start"] + size:
             debug("mem match type 2")
             return {"start":random.randrange(cond["start"],mem["start"]+mem["size"]-size+1,align),"size":size, "name":cond["name"]}
-        elif cond["end"] >= mem["start"] >= cond["start"] and mem["start"]+size <= cond["end"]:
-            mem["start"] = int(align*math.ceil(mem["start"]/align)) # test again
-            if mem["start"]+size <= cond["end"]:
-                debug("mem match type 3")
-                return {"start":random.randrange(mem["start"],cond["end"]-size+1,align),"size":size, "name":cond["name"]}
+        elif cond["end"] >= tmp_mem_start >= cond["start"] and tmp_mem_start+size <= cond["end"]:
+            #debug("1 mem_start is %x"%(mem["start"]))
+            debug("mem match type 3")
+            #debug("2 mem_start is %x and align is %x,mem size is %x"%(tmp_mem_start,align,mem["size"]))
+            return {"start":random.randrange(tmp_mem_start,cond["end"]-size+1,align),"size":size, "name":cond["name"]}
                 

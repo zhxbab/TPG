@@ -27,11 +27,12 @@ class Args:
                           , type = "int", default = 0)
         args_parser.add_option("-n","--nums", dest="nums", help="The vector nums."\
                           , type = "int", default = 1)
-        args_parser.add_option("--threads", dest="thread_nums", help="The vector thread nums."\
+        args_parser.add_option("-t","--threads", dest="thread_nums", help="The vector thread nums."\
                           , type = "int", default = 1)
         args_parser.add_option("--seed", dest="seed", help="Set the seed. [default: %default]\nFor the default value, tpg will generate random seed instead."\
                           , type = "int", default = 0x0)
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode for parse_ucode_json", action="store_true", default = False)
+        args_parser.add_option("--intel", dest="intel", help="Support intel platform, APIC ID is 0,2,4,6", action="store_true", default = False)
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if self.args_option.seed:
             self.seed = self.args_option.seed
@@ -69,7 +70,8 @@ class Args:
         else:
             Util.Error_exit("Invalid Mode!")
             
-        self.threads = self.args_parser.thread_nums
+        self.threads = self.args_option.thread_nums
+        self.intel = self.args_option.intel
         
     def Set_logging(self):
         if self.args_option._debug == True: plevel = logging.DEBUG #plevel is the print information level

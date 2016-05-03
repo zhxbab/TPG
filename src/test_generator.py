@@ -14,6 +14,7 @@ from mem import Mem
 from mode import Mode
 from instruction import Instr
 from page import Page
+from simcmd import Simcmd
 class Test_generator(Args,Util):
     def __init__(self,args):
         signal.signal(signal.SIGINT,self.Sigint_handler)
@@ -37,14 +38,15 @@ class Test_generator(Args,Util):
         self.asm_list.append(self.asm_path)
         self.ptg.asm_file = self.asm_file
         self.mpg.asm_file = self.asm_file
+        self.simcmd.asm_file = self.asm_file
         self.Text_write("include \"%s/std.inc\""%(self.inc_path))
 
         
     def Gen_mode_code(self):
-        self.mode_code = Mode(self.mpg,self.instr_manager,self.ptg)
+        self.mode_code = Mode(self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel)
         self.mode_code.asm_file = self.asm_file
         if(self.mode,"long_mode"):
-            self.T0_code = self.mode_code.Long_mode()
+            [self.stack_segs,self.user_code_segs] = self.mode_code.Long_mode()
         elif(self.mode,"protect_mode"):
             pass
         elif(self.mode, "compatibility_mode"):
@@ -52,22 +54,26 @@ class Test_generator(Args,Util):
         else:
             self.Error_exit("Invalid mode!")
 
-    def Gen_hlt_code(self):
+    def Gen_hlt_code(self,thread_num):
         #self.mpg.check_spare_mem()
-        hlt_code = self.mpg.Apply_mem(0x100,16,start=0x0,end=0xA0000,name="hlt_code")
-        self.Instr_write("jmp $%s"%(hlt_code["name"]))
-        self.Text_write("org 0x%x"%(hlt_code["start"]))
-        self.Tag_write(hlt_code["name"])
-        self.Instr_write("hlt")
-        self.Instr_write("hlt")
-        self.Instr_write("hlt")
-        self.Instr_write("hlt")
-        self.asm_file.close()
+        if thread_num == 0:
+            self.hlt_code = self.mpg.Apply_mem(0x200,16,start=0x0,end=0xA0000,name="hlt_code")
+            self.Instr_write("jmp $%s"%(self.hlt_code["name"]))
+            self.Text_write("org 0x%x"%(self.hlt_code["start"]))
+            self.Tag_write(self.hlt_code["name"])
+            self.Instr_write("hlt")
+        elif 0 < thread_num < 4:
+            self.Instr_write("jmp $%s"%(self.hlt_code["name"]))
+        else:
+            self.Error_exit("Invalid thread num!")
+    def Gen_sim_cmd(self,thread_num):
+        self.simcmd.Simcmd_write(thread_num)
         
     def Reset_asm(self):
         self.mpg = Mem()
         self.instr_manager = Instr(self.threads)
         self.ptg = Page(self.page_mode,self.tpg_path,self.mpg,self.instr_manager)
+        self.simcmd = Simcmd(self.threads)
         
     def Gen_del_file(self):
         self.del_file_name = "%s.del"%(self.avp_dir_path)
@@ -77,6 +83,11 @@ class Test_generator(Args,Util):
         os.system("chmod 777 %s"%(self.del_file_name))
     
     def Gen_file_list(self):
+        self.asm_file.close()
+        if self.intel:
+            intel_cnsim_cmd = "-apic-id-increment 2"
+        else:
+            intel_cnsim_cmd = ""
         ic_list = []
         os.chdir(self.avp_dir_path)
         self.pclmsi_list_file = "%s/%s_pclmsi.list"%(self.avp_dir_path,self.avp_dir_name)
@@ -89,7 +100,7 @@ class Test_generator(Args,Util):
             ret = rasm_p.poll()
             while ret == None:
                 ret = rasm_p.poll()
-            cnsim_cmd = "%s/cnsim -mem 0xF4 -short %s"%(self.bin_path,avp_file)
+            cnsim_cmd = "%s/cnsim -mem 0xF4 -short %s -threads %d %s"%(self.bin_path,intel_cnsim_cmd,self.threads,avp_file)             
             info(cnsim_cmd)
             cnsim_p = subprocess.Popen(cnsim_cmd,stdout=None, stderr=None, shell=True)
             ret = cnsim_p.poll()
