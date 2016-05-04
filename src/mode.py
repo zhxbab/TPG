@@ -176,10 +176,10 @@ class Mode(Util):
         if self.intel:
             for i in range(0,self.threads):
                 if i == 0x0:
-                    self.instr_manager.Set_instr(69,0)
+                    self.instr_manager.Set_instr(66,0)
                     self.simcmd.Add_sim_cmd("at $y%d >= %d set register EAX to 0x000000%02x"%(i,self.instr_manager.Get_instr(i),i*0x20),i)
                 else:
-                    self.instr_manager.Set_instr(65,i)
+                    self.instr_manager.Set_instr(62,i)
                     self.simcmd.Add_sim_cmd("at $y%d >= %d set register EAX to 0x000000%02x"%(i,self.instr_manager.Get_instr(i),i*0x20),i)
                     
         self.Comment("##set stack")
@@ -189,6 +189,6 @@ class Mode(Util):
         
         for i in range(0,self.threads):
             if i == 0x0:
-                self.instr_manager.Set_instr(74,0)
+                self.instr_manager.Set_instr(68,0)
             else:
-                self.instr_manager.Set_instr(70,i)
+                self.instr_manager.Set_instr(64,i)

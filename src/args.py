@@ -31,7 +31,7 @@ class Args:
                           , type = "int", default = 1)
         args_parser.add_option("--seed", dest="seed", help="Set the seed. [default: %default]\nFor the default value, tpg will generate random seed instead."\
                           , type = "int", default = 0x0)
-        args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode for parse_ucode_json", action="store_true", default = False)
+        args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
         args_parser.add_option("--intel", dest="intel", help="Support intel platform, APIC ID is 0,2,4,6", action="store_true", default = False)
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if self.args_option.seed:

@@ -49,11 +49,15 @@ class Util:
     def Msr_Write(self,msr,thread=0x0,**value):
         self.Comment("#WRMSR 0x%x"%(msr))
         self.Instr_write("mov ecx,0x%x"%(msr),thread)
-        self.Instr_write("rdmsr",thread)
-        if "eax" in value.keys():
+        if "eax" in value.keys() and "edx" in value.keys():
             self.Instr_write("mov eax,0x%x"%(value["eax"]),thread)
-        if "edx" in value.keys():
             self.Instr_write("mov edx,0x%x"%(value["edx"]),thread)
+        else:
+            self.Instr_write("rdmsr",thread)
+            if "eax" in value.keys():
+                self.Instr_write("mov eax,0x%x"%(value["eax"]),thread)
+            if "edx" in value.keys():
+                self.Instr_write("mov edx,0x%x"%(value["edx"]),thread)
         self.Instr_write("wrmsr",thread)
         #self.Runlog("WRMSR 0x%x"%(msr))
         
