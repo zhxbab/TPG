@@ -131,6 +131,7 @@ class Test_generator(Args,Util):
     #//sim: at $y0 >= 1 set memory 0x09ac8008 to 0x00000000:0x00000000
 
     def Sync_spin_lock(self,spin_lock,thread,unlock_thread=0x0):
+        self.simcmd.Add_sim_cmd("at $y%d >= %d disable intermediate checking"%(thread,self.instr_manager.Get_instr(thread)+1),thread)
         self.Instr_write("inc dword [0x%08x]"%(spin_lock["start"]),thread)
         self.Tag_write("spin_lock_T%d_%d"%(thread,spin_lock["num"]))
         self.Instr_write("cmp dword [0x%08x],0x4"%(spin_lock["start"]),thread)
@@ -147,7 +148,7 @@ class Test_generator(Args,Util):
             self.simcmd.current_instr[thread] = self.instr_manager.Get_instr(thread)
             self.instr_manager.Set_instr(self.instr_manager.Get_instr(thread)+2,thread) # +2 is for core 1, 2, 3 to sync instr num
         self.Instr_write("jne $spin_lock_T%d_%d"%(thread,spin_lock["num"]),thread)
-    
+        self.simcmd.Add_sim_cmd("at $y%d >= %d enable intermediate checking"%(thread,self.instr_manager.Get_instr(thread)+1),thread)
     #def Spin_lock_ctrl(self,thread):
     
     def Sync_threads(self):
