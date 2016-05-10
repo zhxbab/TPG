@@ -45,14 +45,9 @@ class Test_generator(Args,Util):
     def Gen_mode_code(self):
         self.mode_code = Mode(self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel)
         self.mode_code.asm_file = self.asm_file
-        if(self.mode,"long_mode"):
-            [self.stack_segs,self.user_code_segs] = self.mode_code.Long_mode()
-        elif(self.mode,"protect_mode"):
-            pass
-        elif(self.mode, "compatibility_mode"):
-            pass
-        else:
-            self.Error_exit("Invalid mode!")
+        [self.stack_segs,self.user_code_segs] = self.mode_code.Mode_code(self.mode)
+
+
 
     def Gen_hlt_code(self,thread_num):
         #self.mpg.check_spare_mem()

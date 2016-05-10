@@ -48,9 +48,19 @@ class Page(Util):
     
     def Gen_page_4M(self):
 
-        self.tlb_base = self.mpg.Apply_mem(0x800000,16,start=0x100000,end=0xa00000,name="tlb_base") # 8MB for page_table above 1MB
+        self.tlb_base = self.mpg.Apply_mem(0x4000,0x1000,start=0x100000,end=0xa00000,name="tlb_base") # 8MB for page_table above 1MB
         self.Vars_write(self.tlb_base["name"],self.tlb_base["start"])
+        self.Instr_write("mov eax,$%s"%(self.tlb_base["name"]))
+        self.Instr_write("mov cr3,eax")
         self.Text_write("$tlb_pointer = INIT_TLB $%s"%(self.tlb_base["name"]))
+        self.Text_write("PAGING $tlb_pointer")
+        for i in range(0,1024):
+            if i < 768:
+                self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))
+            else:
+                self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))
+        
+        
     def Gen_page_2M(self):
 
         self.tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0xa00000,name="tlb_base") # allocate 4KB for PML4E, one entry include 512G.
