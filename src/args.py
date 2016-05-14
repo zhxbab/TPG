@@ -34,6 +34,7 @@ class Args:
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
         args_parser.add_option("--intel", dest="intel", help="Support intel platform, APIC ID is 0,2,4,6", action="store_true", default = False)
         args_parser.add_option("--c_gen", dest="c_gen", help="Use csmith,etc to gen c code", action="store_true", default = False)
+
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if self.args_option.seed:
             self.seed = self.args_option.seed
@@ -74,6 +75,7 @@ class Args:
         self.threads = self.args_option.thread_nums
         self.intel = self.args_option.intel
         self.c_gen = self.args_option.c_gen
+
         
     def Set_logging(self):
         if self.args_option._debug == True: plevel = logging.DEBUG #plevel is the print information level

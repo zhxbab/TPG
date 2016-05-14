@@ -36,6 +36,7 @@ class Util:
     def Instr_write(self,instr_cmd,thread=0x0):
         self.instr_manager.Add_instr(thread)
         self.asm_file.write("\t%s;\n"%(instr_cmd))
+<<<<<<< HEAD
         
     def Asm_write(self,asm_code_list,thread=0x0):
         self.instr_manager.Add_instr(thread)
@@ -50,6 +51,8 @@ class Util:
             warning("Unexpected asm_code, please check!")
         for i in range(0,len(asm_code)):
             self.asm_file.write("db 0x%s;\n"%(asm_code[i]))
+=======
+>>>>>>> 4e5c6d1bf1f790548fe506fc8895fcfdb60d9bbc
     
     def Tag_write(self,tag):
         self.asm_file.write(":%s\n"%(tag))
@@ -100,6 +103,10 @@ class Util:
         
 #    def Runlog(self,runlog_cmd,thread=0x0):
 #        self.asm_file.write("//rem: $y%d %d \"//runlog: Instr %d - %s\"\n"%(thread,self.instr_manager.Get_instr(thread),self.instr_manager.Get_instr(thread),runlog_cmd))
+<<<<<<< HEAD
+=======
+
+>>>>>>> 4e5c6d1bf1f790548fe506fc8895fcfdb60d9bbc
 
     def Pretty_instr(self,cmd):
         return "%s;\n"%(cmd)

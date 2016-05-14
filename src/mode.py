@@ -18,7 +18,6 @@ class Mode(Util):
         self.intel = intel
         self.interrupt = interrupt
         self.c_parser = c_parser
-        
     def Set_table_pointer(self,table_name):
         table_pointer = self.mpg.Apply_mem(0x10,16,start=0x0,end=0x10000,name="%s_pointer"%(table_name)) #0x10000 = 64KB, in real mode(B=0), the limit of segment is 0xFFFF
         self.Text_write("org 0x%x"%(table_pointer["start"]))
@@ -27,6 +26,7 @@ class Mode(Util):
         self.Text_write("@%s.limit = 0xFFFF"%(table_pointer["name"]))
         return table_pointer
     
+
     def Set_user_code_stack(self,c_gen):
         self.Comment("###########################Thread Info######################")
         stack_align = 0x100
@@ -302,6 +302,7 @@ class Mode(Util):
         self.Instr_write("mov ebx,&SELECTOR($%s)"%(self.selector_name_ds32_0))
         self.Instr_write("mov ds,bx")
         self.Instr_write("mov ss,bx")
+
         #################################For multi threads#####################################
         if self.threads > 1:
             self.Msr_Write(0x200,0,edx=0x0,eax=0xfee00000)

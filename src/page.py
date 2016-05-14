@@ -46,7 +46,6 @@ class Page(Util):
         self.Instr_write("mov eax,$ptgen_tlb_0_base")
         self.Instr_write("mov cr3,eax")
         self.tlb_base = self.mpg.Apply_fix_mem("tlb_base",0x100000,0x800000)
-        
     def Gen_page_4M(self):
 
         self.tlb_base = self.mpg.Apply_mem(0x4000,0x1000,start=0x100000,end=0xa00000,name="tlb_base") # 8MB for page_table above 1MB

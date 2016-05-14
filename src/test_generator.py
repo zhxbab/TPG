@@ -27,7 +27,7 @@ class Test_generator(Args,Util):
         self.inc_path = "%s/include"%(self.tpg_path)
         self.bin_path = "%s/bin"%(self.tpg_path)
         self.mpg = Mem()
-        
+
     def Create_dir(self):
         cmd = "mkdir %s/%s"%(self.realbin_path,self.avp_dir_name)
         info("create dir cmd is %s"%(cmd))
@@ -55,7 +55,6 @@ class Test_generator(Args,Util):
 
 
     def Gen_hlt_code(self,thread_num):
-        #self.mpg.check_spare_mem()
         if thread_num == 0:
             self.Text_write("jmp $%s"%(self.hlt_code["name"]))
             self.Text_write("org 0x%x"%(self.hlt_code["start"]))
@@ -65,7 +64,7 @@ class Test_generator(Args,Util):
             self.Text_write("jmp $%s"%(self.hlt_code["name"]))
         else:
             self.Error_exit("Invalid thread num!")
-            
+
     def Gen_sim_cmd(self,thread_num):
         self.simcmd.Simcmd_write(thread_num)
         

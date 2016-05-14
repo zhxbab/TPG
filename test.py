@@ -90,6 +90,7 @@ if __name__ == "__main__":
                 tests.Load_asm_code(0,i)
             else:
                 tests.Instr_write("mov eax,0x1",0)
+
             tests.Gen_hlt_code(0)
         else:
             tests.Error_exit("Invalid threads num!")
