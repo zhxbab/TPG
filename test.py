@@ -19,7 +19,8 @@ if __name__ == "__main__":
         tests.Create_asm(i)
         tests.Initial_interrupt()
         if tests.c_gen:
-            tests.Gen_asm_code(4,i)
+            if tests.Gen_asm_code(4,i):
+                continue
         else:
             pass
         ######################### If you want to change default interrupt handler##################

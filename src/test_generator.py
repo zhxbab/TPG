@@ -207,11 +207,11 @@ class Test_generator(Args,Util):
     def Gen_asm_code(self,thread, num):
         self.c_parser = C_parser(self.bin_path,self.avp_dir_name,self.mode,self.instr_manager,self.mpg)
         self.c_parser.asm_file = self.asm_file
-        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num)
+        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num,self.mode)
         if ret_gen_asm_code:
             del_asm = self.asm_list.pop()
             warning("%s's c code can't be executed successfully, so remove it from asm list"%(del_asm))
-    
+        return ret_gen_asm_code
      
     def Updata_interrupt(self,index,handler):
         self.interrupt.Update_interrupt_handler(index,handler)

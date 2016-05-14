@@ -33,8 +33,7 @@ class C_parser(Util):
         self.c_code_sec_info = []
         self.c_code_mem_info ={}
         
-    def Gen_c_asm(self,thread,num):
-        extra_cmd = ""
+    def Gen_c_asm(self,thread,num,mode):
         c_file = "c_code_%d.c"%(num)
         elf_file = "c_code_%d.elf"%(num)
         disasm_file = "c_code_%d"%(num)
@@ -42,6 +41,8 @@ class C_parser(Util):
         os.chdir(self.avp_dir_name)
         if self.mode == "protect_mode" or self.mode == "compatibility_mode":
             extra_cmd = "-m32"
+        else:
+            extra_cmd = ""
         debug("%s -o c_code_%d.c"%(self.cmsith,num))
         if os.system("%s --max-funcs 1 -o %s"%(self.cmsith,c_file)):
             self.Error_exit("Execute csmith error!")
@@ -66,16 +67,20 @@ class C_parser(Util):
             self.Error_exit("Execute %s error!"%(self.readelf))
         else:
             self.c_code_sec_file = open(c_code_sec,"r")
-            self.Parse_c_sec()
+            if mode == "long_mode":
+                self.Parse_c_sec_long_mode()
+            else:
+                self.Parse_c_sec()
             for list_index in self.c_code_sec_info:
                 #info(list_index) # for debug
                 if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss"):
                     self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_fix_mem(list_index["Name"],int(list_index["Addr"],16),int(list_index["Size"],16))
                     # in 32bit single thread, .tbss is overlap with .ctors and .dtors
+                    # in 64bit single thread, .tbss is overlap with .init_array and .fini_array and .jcr
                 elif eq(list_index["Name"],".tbss"):
                     self.c_code_mem_info[list_index["Name"]] = {"start":int(list_index["Addr"],16)}
             #info(self.c_code_mem_info)
-                
+        self.c_code_sec_file.close()      
         self.c_code_asm = open(disasm_file,"r")
         os.chdir("../")
         return 0
@@ -122,9 +127,13 @@ class C_parser(Util):
                     if m:
                         for index in self.c_code_sec_info:
                             if eq(m.group(1),index["Name"]):
-                                if not index["Load"] and ne(index["Addr"],"00000000"):
-                                    #info(index["Addr"])
-                                    self.Load_c_asm_sec(index)
+                                if not index["Load"]:
+                                    if self.mode == "long_mode":
+                                        if ne(index["Addr"],"0000000000000000"):
+                                            self.Load_c_asm_sec(index)
+                                    else:
+                                        if ne(index["Addr"],"00000000"):
+                                            self.Load_c_asm_sec(index)
                                 else:
                                     pass
                 else:
@@ -235,7 +244,65 @@ class C_parser(Util):
                     start = 1
             else:
                 break
+
+    def Parse_c_sec_long_mode(self):
+        start = 0
+        num = 0
+        sec_hash = {}
+        key_list_even = ['Nr', 'Name', 'Type', 'Addr', 'Off'] 
+        key_list_older  = ['Size', 'ES', 'Flg', 'Lk', 'Inf', 'Al','Load']
+        num_even = 0
+        while True:
+            line = self.c_code_sec_file.readline()
+            if line:
+                line = line.strip()
+                m = re.search(r'Key to Flags:',line)
+                if m:
+                    start = 0
+                    
+                if start:
+                    sec_list = line.split()
+                    #info(sec_list)  
+                    if eq(sec_list[0],"[Nr]"):
+                        self.c_code_sec_file.readline()
+                        continue
+                    else:
+                        if num_even == 0:
+                            num_even = 1
+                            if num < 10 :
+                                del sec_list[1]
+                                del sec_list[0]
+                                if num == 0:
+                                    sec_list.insert(0,".null")
+                            else:
+                                del sec_list[0]
+                            for i in range(1,len(key_list_even)):
+                                sec_hash[key_list_even[i]] = sec_list[i-1]
+                            sec_hash[key_list_even[0]] = num
+                            continue
+                        else:
+                            num_even = 0
+                            #info(sec_list)
+                            if len(sec_list)==len(key_list_older)-1:
+                                pass
+                            elif len(sec_list)==len(key_list_older)-2:
+                                sec_list.insert(2,"")
+                            else:
+                                warning("Invalid sec list length! Please check!")
+                            for j in range(0,len(key_list_older)-1):
+                                sec_hash[key_list_older[j]] = sec_list[j]
+                            sec_hash[key_list_older[-1]] = 0x0
+                            sec_hash_temp = deepcopy(sec_hash)
+                            num += 1
+                            self.c_code_sec_info.append(sec_hash_temp)
+                                                   
+                m = re.search(r'Section Headers:',line)
+                if m:
+                    start = 1
+            else:
+                break                 
                  
+
     def timer_function(self,Popen):
         returncode = Popen.poll()
         if returncode == None:

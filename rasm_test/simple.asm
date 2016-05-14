@@ -5,7 +5,7 @@
 # simple rasm template to get into 64 bit, linear paging , cacheoff
 
 ##########  check /n/dv/release/rasm/current/include/std.inc for struct definition ####################
-include "std.inc";
+include "/home/cv/tpg/TPG/include/std.inc";
 
 ############## variables definition #############
 $tlb_base =  0x9000;
