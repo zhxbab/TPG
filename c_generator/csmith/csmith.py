@@ -118,3 +118,4 @@ class Csmith(Test_generator):
             del_asm = self.asm_list.pop()
             warning("%s's c code can't be executed successfully, so remove it from asm list"%(del_asm))
         return ret_gen_asm_code
+

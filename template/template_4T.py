@@ -37,7 +37,7 @@ if __name__ == "__main__":
                 tests.Instr_write("mov eax,0x3",j)                 
             tests.Gen_hlt_code(j)
             tests.Gen_sim_cmd(j)
-            
-    tests.Gen_file_list()
+        tests.Gen_vector()
+    tests.Gen_pclmsi_file_list()
 
 

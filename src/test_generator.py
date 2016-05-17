@@ -21,19 +21,27 @@ class Test_generator(Args,Util):
     def __init__(self,args):
         signal.signal(signal.SIGINT,self.Sigint_handler)
         Args.__init__(self,args)
+   
+    def Create_dir(self):
         self.avp_dir_seed = random.randint(1,0xFFFF)
         self.avp_dir_name = "%s_%sT_%s_%d"%(self.realbin_name,self.threads,self.mode,self.avp_dir_seed)
-        self.asm_list = []
-        self.inc_path = "%s/include"%(self.tpg_path)
-        self.bin_path = "%s/bin"%(self.tpg_path)
-        self.mpg = Mem()
-        self.c_parser = None
-        
-    def Create_dir(self):
         cmd = "mkdir %s/%s"%(self.realbin_path,self.avp_dir_name)
         info("create dir cmd is %s"%(cmd))
         os.system(cmd)
         self.avp_dir_path = os.path.join(self.realbin_path,self.avp_dir_name)
+        self.Create_global_info()
+
+        
+    def Create_global_info(self):
+        self.asm_list = []
+        self.inc_path = "%s/include"%(self.tpg_path)
+        self.bin_path = "%s/bin"%(self.tpg_path)
+        self.ic_list = []
+        self.fail_list = []
+        self.pclmsi_list_file = "%s/%s_pclmsi.list"%(self.avp_dir_path,self.avp_dir_name)
+        self.mpg = Mem()
+        self.c_parser = None
+        self.Gen_cnsim_param()
         #info(self.avp_dir_path)
     def Create_asm(self,index=0x0):
         self.asm_name = "%s_%s_%sT_%s_%d.asm"%(self.realbin_name,index,self.threads,self.mode,self.seed)
@@ -52,9 +60,19 @@ class Test_generator(Args,Util):
         self.mode_code = Mode(self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel, self.interrupt,self.c_parser)
         self.mode_code.asm_file = self.asm_file
         [self.stack_segs,self.user_code_segs] = self.mode_code.Mode_code(self.mode,self.c_gen)
+
+    def Gen_cnsim_param(self):
+        if self.intel:
+            intel_cnsim_cmd = "-apic-id-increment 2 "
+        else:
+            intel_cnsim_cmd = " "
+        cnsim_param_pclmsi = " "
+        cnsim_param_normal = "-ma %s -no-tbdm-warnings -va -no-stack %s -no-apic-intr -trait-change "%(self.very_short_num,self.very_short_cmd)
+        cnsim_param_mem = "-all-mem -addr-chk -memread-chk -mem 0xF4 "
+        cnsim_param_thread = "-threads %d "%(self.threads)
+        self.cnsim_param = cnsim_param_pclmsi + cnsim_param_normal + cnsim_param_mem + cnsim_param_thread + intel_cnsim_cmd
         
-
-
+        
     def Gen_hlt_code(self,thread_num):
         if thread_num == 0:
             self.Text_write("jmp $%s"%(self.hlt_code["name"]))
@@ -87,50 +105,37 @@ class Test_generator(Args,Util):
         self.del_file.close()
         os.system("chmod 777 %s"%(self.del_file_name))
     
-    def Gen_file_list(self):
+    def Gen_vector(self):
         self.asm_file.close()
-        if self.intel:
-            intel_cnsim_cmd = "-apic-id-increment 2 "
-        else:
-            intel_cnsim_cmd = " "
-        ic_list = []
-        fail_list = []
         os.chdir(self.avp_dir_path)
-        self.pclmsi_list_file = "%s/%s_pclmsi.list"%(self.avp_dir_path,self.avp_dir_name)
-        pclmsi_list = open(self.pclmsi_list_file,"w")
-        cnsim_path = os.getenv("LOCATION_TPG")
-        for asm_file in self.asm_list:
-            rasm_cmd = "%s/rasm -raw %s"%(self.bin_path,asm_file)
-            avp_file = asm_file.replace("asm","avp")
-            rasm_p = subprocess.Popen(rasm_cmd,stdout=None, stderr=None, shell=True)
+        rasm_cmd = "%s/rasm -raw %s"%(self.bin_path,self.asm_name)
+        avp_file = self.asm_name.replace("asm","avp")
+        rasm_p = subprocess.Popen(rasm_cmd,stdout=None, stderr=None, shell=True)
+        ret = rasm_p.poll()
+        while ret == None:
             ret = rasm_p.poll()
-            while ret == None:
-                ret = rasm_p.poll()
-            #cnsim_param_pclmsi = "-pclmsi -pclsmi-allow_io"
-            cnsim_param_pclmsi = " "
-            cnsim_param_normal = "-ma %s -no-tbdm-warnings -va -no-stack %s -no-apic-intr -trait-change "%(self.very_short_num,self.very_short_cmd)
-            #cnsim_param_mem = "-all-mem -addr-chk -memread-chk -mem 0xF4 "
-            cnsim_param_mem = "-mem 0xF4 "
-            cnsim_param_thread = "-threads %d "%(self.threads)
-            cnsim_param = cnsim_param_pclmsi + cnsim_param_normal + cnsim_param_mem + cnsim_param_thread + intel_cnsim_cmd
-            cnsim_cmd = "%s/cnsim %s %s"%(self.bin_path,cnsim_param,avp_file)             
-            info(cnsim_cmd)
-            cnsim_p = subprocess.Popen(cnsim_cmd,stdout=None, stderr=None, shell=True)
+        cnsim_cmd = "%s/cnsim %s %s"%(self.bin_path,self.cnsim_param,avp_file)             
+        info(cnsim_cmd)
+        cnsim_p = subprocess.Popen(cnsim_cmd,stdout=None, stderr=None, shell=True)
+        ret = cnsim_p.poll()
+        while ret == None:
             ret = cnsim_p.poll()
-            while ret == None:
-                ret = cnsim_p.poll()
-            if ret != 0x0:
-                error("Gen vector fail, Please check!")
-                fail_list.append(avp_file)
-            else:
-                ic_file = avp_file.replace("avp","ic")
-                gzip_cmd = "gzip %s"%(ic_file)
-                info(gzip_cmd)
-                os.system(gzip_cmd)
-                ic_list.append("%s.gz"%(ic_file))
-        for ic_file in ic_list:
+        if ret != 0x0:
+            error("Gen vector fail, Please check!")
+            self.fail_list.append(avp_file)
+        else:
+            ic_file = avp_file.replace("avp","ic")
+            gzip_cmd = "gzip %s"%(ic_file)
+            info(gzip_cmd)
+            os.system(gzip_cmd)
+            self.ic_list.append("%s.gz"%(ic_file))
+        os.chdir(self.realbin_path)
+        
+    def Gen_pclmsi_file_list(self):
+        pclmsi_list = open(self.pclmsi_list_file,"w")
+        for ic_file in self.ic_list:
             pclmsi_list.write("+load:%s +rerun_times:100 +ignore_all_checks:1\n"%(ic_file))
-        for fail_ic in fail_list:
+        for fail_ic in self.fail_list:
             info("cnsim fail vector is %s"%(fail_ic))
         info("%s Done"%(self.pclmsi_list_file))
         pclmsi_list.close()

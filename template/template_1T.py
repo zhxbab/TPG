@@ -23,6 +23,7 @@ if __name__ == "__main__":
         tests.Start_user_code(0)
         tests.Instr_write("mov eax,0x1",0)
         tests.Gen_hlt_code(0)
-    tests.Gen_file_list()
+        tests.Gen_vector()
+    tests.Gen_pclmsi_file_list()
 
 

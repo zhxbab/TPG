@@ -14,27 +14,23 @@ import signal,random
 from mem import Mem
 ##############################################Sub Class#####################################
 class Pclmsi_spc(Test_generator):
-    def __init__(self,args):
-        signal.signal(signal.SIGINT,self.Sigint_handler)
-        self.current_dir_path = os.path.abspath(".") # current dir path
-        self.realbin_path = sys.path[0] # realbin path 
-        self.realbin_name = os.path.realpath(sys.argv[0]).split(".")[0].split("/")[-1] # realbin name
-        self.tpg_path = os.getenv("LOCATION_TPG") 
-        self.mode = "long_mode"
-        self.page_mode = "2MB"
-        self.intel = 0
-        self.threads = 4
-        self.Parse_input(args)
-        self.Set_logging()
-        self.avp_dir_seed = random.randint(1,0xFFFF)
-        self.avp_dir_name = "%s_%sT_%s_%d"%(self.realbin_name,self.threads,self.mode,self.avp_dir_seed)
-        self.asm_list = []
-        self.inc_path = "%s/include"%(self.tpg_path)
-        self.bin_path = "%s/bin"%(self.tpg_path)
-        self.seed = 0x0
-        self.mpg = Mem()
-        self.c_parser = ""
-        self.c_gen = 0
+#    def __init__(self,args):
+#        signal.signal(signal.SIGINT,self.Sigint_handler)
+#        self.current_dir_path = os.path.abspath(".") # current dir path
+#        self.realbin_path = sys.path[0] # realbin path 
+#        self.realbin_name = os.path.realpath(sys.argv[0]).split(".")[0].split("/")[-1] # realbin name
+#        self.tpg_path = os.getenv("LOCATION_TPG") 
+#
+#        self.Parse_input(args)
+#        self.Set_logging()
+#        self.avp_dir_seed = random.randint(1,0xFFFF)
+#        self.avp_dir_name = "%s_%sT_%s_%d"%(self.realbin_name,self.threads,self.mode,self.avp_dir_seed)
+#        self.asm_list = []
+#        self.inc_path = "%s/include"%(self.tpg_path)
+#        self.bin_path = "%s/bin"%(self.tpg_path)
+#        self.mpg = Mem()
+#        self.c_parser = ""
+
         
     def Parse_input(self,args):
         args_parser = OptionParser(usage="%pclmsi_spc *args, **kwargs", version="%pclmsi_spc 0.1")
@@ -47,6 +43,15 @@ class Pclmsi_spc(Test_generator):
             self.reload_addr = self.args_option.reload_addr # for example 0xC100
         else:
             self.Error_exit("--ucode_patch and --reload_addr is indispensable")
+        self.c_gen = 0
+        self.seed = 0x0
+        self.mode = "long_mode"
+        self.page_mode = "2MB"
+        self.intel = 0
+        self.threads = 4
+        self.very_short_cmd = "-short"
+        self.very_short_num = "100000"
+        
     def Load_ucode_patch(self):
 
         self.ucode_path = []
@@ -142,6 +147,7 @@ if __name__ == "__main__":
     pclmsi_spc.Sync_threads()
     pclmsi_spc.Gen_ctrl_cmd()
     pclmsi_spc.Ucode_patch_to_file()
-    pclmsi_spc.Gen_file_list()
+    pclmsi_spc.Gen_vector()
+    pclmsi_spc.Gen_pclmsi_file_list()
 
 
