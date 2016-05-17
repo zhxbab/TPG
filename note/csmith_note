@@ -1,0 +1,3 @@
+add "#define NOT_PRINT_CHECKSUM 1" in /usr/local/inclue/csmith-2.2.0/csmith_minimal.h
+add "#define NOT_PRINT_CHECKSUM 1" in /usr/local/inclue/csmith-2.2.0/platform_generic.h
+and include file need not to recomplie

@@ -47,18 +47,20 @@ class Mode(Util):
                 for j in range(0,0x100000,8):
                     self.Text_write("dq 0x0000000000000000")
                 self.Comment("##########Initial stack end###########")
-                
-            self.stack_seg["start"] = self.stack_seg["start"]+self.stack_seg["size"]-stack_align+0x4 
+            if self.mode == "long_mode":
+                self.stack_seg["end"] = self.stack_seg["start"]+self.stack_seg["size"]-stack_align+0x8
+            else:
+                self.stack_seg["end"] = self.stack_seg["start"]+self.stack_seg["size"]-stack_align+0x4
             # because need to execute call user_code, esp will -4,
             #so in there resever some space
             self.stack_segs.append(self.stack_seg)
             self.user_code_segs.append(self.user_code_seg)
             if self.intel:
                 intel_id = i * 2
-                self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],intel_id,self.stack_seg["start"]))
+                self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],intel_id,self.stack_seg["end"]))
                 self.Text_write("@%s[%d].code = 0x%016x"%(self.thread_info_pointer["name"],intel_id,self.user_code_seg["start"]))
             else:
-                self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],i,self.stack_seg["start"]))
+                self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],i,self.stack_seg["end"]))
                 self.Text_write("@%s[%d].code = 0x%016x"%(self.thread_info_pointer["name"],i,self.user_code_seg["start"]))
     
     def Mode_code(self,mode,c_gen):
@@ -158,12 +160,12 @@ class Mode(Util):
         self.Comment("###########################Long mode code######################")
         self.Text_write("org 0xFFFFFFF0")
         self.Text_write("use 16")
-        real_mode_code_start = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="real_mode_code_start")
+        real_mode_code_start = self.mpg.Apply_mem(0x100,16,start=0x1000,end=0x10000,name="real_mode_code_start")
         self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
         ########################################################################
         if self.threads > 1:
             self.Comment("##########AP init address and code###############")
-            self.apic_jmp_addr = self.mpg.Apply_mem(0x100,0x1000,start=0x0,end=0xA0000,name="apic_jmp_addr") # used for apic jmp
+            self.apic_jmp_addr = self.mpg.Apply_mem(0x100,0x1000,start=0x1000,end=0xA0000,name="apic_jmp_addr") # used for apic jmp
             self.Text_write("org 0x%x"%(self.apic_jmp_addr["start"]))
             self.Text_write("use 16")
             self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
@@ -173,7 +175,7 @@ class Mode(Util):
         self.Instr_write("lgdt [&@%s]"%(self.gdt_table_base_pointer["name"]))
         self.Instr_write("lidt [&@%s]"%(self.idt_table_base_pointer["name"]))
         self.Comment("##enable 32bit mode")
-        protect_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x0,end=0xA0000,name="protect_mode_code_start")#0xA0000-0x100000 is for BIOS
+        protect_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x1000,end=0xA0000,name="protect_mode_code_start")#0xA0000-0x100000 is for BIOS
         self.Instr_write("mov edx,cr0")
         self.Instr_write("or edx,0x1")
         self.Instr_write("mov cr0,edx")
@@ -222,7 +224,7 @@ class Mode(Util):
         self.Msr_Write(0x2ff,eax=0x806,edx=0x0)
         ####### set page and cr3##################
         self.ptg.Gen_page(self.instr_manager)
-        self.long_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x0,end=0xA0000,name="long_mode_code_start")
+        self.long_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x1000,end=0xA0000,name="long_mode_code_start")
         ########enter compatibility_mode######################
         self.Comment("##enable IA32e mode")
         self.Msr_Rmw(0xc0000080,"s8")
@@ -236,7 +238,10 @@ class Mode(Util):
         ########enter long mode###############################
         self.Instr_write("jmpf &SELECTOR($%s):0x%x"%(self.selector_name_cs_0,self.long_mode_code_start["start"]))         
         self.Text_write("org 0x%x"%(self.long_mode_code_start["start"]))
-        self.Text_write("use 64")
+        if self.mode == "long_mode":
+            self.Text_write("use 64")
+        else:
+            self.Text_write("use 32")  
         self.Instr_write("mov ebx,&SELECTOR($%s)"%(self.selector_name_ds_0))
         self.Instr_write("mov fs,bx")
         self.Instr_write("mov gs,bx")
@@ -253,7 +258,10 @@ class Mode(Util):
                     self.simcmd.Add_sim_cmd("at $y%d >= %d set register EAX to 0x000000%02x"%(i,self.instr_manager.Get_instr(i),i*0x20),i)
                     
         self.Comment("##set stack")
-        self.Instr_write("mov rsp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
+        if self.mode == "long_mode":
+            self.Instr_write("mov rsp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
+        else:
+            self.Instr_write("mov esp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
         self.Comment("##Usr code")
         self.Instr_write("call [eax+&@%s]"%(self.thread_info_pointer["name"]))
         
@@ -267,12 +275,12 @@ class Mode(Util):
         self.Comment("###########################Protect mode code######################")
         self.Text_write("org 0xFFFFFFF0")
         self.Text_write("use 16")
-        real_mode_code_start = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="real_mode_code_start")
+        real_mode_code_start = self.mpg.Apply_mem(0x100,16,start=0x1000,end=0x10000,name="real_mode_code_start")
         self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
         ########################################################################
         if self.threads > 1:
             self.Comment("##########AP init address and code###############")
-            self.apic_jmp_addr = self.mpg.Apply_mem(0x100,0x1000,start=0x0,end=0xA0000,name="apic_jmp_addr") # used for apic jmp
+            self.apic_jmp_addr = self.mpg.Apply_mem(0x100,0x1000,start=0x1000,end=0xA0000,name="apic_jmp_addr") # used for apic jmp
             self.Text_write("org 0x%x"%(self.apic_jmp_addr["start"]))
             self.Text_write("use 16")
             self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
@@ -282,7 +290,7 @@ class Mode(Util):
         self.Instr_write("lgdt [&@%s]"%(self.gdt_table_base_pointer["name"]))
         self.Instr_write("lidt [&@%s]"%(self.idt_table_base_pointer["name"]))
         self.Comment("##enable 32bit mode")
-        protect_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x0,end=0xA0000,name="protect_mode_code_start")#0xA0000-0x100000 is for BIOS
+        protect_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x1000,end=0xA0000,name="protect_mode_code_start")#0xA0000-0x100000 is for BIOS
         self.Instr_write("mov edx,cr0")
         self.Instr_write("or edx,0x1")
         self.Instr_write("mov cr0,edx")

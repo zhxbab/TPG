@@ -85,8 +85,7 @@ if __name__ == "__main__":
             tests.Gen_hlt_code(1)
         elif tests.threads == 0x1:
         ################## Thread 0 Code#################
-            tests.Text_write("org 0x%x"%(tests.user_code_segs[0]["start"]))
-            tests.Tag_write(tests.user_code_segs[0]["name"])
+            tests.Start_user_code()
             if tests.c_gen:
                 tests.Load_asm_code(0,i)
             else:

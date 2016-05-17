@@ -21,12 +21,9 @@ class C_parser(Util):
         self.gcc_cplus = "%s/gcc++"%(bin_path)
         self.clang_cplus = "%s/clang++"%(bin_path)
         self.avp_dir_name = avp_dir_name
-        #self.c_compiler = [self.gcc, self.clang][random.randint(0,1)]
-        #self.cplus_compiler = [self.gcc_cplus, self.clang_cplus][random.randint(0,1)]
-        self.c_compiler = self.gcc
+        self.c_compiler = [self.gcc, self.clang][random.randint(0,1)]
+        self.cplus_compiler = [self.gcc_cplus, self.clang_cplus][random.randint(0,1)]
         self.mode = mode
-        #self.optimize = ["-O2","-O3","-Os","-O0","-O1"][[random.randint(0,4)]]
-        self.optimize = "-O0"
         self.instr_manager = instr_manager
         self.mpg = mpg
         self.stop_flag = 0
@@ -38,21 +35,24 @@ class C_parser(Util):
         elf_file = "c_code_%d.elf"%(num)
         disasm_file = "c_code_%d"%(num)
         c_code_sec = "c_code_%d.sec"%(num)
+        self.optimize = ["O2","O3","Os","O0","O1"][random.randint(0,4)]
         os.chdir(self.avp_dir_name)
         if self.mode == "protect_mode" or self.mode == "compatibility_mode":
             extra_cmd = "-m32"
         else:
             extra_cmd = ""
-        debug("%s -o c_code_%d.c"%(self.cmsith,num))
-        if os.system("%s --max-funcs 1 -o %s"%(self.cmsith,c_file)):
+        info("%s -o c_code_%d.c"%(self.cmsith,num))
+        csmith_extra_cmd ="--max-funcs 10"
+        if os.system("%s %s -o %s"%(self.cmsith,csmith_extra_cmd,c_file)):
             self.Error_exit("Execute csmith error!")
-        if os.system("%s -w %s %s -static -fPIC %s -o %s"%(self.c_compiler,extra_cmd,self.optimize,c_file,elf_file)):
+        info("%s -w %s -%s -static -fPIC %s -o %s"%(self.c_compiler,extra_cmd,self.optimize,c_file,elf_file))
+        if os.system("%s -w %s -%s -static -fPIC %s -o %s"%(self.c_compiler,extra_cmd,self.optimize,c_file,elf_file)):
             self.Error_exit("Execute %s error!"%(self.c_compiler)) # use -static need glibc-static.x86-64 and i686
         csmith_cmd = "./%s"%(elf_file)
         csmith_p = subprocess.Popen(csmith_cmd,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         ret = csmith_p.poll()
-        debug("The csmith subprocess pid is %d"%(csmith_p.pid))
-        t = threading.Timer(10,self.timer_function,(csmith_p,))
+        info("The csmith subprocess pid is %d"%(csmith_p.pid))
+        t = threading.Timer(3,self.timer_function,(csmith_p,))
         t.start()
         while ret == None and self.stop_flag == 0:
             ret = csmith_p.poll()
@@ -75,14 +75,15 @@ class C_parser(Util):
                 #info(list_index) # for debug
                 if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss"):
                     self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_fix_mem(list_index["Name"],int(list_index["Addr"],16),int(list_index["Size"],16))
-                    # in 32bit single thread, .tbss is overlap with .ctors and .dtors
-                    # in 64bit single thread, .tbss is overlap with .init_array and .fini_array and .jcr
-                elif eq(list_index["Name"],".tbss"):
-                    self.c_code_mem_info[list_index["Name"]] = {"start":int(list_index["Addr"],16)}
+                    # in 32bit single thread, .tbss is overlap with .ctors and .dtors, so need to find a new mem and intial to 0x0. then set gs to this location
+                    # in 64bit single thread, .tbss is overlap with .init_array and .fini_array and .jcr, so need to find a new mem and intial to 0x0. then set fs to this location
+                elif eq(list_index["Name"],".tbss"):                   
+                    self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x1000000,end=0xA0000000,name=list_index["Name"])
             #info(self.c_code_mem_info)
         self.c_code_sec_file.close()      
         self.c_code_asm = open(disasm_file,"r")
         os.chdir("../")
+
         return 0
     
     def Load_c_asm(self,thread,hlt_code,num):
@@ -91,6 +92,7 @@ class C_parser(Util):
             self.Instr_write("mov fs,eax",thread)
         else:
             self.Instr_write("mov gs,eax",thread)
+        self.Instr_write("call $init",thread)
         self.Instr_write("call $main",thread)
         self.Text_write("jmp $%s"%(hlt_code["name"]))
         self.Parse_c_asm(thread)
@@ -109,6 +111,8 @@ class C_parser(Util):
                         self.Comment("#### %s"%(line))           
                         if eq(m.group(2),"main"):
                             self.Tag_write("main")
+                        elif eq(m.group(2),"init"):
+                            self.Tag_write("init")
                         
                     else:
                         asm_code_list = line.split("\t")
@@ -151,9 +155,9 @@ class C_parser(Util):
 #        for index in self.c_code_sec_info:
 #            if not index["Load"]:
 #                info("%s is not in dis"%(index["Name"]))
-    def Load_c_asm_NOBITS(self):
+    def Load_c_asm_NOBITS(self): # for .bss and .tbss
         for index in self.c_code_sec_info:
-            if eq(index["Type"],"NOBITS") and ne(index["Name"],".tbss"):
+            if eq(index["Type"],"NOBITS"):
                 # in 32bit single thread, .tbss is overlap with .ctors and .dtors
                 default_line_num = int(index["Size"],16)//0x4
                 self.Comment("#####%s"%(index["Name"]))

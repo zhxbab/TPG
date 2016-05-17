@@ -27,7 +27,8 @@ class Test_generator(Args,Util):
         self.inc_path = "%s/include"%(self.tpg_path)
         self.bin_path = "%s/bin"%(self.tpg_path)
         self.mpg = Mem()
-
+        self.c_parser = None
+        
     def Create_dir(self):
         cmd = "mkdir %s/%s"%(self.realbin_path,self.avp_dir_name)
         info("create dir cmd is %s"%(cmd))
@@ -93,6 +94,7 @@ class Test_generator(Args,Util):
         else:
             intel_cnsim_cmd = " "
         ic_list = []
+        fail_list = []
         os.chdir(self.avp_dir_path)
         self.pclmsi_list_file = "%s/%s_pclmsi.list"%(self.avp_dir_path,self.avp_dir_name)
         pclmsi_list = open(self.pclmsi_list_file,"w")
@@ -106,7 +108,7 @@ class Test_generator(Args,Util):
                 ret = rasm_p.poll()
             #cnsim_param_pclmsi = "-pclmsi -pclsmi-allow_io"
             cnsim_param_pclmsi = " "
-            cnsim_param_normal = "-ma 2000000 -no-tbdm-warnings -va -no-stack -short -no-apic-intr -trait-change "
+            cnsim_param_normal = "-ma %s -no-tbdm-warnings -va -no-stack %s -no-apic-intr -trait-change "%(self.very_short_num,self.very_short_cmd)
             #cnsim_param_mem = "-all-mem -addr-chk -memread-chk -mem 0xF4 "
             cnsim_param_mem = "-mem 0xF4 "
             cnsim_param_thread = "-threads %d "%(self.threads)
@@ -118,14 +120,18 @@ class Test_generator(Args,Util):
             while ret == None:
                 ret = cnsim_p.poll()
             if ret != 0x0:
-                self.Error_exit("Gen vector fail, Please check!")
-            ic_file = avp_file.replace("avp","ic")
-            gzip_cmd = "gzip %s"%(ic_file)
-            info(gzip_cmd)
-            os.system(gzip_cmd)
-            ic_list.append("%s.gz"%(ic_file))
+                error("Gen vector fail, Please check!")
+                fail_list.append(avp_file)
+            else:
+                ic_file = avp_file.replace("avp","ic")
+                gzip_cmd = "gzip %s"%(ic_file)
+                info(gzip_cmd)
+                os.system(gzip_cmd)
+                ic_list.append("%s.gz"%(ic_file))
         for ic_file in ic_list:
             pclmsi_list.write("+load:%s +rerun_times:100 +ignore_all_checks:1\n"%(ic_file))
+        for fail_ic in fail_list:
+            info("cnsim fail vector is %s"%(fail_ic))
         info("%s Done"%(self.pclmsi_list_file))
         pclmsi_list.close()
 #-pclmsi                                             test for PCLMSI compatibility and expose errors
@@ -220,3 +226,11 @@ class Test_generator(Args,Util):
         self.int_handler_base = self.mpg.Apply_mem(0x100000,16,start=0xa00000,end=0x1000000,name="int_handler_base")
         self.int_handler_record_base = self.mpg.Apply_mem(0x800,16,start=0x0,end=0xA0000,name="int_handler_record_base")
         self.interrupt.Initial_interrupt_handler(self.int_handler_base,self.int_handler_record_base)
+        
+    def Start_user_code(self,thread):
+        self.Text_write("org 0x%x"%(self.user_code_segs[thread]["start"]))
+        self.Tag_write(self.user_code_segs[thread]["name"])
+        if self.mode == "long_mode":
+            self.Text_write("use 64")
+        else:
+            self.Text_write("use 32")           

@@ -11,6 +11,7 @@ from logging import info, error, debug, warning, critical
 from test_generator import Test_generator
 from optparse import OptionParser
 import signal,random
+from mem import Mem
 ##############################################Sub Class#####################################
 class Pclmsi_spc(Test_generator):
     def __init__(self,args):
@@ -31,6 +32,9 @@ class Pclmsi_spc(Test_generator):
         self.inc_path = "%s/include"%(self.tpg_path)
         self.bin_path = "%s/bin"%(self.tpg_path)
         self.seed = 0x0
+        self.mpg = Mem()
+        self.c_parser = ""
+        self.c_gen = 0
         
     def Parse_input(self,args):
         args_parser = OptionParser(usage="%pclmsi_spc *args, **kwargs", version="%pclmsi_spc 0.1")
@@ -79,6 +83,7 @@ if __name__ == "__main__":
     pclmsi_spc.Gen_del_file()
     pclmsi_spc.Reset_asm()
     pclmsi_spc.Create_asm()
+    pclmsi_spc.Initial_interrupt()
     pclmsi_spc.Gen_mode_code()
     pclmsi_spc.Sync_threads()
         ################## Thread 0 Code#################
