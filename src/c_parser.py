@@ -29,13 +29,18 @@ class C_parser(Util):
         self.stop_flag = 0
         self.c_code_sec_info = []
         self.c_code_mem_info ={}
+
         
-    def Gen_c_asm(self,thread,num,mode):
+    def Gen_c_asm(self,thread,num,mode,optimize=None):
+        self.base_name = "c_code_%d"%(num)
         c_file = "c_code_%d.c"%(num)
         elf_file = "c_code_%d.elf"%(num)
         disasm_file = "c_code_%d"%(num)
         c_code_sec = "c_code_%d.sec"%(num)
-        self.optimize = ["O2","O3","Os","O0","O1"][random.randint(0,4)]
+        if optimize == None:
+            self.optimize = ["O2","O3","Os","O0","O1"][random.randint(0,4)]
+        else:
+            self.optimize = optimize
         os.chdir(self.avp_dir_name)
         if self.mode == "protect_mode" or self.mode == "compatibility_mode":
             extra_cmd = "-m32"

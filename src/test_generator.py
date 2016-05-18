@@ -29,6 +29,14 @@ class Test_generator(Args,Util):
         info("create dir cmd is %s"%(cmd))
         os.system(cmd)
         self.avp_dir_path = os.path.join(self.realbin_path,self.avp_dir_name)
+        self.cnsim_fail_dir = os.path.join(self.avp_dir_path,"cnsim_fail")
+        self.fail_dir =  os.path.join(self.avp_dir_path,"fail")
+        cmd = "mkdir %s"%(self.cnsim_fail_dir)
+        info("create dir cmd is %s"%(cmd))
+        os.system(cmd)
+        cmd = "mkdir %s"%(self.fail_dir)
+        info("create dir cmd is %s"%(cmd))
+        os.system(cmd)
         self.Create_global_info()
 
         
@@ -67,9 +75,10 @@ class Test_generator(Args,Util):
         else:
             intel_cnsim_cmd = " "
         cnsim_param_pclmsi = " "
-        cnsim_param_normal = "-ma %s -no-tbdm-warnings -va -no-stack %s -no-apic-intr -trait-change "%(self.very_short_num,self.very_short_cmd)
-        cnsim_param_mem = "-all-mem -addr-chk -memread-chk -mem 0xF4 "
+        cnsim_param_normal = "-ma %s -no-tbdm-warnings -va -no-mask-page -trait-change %s "%(self.very_short_num,self.very_short_cmd)
+        cnsim_param_mem = "-mem 0xF4 "
         cnsim_param_thread = "-threads %d "%(self.threads)
+        # remove no stack, -no-apic-intr -all-mem -addr-chk -memread-chk 
         self.cnsim_param = cnsim_param_pclmsi + cnsim_param_normal + cnsim_param_mem + cnsim_param_thread + intel_cnsim_cmd
         
         
@@ -108,8 +117,10 @@ class Test_generator(Args,Util):
     def Gen_vector(self):
         self.asm_file.close()
         os.chdir(self.avp_dir_path)
-        rasm_cmd = "%s/rasm -raw %s"%(self.bin_path,self.asm_name)
-        avp_file = self.asm_name.replace("asm","avp")
+        asm_file = os.path.join(self.avp_dir_path,self.asm_name)
+        rasm_cmd = "%s/rasm -raw %s"%(self.bin_path,asm_file)
+        avp_file = asm_file.replace(".asm",".avp")
+        self.vector_base_name = asm_file.replace(".asm","")
         rasm_p = subprocess.Popen(rasm_cmd,stdout=None, stderr=None, shell=True)
         ret = rasm_p.poll()
         while ret == None:
@@ -123,12 +134,17 @@ class Test_generator(Args,Util):
         if ret != 0x0:
             error("Gen vector fail, Please check!")
             self.fail_list.append(avp_file)
+            info("mv %s.* %s"%(self.c_parser.base_name,self.cnsim_fail_dir))
+            os.system("mv %s* %s"%(self.c_parser.base_name,self.cnsim_fail_dir))
+            info("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))
+            os.system("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))
         else:
-            ic_file = avp_file.replace("avp","ic")
-            gzip_cmd = "gzip %s"%(ic_file)
+            self.ic_file = avp_file.replace(".avp",".ic")
+            gzip_cmd = "gzip %s"%(self.ic_file)
             info(gzip_cmd)
             os.system(gzip_cmd)
-            self.ic_list.append("%s.gz"%(ic_file))
+            self.ic_file = "%s.gz"%(self.ic_file)
+            self.ic_list.append(self.ic_file)
         os.chdir(self.realbin_path)
         
     def Gen_pclmsi_file_list(self):
@@ -169,7 +185,9 @@ class Test_generator(Args,Util):
 #(-wp)/-no-wp                                        enable/disable write protect memory
 #-trait-change/(-no-trait-change)                    Don't allow trait change WB->WC
 #-use-sim-mask                                       use //sim: memory masking in results
-
+#-check-global-pages/(-no-check-global-              global pages must maintain consistant mapping
+#-inject-page-fault                     12345678     Inject page faults randomly by percentage
+#-mask-page/(-no-mask-page)                          mask page table access & dirty bits (CN bringup only)
     def Spin_lock_create(self,thread):
         spin_lock = self.mpg.Apply_mem(0x4,0x4,start=0x1000000,end=0xB0000000,name="spin_lock")
         self.simcmd.Add_sim_cmd("at $y%d >= 1 set memory 0x%08x to 0x00000000"%(thread,spin_lock["start"]),thread)

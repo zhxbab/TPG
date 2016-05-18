@@ -13,6 +13,9 @@ from optparse import OptionParser
 from c_parser import C_parser
 #####################################################Sub Classes###########################
 class Csmith(Test_generator):
+    def __init__(self,args):
+        Test_generator.__init__(self,args)
+        
     def Fix_threads(self,threads):
         self.threads = threads
         self.avp_dir_name = "%s_%sT_%s_%d"%(self.realbin_name,self.threads,self.mode,self.avp_dir_seed)
@@ -103,17 +106,20 @@ class Csmith(Test_generator):
         if self.force_gcc == 1:
             self.c_parser.c_compiler = self.c_parser.gcc
             self.c_parser.cplus_compiler = self.c_parser.gcc_cplus
-        if self.force_clang == 1:
+        elif self.force_clang == 1:
             self.c_parser.c_compiler = self.c_parser.clang
             self.c_parser.cplus_compiler = self.c_parser.clang_cplus
-        if self.Op != None:
-            self.c_parser.optimize = self.Op
+        elif self.force_clang == 0 and self.force_gcc == 0:
+            self.c_parser.c_compiler = [self.c_parser.gcc,self.c_parser.clang][random.randint(0,1)]
+            self.c_parser.cplus_compiler = [self.c_parser.gcc_cplus,self.c_parser.clang_cplus][random.randint(0,1)]
+        else:
+            self.Error("Compiler is not used")
             
     def Gen_asm_code(self,thread, num):
         self.c_parser = C_parser(self.bin_path,self.avp_dir_name,self.mode,self.instr_manager,self.mpg)
         self.c_parser.asm_file = self.asm_file
         self.Force_compiler_and_optimize()
-        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num,self.mode)
+        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num,self.mode,self.Op)
         if ret_gen_asm_code:
             del_asm = self.asm_list.pop()
             warning("%s's c code can't be executed successfully, so remove it from asm list"%(del_asm))
