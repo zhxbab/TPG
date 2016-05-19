@@ -15,4 +15,5 @@ if __name__ == "__main__":
     vector = Regression(0)
     vector.Reset_remove_flag()
     vector.Handle_vecor("/media/Data_Linux/tools/tpg/bjcvreg/test_fail_reset.ic.gz")
+    #vector.Parse_pclmsi_log_sum("test.sum")
     #tests.Gen_pclmsi_file_list()
