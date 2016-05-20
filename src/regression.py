@@ -10,8 +10,20 @@ sys.path.append("/%s/../../src"%(sys.path[0]))
 from logging import info, error, debug, warning, critical
 from util import Util
 from operator import eq,ne
+from email import encoders
+from email.header import Header
+from email.mime.text import MIMEText
+from email.utils import parseaddr, formataddr
+###########################################Sub routines###########################
+def _format_addr(s):
+    name, addr = parseaddr(s)
+    return formataddr(( \
+                        Header(name, 'utf-8').encode(), \
+                        addr.encode('utf-8') if isinstance(addr, unicode) else addr))     
+############################################Classes################################
 class Regression(Util):
     def __init__(self,device):
+        signal.signal(signal.SIGINT,self.Sigint_handler)
         self.runpclmsi = os.getenv("LOCATION_RUN_PCLMSI")
         self.device = device
         self.test_list = "%s/bjcvreg/test.ic.gz"%(os.getenv("LOCATION_TPG"))
@@ -87,8 +99,8 @@ class Regression(Util):
                 else:
                     break
         if len(fail_vectors) != 0:
-            pass
-            #self.Send_mail_vectors(fail_vectors)
+            #pass
+            self.Send_mail_vectors(fail_vectors)
         return result
     
     def Parse_pclmsi_log_sum(self,log_file):
@@ -149,8 +161,8 @@ class Regression(Util):
                                 result = 1
                         break
         if len(fail_vectors) != 0:
-            pass
-            #self.Send_mail_vectors(fail_vectors)
+            #pass
+            self.Send_mail_vectors(fail_vectors)
         return result                   
     
     def Record_fail_log(self,file,line):
@@ -190,7 +202,7 @@ class Regression(Util):
                         else:
                             info("Send Mail and Sleep forever until reset!")
                             check_reset_time = 60*30#60*30 is good,20 is used for test
-                            #self.Send_mail("HOST %s DEVICE %s Need RESET!"%(os.getenv("HOSTNAME"),self.device))
+                            self.Send_info("HOST %s DEVICE %s HANG!"%(os.getenv("HOSTNAME"),self.device))
                             sleep_t = threading.Timer(check_reset_time,self.sleep_timer_function,())#60*30 is good,20 is used for test
                             sleep_t.start()
                             while self.sleep_flag:
@@ -218,35 +230,28 @@ class Regression(Util):
     def Reset_remove_flag(self):
         self.remove_flag = 0
         
-    def Send_mail_vectors(self,fail_vectors):
-        sender = os.getenv("HOSTNAME") 
-        receivers = 'KenZhao@zhaoxin.com'
-        subject = "PCLMSI FAIL NOTITION"
-        content = ""
-        for key in fail_vectors:
-            content = content + "fail vector: %s\n"%(fail_vectors[key]) 
-        message = self.Gen_mail_message(sender,receivers,subject,content)
-        smtpObj = smtplib.SMTP('localhost') 
-        smtpObj.sendmail(sender, receivers, message)
+   
         
-    def Send_mail(self,mail_content):
-        sender = os.getenv("HOSTNAME") 
-        receivers = 'KenZhao@zhaoxin.com'
-        subject = "RESET INFO"
-        content = mail_content
-        message = self.Gen_mail_message(sender,receivers,subject,content)
-        smtpObj = smtplib.SMTP('localhost') 
-        smtpObj.sendmail(sender, receivers, message)
-           
-    def Gen_mail_message(self,sender,receivers,subject,content):
-        message = """From: %s 
-        To: %s 
-        Subject: %s
-        %s"""%(sender,receivers,subject,content) #From is the sender
-        return message
 
-        while ret == None and self.stop_flag == 0:
-            ret = csmith_p.poll()
+    def Send_mail_vectors(self,fail_vectors):
+        content = "fail vector:"
+        for key in fail_vectors:
+            content = content + "\t%s\t\n"%(fail_vectors[key]) 
+        self.Send_mail(content)
+
+        
+    def Send_mail(self,content):
+        sender = "%s@zhaoxin.com"%(os.getenv("HOSTNAME"))
+        receivers = 'KenZhao@zhaoxin.com'
+        msg = MIMEText('%s'%(content), 'plain', 'utf-8')
+        msg['From'] = _format_addr(u'CV-2 <%s>' % sender)
+        msg['To'] = _format_addr(u'KenZhao <%s>' % receivers)
+        msg['Subject'] = Header(u'"PCLMSI FAIL NOTITION', 'utf-8').encode()
+        smtpObj = smtplib.SMTP('localhost') 
+        smtpObj.sendmail(sender, [receivers], msg.as_string())
+           
+    def Send_info(self,content):
+        self.Send_mail(content)
 
         
     def timer_function(self,Popen):
@@ -264,13 +269,15 @@ class Regression(Util):
         test_result = self.Do_runpclmsi(self.runpclmsi_test_cmd)
         if test_result == 0x0:
             self.sleep_flag = 0
+            self.Send_info("HOST %s DEVICE %s Has RESET!"%(os.getenv("HOSTNAME"),self.device))
             info("Reset successfully!")
         else:
             if self.mail_num < 3:
                 info("Send Mail for notice reset num %d"%(self.mail_num))
+                self.Send_info("HOST %s DEVICE %s Need RESET!"%(os.getenv("HOSTNAME"),self.device))
             self.sleep_timer_start = 1
         return
-                #self.Send_mail("HOST %s DEVICE %s Need RESET!"%(os.getenv("HOSTNAME"),self.device))
+
                 
     def Do_runpclmsi(self,cmd):
         self.stop_flag = 0

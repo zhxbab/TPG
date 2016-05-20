@@ -57,13 +57,14 @@ class C_parser(Util):
         csmith_p = subprocess.Popen(csmith_cmd,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         ret = csmith_p.poll()
         info("The csmith subprocess pid is %d"%(csmith_p.pid))
-        t = threading.Timer(3,self.timer_function,(csmith_p,))
+        t = threading.Timer(10,self.timer_function,(csmith_p,))
         t.start()
         while ret == None and self.stop_flag == 0:
             ret = csmith_p.poll()
         t.cancel()
         self.stop_flag = 0
         if ret != 0x0:
+            os.system("rm -f %s*"%(self.base_name))
             os.chdir("../")
             return 1
         if os.system("%s -s -d %s > %s"%(self.objdump,elf_file,disasm_file)):

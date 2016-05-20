@@ -243,6 +243,7 @@ class Mode(Util):
         else:
             self.Text_write("use 32")  
         self.Instr_write("mov ebx,&SELECTOR($%s)"%(self.selector_name_ds_0))
+        self.Instr_write("mov es,bx")#compatibility_mode need to set es
         self.Instr_write("mov fs,bx")
         self.Instr_write("mov gs,bx")
         self.Instr_write("mov eax,0xfee00020")
@@ -251,10 +252,10 @@ class Mode(Util):
         if self.intel:
             for i in range(0,self.threads):
                 if i == 0x0:
-                    self.instr_manager.Set_instr(66,0)
+                    self.instr_manager.Set_instr(67,0)
                     self.simcmd.Add_sim_cmd("at $y%d >= %d set register EAX to 0x000000%02x"%(i,self.instr_manager.Get_instr(i),i*0x20),i)
                 else:
-                    self.instr_manager.Set_instr(62,i)
+                    self.instr_manager.Set_instr(63,i)
                     self.simcmd.Add_sim_cmd("at $y%d >= %d set register EAX to 0x000000%02x"%(i,self.instr_manager.Get_instr(i),i*0x20),i)
                     
         self.Comment("##set stack")
@@ -267,9 +268,9 @@ class Mode(Util):
         
         for i in range(0,self.threads):
             if i == 0x0:
-                self.instr_manager.Set_instr(68,0)
+                self.instr_manager.Set_instr(69,0)
             else:
-                self.instr_manager.Set_instr(64,i)
+                self.instr_manager.Set_instr(65,i)
         
     def Protect_mode_code(self):
         self.Comment("###########################Protect mode code######################")

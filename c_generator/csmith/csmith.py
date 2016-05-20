@@ -22,7 +22,7 @@ class Csmith(Test_generator):
         
     def Parse_input(self,args):
         args_parser = OptionParser(usage="Template_tpg *args, **kwargs", version="%Template_tpg 0.1") #2016-04-25 version 0.1
-        args_parser.add_option("-m","--mode", dest="mode", help="The vector mode. [default: %default]\n0x0: 64bit mode\n0x1: 32bit mode\n0x2: compatibility mode"\
+        args_parser.add_option("-m","--mode", dest="mode", help="The csmith vector mode. [default: %default]\n0x0: 64bit mode\n0x1: 32bit mode\n0x2: compatibility mode\nin 64bit machine use -m32 option relate to compatibility mode"\
                           , type = "int", default = 0)
         args_parser.add_option("-p","--page", dest="page_mode", help="The page mode. [default: %default]\n0x0: normal(4KB in 32/64bit)\n0x1: big(2MB in 64bit and 4MB in 32bit)\n0x2: huge(1G in 64bit)"\
                           , type = "int", default = 1)
@@ -122,6 +122,7 @@ class Csmith(Test_generator):
         ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num,self.mode,self.Op)
         if ret_gen_asm_code:
             del_asm = self.asm_list.pop()
+            os.system("rm -f %s"%(del_asm))
             warning("%s's c code can't be executed successfully, so remove it from asm list"%(del_asm))
         return ret_gen_asm_code
 
