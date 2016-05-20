@@ -18,6 +18,7 @@ class Mode(Util):
         self.intel = intel
         self.interrupt = interrupt
         self.c_parser = c_parser
+        
     def Set_table_pointer(self,table_name):
         table_pointer = self.mpg.Apply_mem(0x10,16,start=0x0,end=0x10000,name="%s_pointer"%(table_name)) #0x10000 = 64KB, in real mode(B=0), the limit of segment is 0xFFFF
         self.Text_write("org 0x%x"%(table_pointer["start"]))
@@ -223,7 +224,7 @@ class Mode(Util):
         self.Comment("##set cache default")
         self.Msr_Write(0x2ff,eax=0x806,edx=0x0)
         ####### set page and cr3##################
-        self.ptg.Gen_page(self.instr_manager)
+        self.ptg.Gen_page()
         self.long_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x1000,end=0xA0000,name="long_mode_code_start")
         ########enter compatibility_mode######################
         self.Comment("##enable IA32e mode")
@@ -263,8 +264,7 @@ class Mode(Util):
             self.Instr_write("mov rsp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
         else:
             self.Instr_write("mov esp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
-        self.Comment("##Usr code")
-        self.Instr_write("call [eax+&@%s]"%(self.thread_info_pointer["name"]))
+
         
         for i in range(0,self.threads):
             if i == 0x0:
@@ -340,7 +340,7 @@ class Mode(Util):
         self.Comment("##set cache default")
         self.Msr_Write(0x2ff,eax=0x806,edx=0x0)
         ####### set page and cr3##################
-        self.ptg.Gen_page(self.instr_manager)
+        self.ptg.Gen_page()
         self.protect_mode_code_continue = self.mpg.Apply_mem(0x1000,16,start=0x0,end=0xA0000,name="protect_mode_code_continue")
         ########set protect_mode######################
         self.Instr_write("mov eax,cr0")
@@ -369,8 +369,6 @@ class Mode(Util):
                     
         self.Comment("##set stack")
         self.Instr_write("mov esp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
-        self.Comment("##Usr code")
-        self.Instr_write("call [eax+&@%s]"%(self.thread_info_pointer["name"]))
         
         for i in range(0,self.threads):
             if i == 0x0:

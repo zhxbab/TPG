@@ -14,11 +14,7 @@ from c_parser import C_parser
 #####################################################Sub Classes###########################
 class Csmith(Test_generator):
     def __init__(self,args):
-        Test_generator.__init__(self,args)
-        
-    def Fix_threads(self,threads):
-        self.threads = threads
-        self.avp_dir_name = "%s_%sT_%s_%d"%(self.realbin_name,self.threads,self.mode,self.avp_dir_seed)
+        Test_generator.__init__(self,args)       
         
     def Parse_input(self,args):
         args_parser = OptionParser(usage="Template_tpg *args, **kwargs", version="%Template_tpg 0.1") #2016-04-25 version 0.1

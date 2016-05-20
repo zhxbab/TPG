@@ -39,7 +39,9 @@ class Test_generator(Args,Util):
         os.system(cmd)
         self.Create_global_info()
 
-        
+    def Fix_threads(self,threads):
+        self.threads = threads
+
     def Create_global_info(self):
         self.asm_list = []
         self.inc_path = "%s/include"%(self.tpg_path)
@@ -134,10 +136,14 @@ class Test_generator(Args,Util):
         if ret != 0x0:
             error("Gen vector fail, Please check!")
             self.fail_list.append(avp_file)
-            info("mv %s.* %s"%(self.c_parser.base_name,self.cnsim_fail_dir))
-            os.system("mv %s* %s"%(self.c_parser.base_name,self.cnsim_fail_dir))
-            info("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))
-            os.system("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))
+            if self.c_gen:
+                info("mv %s.* %s"%(self.c_parser.base_name,self.cnsim_fail_dir))
+                os.system("mv %s* %s"%(self.c_parser.base_name,self.cnsim_fail_dir))
+                info("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))
+                os.system("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))
+            else:
+                info("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))
+                os.system("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))   
         else:
             self.ic_file = avp_file.replace(".avp",".ic")
             gzip_cmd = "gzip %s"%(self.ic_file)
@@ -252,6 +258,8 @@ class Test_generator(Args,Util):
         self.interrupt.Initial_interrupt_handler(self.int_handler_base,self.int_handler_record_base)
         
     def Start_user_code(self,thread):
+        self.Comment("##Usr code")
+        self.Instr_write("call [eax+&@%s]"%(self.mode_code.thread_info_pointer["name"]))
         self.Text_write("org 0x%x"%(self.user_code_segs[thread]["start"]))
         self.Tag_write(self.user_code_segs[thread]["name"])
         if self.mode == "long_mode":

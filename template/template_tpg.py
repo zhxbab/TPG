@@ -11,10 +11,7 @@ from logging import info, error, debug, warning, critical
 from test_generator import Test_generator
 from optparse import OptionParser
 #####################################################Sub Classes###########################
-class Template_tpg(Test_generator):
-    def Fix_threads(self,threads):
-        self.threads = threads
-        
+class Template_tpg(Test_generator):      
     def Parse_input(self,args):
         args_parser = OptionParser(usage="Template_tpg *args, **kwargs", version="%Template_tpg 0.1") #2016-04-25 version 0.1
         args_parser.add_option("-m","--mode", dest="mode", help="The vector mode. [default: %default]\n0x0: 64bit mode\n0x1: 32bit mode\n0x2: compatibility mode"\
@@ -78,12 +75,5 @@ class Template_tpg(Test_generator):
             self.very_short_cmd = "-short"
             self.very_short_num = "100000"
             
-    def Create_dir(self):
-        self.avp_dir_seed = random.randint(1,0xFFFF)
-        self.avp_dir_name = "%s_%sT_%s_%d"%(self.realbin_name,self.threads,self.mode,self.avp_dir_seed)
-        cmd = "mkdir %s/%s"%(self.realbin_path,self.avp_dir_name)
-        info("create dir cmd is %s"%(cmd))
-        os.system(cmd)
-        self.avp_dir_path = os.path.join(self.realbin_path,self.avp_dir_name)
-        self.Create_global_info()
+
 
