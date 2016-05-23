@@ -42,7 +42,7 @@ class Mode(Util):
                 self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x1000000,end=0x80000000,name="user_code_seg_T%d"%(i))
             else:
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
-                self.user_code_seg = self.mpg.Apply_mem(0x100,stack_align,start=0x0,end=0xA0000,name="user_code_seg_T%d"%(i))
+                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x20000000,end=0x80000000,name="user_code_seg_T%d"%(i))
                 self.Comment("##########Initial stack###########")
                 self.Text_write("org 0x%08x"%(self.stack_seg["start"]))
                 for j in range(0,0x100000,8):
@@ -75,6 +75,7 @@ class Mode(Util):
         self.idt_table_base_pointer = self.Set_table_pointer(idt_table_base["name"])
         self.Set_gdt_table(gdt_table_base,c_gen)
         self.Set_idt_table(idt_table_base)
+        self.ptg.Gen_page()
         self.Set_user_code_stack(c_gen)
         self.Text_write("&TO_MEMORY_ALL()")
         self.Set_int_handler()
@@ -224,7 +225,7 @@ class Mode(Util):
         self.Comment("##set cache default")
         self.Msr_Write(0x2ff,eax=0x806,edx=0x0)
         ####### set page and cr3##################
-        self.ptg.Gen_page()
+        self.ptg.Write_page()
         self.long_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x1000,end=0xA0000,name="long_mode_code_start")
         ########enter compatibility_mode######################
         self.Comment("##enable IA32e mode")
@@ -262,8 +263,11 @@ class Mode(Util):
         self.Comment("##set stack")
         if self.mode == "long_mode":
             self.Instr_write("mov rsp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
+            self.Instr_write("call [rax+&@%s]"%(self.thread_info_pointer["name"]))
         else:
             self.Instr_write("mov esp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
+            self.Instr_write("call [eax+&@%s]"%(self.thread_info_pointer["name"]))
+
 
         
         for i in range(0,self.threads):
@@ -340,7 +344,7 @@ class Mode(Util):
         self.Comment("##set cache default")
         self.Msr_Write(0x2ff,eax=0x806,edx=0x0)
         ####### set page and cr3##################
-        self.ptg.Gen_page()
+        self.ptg.Write_page()
         self.protect_mode_code_continue = self.mpg.Apply_mem(0x1000,16,start=0x0,end=0xA0000,name="protect_mode_code_continue")
         ########set protect_mode######################
         self.Instr_write("mov eax,cr0")
@@ -369,7 +373,8 @@ class Mode(Util):
                     
         self.Comment("##set stack")
         self.Instr_write("mov esp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
-        
+        self.Instr_write("call [eax+&@%s]"%(self.thread_info_pointer["name"]))
+           
         for i in range(0,self.threads):
             if i == 0x0:
                 self.instr_manager.Set_instr(63,0)

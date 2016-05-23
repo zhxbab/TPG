@@ -11,14 +11,17 @@ from logging import info, error, debug, warning, critical
 from test_generator import Test_generator
 from optparse import OptionParser
 from vmx_mode import Vmx_mode
+from c_parser import C_parser
 #####################################################Sub Classes###########################
-class Vmx_basic(Test_generator):        
+class Vmx_csmith(Test_generator):        
     def Parse_input(self,args):
         args_parser = OptionParser(usage="Vmx *args, **kwargs", version="%Vmx 0.1") #2016-04-25 version 0.1
         args_parser.add_option("-n","--nums", dest="nums", help="The vector nums."\
                           , type = "int", default = 1)
         args_parser.add_option("-t","--threads", dest="thread_nums", help="The vector thread nums."\
                           , type = "int", default = 1)
+        args_parser.add_option("-m","--vmc_mode", dest="client_mode", help="The vmx client mode.\n0x0: long mode\n0x1: compatibility mode\n"\
+                          , type = "int", default = 0)
         args_parser.add_option("--seed", dest="seed", help="Set the seed. [default: %default]\nFor the default value, tpg will generate random seed instead."\
                           , type = "int", default = 0x0)
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
@@ -31,7 +34,7 @@ class Vmx_basic(Test_generator):
             self.seed = random.randint(1,0xFFFFFFFF)                  
         self.threads = self.args_option.thread_nums
         self.intel = self.args_option.intel
-        self.c_gen = 0
+        self.c_gen = 1
         self.mode = "long_mode"
         self.page_mode = "2MB"
         if self.args_option.very_short == True:
@@ -40,7 +43,52 @@ class Vmx_basic(Test_generator):
         else:
             self.very_short_cmd = "-short"
             self.very_short_num = "100000"
-        self.vmx_client_mode = "long_mode"
+        if self.args_option.client_mode == 0x0:
+            self.vmx_client_mode = "long_mode"
+        elif self.args_option.client_mode == 0x1:
+            self.vmx_client_mode = "compatibility_mode"
+        else:
+            self.Error_exit("Invalid vmx client mode!")
+            
+    def Create_asm(self,index=0x0):
+        self.asm_name = "%s_%s_%sT_%s_%d.asm"%(self.realbin_name,index,self.threads,self.vmx_client_mode,self.seed)
+        self.asm_path = os.path.join(self.avp_dir_path,self.asm_name)
+        self.asm_file = open(self.asm_path,"w")
+        self.asm_list.append(self.asm_path)
+        self.ptg.asm_file = self.asm_file
+        self.mpg.asm_file = self.asm_file
+        self.simcmd.asm_file = self.asm_file
+        self.interrupt.asm_file = self.asm_file
+        self.Text_write("include \"%s/std.inc\""%(self.inc_path))
+        self.hlt_code = self.mpg.Apply_mem(0x200,16,start=0x0,end=0xA0000,name="hlt_code")
+        
+    def Create_dir(self):
+        self.avp_dir_seed = random.randint(1,0xFFFF)
+        self.avp_dir_name = "%s_%sT_%s_%d"%(self.realbin_name,self.threads,self.vmx_client_mode,self.avp_dir_seed)
+        cmd = "mkdir %s/%s"%(self.realbin_path,self.avp_dir_name)
+        info("create dir cmd is %s"%(cmd))
+        os.system(cmd)
+        self.avp_dir_path = os.path.join(self.realbin_path,self.avp_dir_name)
+        self.cnsim_fail_dir = os.path.join(self.avp_dir_path,"cnsim_fail")
+        self.fail_dir =  os.path.join(self.avp_dir_path,"fail")
+        cmd = "mkdir %s"%(self.cnsim_fail_dir)
+        info("create dir cmd is %s"%(cmd))
+        os.system(cmd)
+        cmd = "mkdir %s"%(self.fail_dir)
+        info("create dir cmd is %s"%(cmd))
+        os.system(cmd)
+        self.Create_global_info()
+            
+    def Gen_asm_code(self,thread, num):
+        self.c_parser = C_parser(self.bin_path,self.avp_dir_name,self.vmx_client_mode,self.instr_manager,self.mpg)
+        self.c_parser.asm_file = self.asm_file
+        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num)
+        if ret_gen_asm_code:
+            del_asm = self.asm_list.pop()
+            os.system("rm -f %s"%(self.asm_file))
+            warning("%s's c code can't be executed successfully, so remove it from asm list"%(del_asm))
+        return ret_gen_asm_code 
+            
             
     def Gen_mode_code(self):
         self.vmx_mode_code = Vmx_mode(self.hlt_code,self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel, self.interrupt,self.c_parser)
@@ -66,6 +114,8 @@ class Vmx_basic(Test_generator):
         self.Text_write("org 0x%x"%(self.user_code_segs[thread]["start"]))
         self.Tag_write(self.user_code_segs[thread]["name"])
         self.Text_write("use 64")
+        self.Instr_write("mov eax,&SELECTOR($%s)"%(self.c_parser.selector_name_c_gen_0),thread)
+        self.Instr_write("mov fs,eax",thread)
         self.Vmx_initial()
         self.Vmx_vmcs_initial()
         self.Vmx_entry()
@@ -73,7 +123,7 @@ class Vmx_basic(Test_generator):
 
         
     def Vmx_initial(self):
-        self.Vmcs_extra_setting()
+
         self.Comment("#### enable cr4 bit 13 vmex")
         self.Instr_write("mov eax,cr4")
         self.Instr_write("bts eax,0xd")
@@ -119,15 +169,16 @@ class Vmx_basic(Test_generator):
     def Set_guest_entry(self):
         self.Text_write("org 0x%x"%(self.vmx_mode_code.vmx_guest_entry_0["start"]))
         self.Text_write("use 64")
-        for i in range(0,100):
-            self.Instr_write("mov r8,qword ptr [0x40000000]")
+        self.Instr_write("call $init",0)
+        self.Instr_write("call $main",0)  
+        #self.Instr_write("mov qword ptr [0x40000000], r8")
         #self.Instr_write("mov rbx,0x%x"%(self.vmx_mode_code.vmcs_data["start"]))
         #self.Instr_write("mov [rbx + disp32 &OFFSET(@std_vmcs_data.host_cr3)],0x%x"%(self.vmx_mode_code.ptg.tlb_base["start"]));
         #self.Instr_write("mov rax, @std_vmcs_encoding.host_cr3")
         #self.Instr_write("vmwrite rax, [rbx + disp32 &OFFSET(@std_vmcs_data.host_cr3)]");
         self.Instr_write("vmcall")
         #self.Instr_write("hlt")
-    
+        
     def Vmcs_extra_setting(self):
         #self.Text_write("@vmcs.guest_cr0= 0xC0000031")
         #self.Text_write("&TO_MEMORY_ALL()")

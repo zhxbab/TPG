@@ -5,7 +5,7 @@ __author__ = 'Ken Zhao'
 ########################################################
 # regression module is used for regression
 ########################################################
-import sys, os, re, random, subprocess,json, logging, time, smtplib, threading
+import sys, os, re, random, subprocess,json, logging, time, smtplib, threading, signal
 sys.path.append("/%s/../../src"%(sys.path[0]))
 from logging import info, error, debug, warning, critical
 from util import Util

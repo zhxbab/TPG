@@ -1,3 +1,6 @@
-add "#define NOT_PRINT_CHECKSUM 1" in /usr/local/inclue/csmith-2.2.0/csmith_minimal.h
+1. add "#define NOT_PRINT_CHECKSUM 1" in /usr/local/inclue/csmith-2.2.0/csmith_minimal.h
 add "#define NOT_PRINT_CHECKSUM 1" in /usr/local/inclue/csmith-2.2.0/platform_generic.h
-and include file need not to recomplie
+2. and include file need not to recomplie
+3. IPAT in cnsim not work, so need to check design work or not?
+4. cnsim guest phsical address always show UC? it seems has a problem
+5. I want to change ept attribute and guest page attribute, but found not changed in cnsim and silicion, so weird, I don't know does ucode do something I don't know

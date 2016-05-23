@@ -115,7 +115,7 @@ class Csmith(Test_generator):
         self.c_parser = C_parser(self.bin_path,self.avp_dir_name,self.mode,self.instr_manager,self.mpg)
         self.c_parser.asm_file = self.asm_file
         self.Force_compiler_and_optimize()
-        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num,self.mode,self.Op)
+        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num,self.Op)
         if ret_gen_asm_code:
             del_asm = self.asm_list.pop()
             os.system("rm -f %s"%(del_asm))

@@ -26,7 +26,7 @@ class Template_tpg(Test_generator):
                           , type = "int", default = 0x0)
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
         args_parser.add_option("--intel", dest="intel", help="Support intel platform, APIC ID is 0,2,4,6", action="store_true", default = False)
-        args_parser.add_option("--no_very_short", dest="very_short", help="Change -very-short to short", action="store_false", default = True) 
+        args_parser.add_option("--no_very_short", dest="very_short", help="Change -very-short to short", action="store_true", default = False) 
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         
         if self.args_option.seed:

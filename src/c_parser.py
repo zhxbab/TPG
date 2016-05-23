@@ -31,7 +31,7 @@ class C_parser(Util):
         self.c_code_mem_info ={}
 
         
-    def Gen_c_asm(self,thread,num,mode,optimize=None):
+    def Gen_c_asm(self,thread,num,optimize=None):
         self.base_name = "c_code_%d"%(num)
         c_file = "c_code_%d.c"%(num)
         elf_file = "c_code_%d.elf"%(num)
@@ -73,7 +73,7 @@ class C_parser(Util):
             self.Error_exit("Execute %s error!"%(self.readelf))
         else:
             self.c_code_sec_file = open(c_code_sec,"r")
-            if mode == "long_mode":
+            if self.mode == "long_mode":
                 self.Parse_c_sec_long_mode()
             else:
                 self.Parse_c_sec()
@@ -84,7 +84,7 @@ class C_parser(Util):
                     # in 32bit single thread, .tbss is overlap with .ctors and .dtors, so need to find a new mem and intial to 0x0. then set gs to this location
                     # in 64bit single thread, .tbss is overlap with .init_array and .fini_array and .jcr, so need to find a new mem and intial to 0x0. then set fs to this location
                 elif eq(list_index["Name"],".tbss"):                   
-                    self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x1000000,end=0xA0000000,name=list_index["Name"])
+                    self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x10000000,end=0x80000000,name=list_index["Name"])
             #info(self.c_code_mem_info)
         self.c_code_sec_file.close()      
         self.c_code_asm = open(disasm_file,"r")
@@ -104,6 +104,9 @@ class C_parser(Util):
         self.Parse_c_asm(thread)
         return 0
     
+    def Vmx_load_c_asm(self,thread,hlt_code,num):     
+        self.Parse_c_asm(thread)
+    
     def Parse_c_asm(self,thread):
         cnt = 0
         while True:
@@ -119,13 +122,17 @@ class C_parser(Util):
                             self.Tag_write("main")
                         elif eq(m.group(2),"init"):
                             self.Tag_write("init")
+                            if self.mode == "long_mode":
+                                self.Text_write("use 64")
+                            elif self.mode == "compatibility_mode":
+                                self.Text_write("use 32")
                         
                     else:
-                        asm_code_list = line.split("\t")
+                        asm_code_list = line.split("\t") # the data before program use " " split
                         if len(asm_code_list) > 1:
-                        #info(asm_code_list)
+                            #info(asm_code_list)
                             self.Asm_write(asm_code_list,thread)
-                        
+                    
                     m = re.search(r"Disassembly of section (\..*):",line)
                     if m:
                         #info(m.group(1))
@@ -133,10 +140,19 @@ class C_parser(Util):
                             if eq(m.group(1),index["Name"]):
                                 index["Load"] = 1
                 elif cnt == 1:
-                    m = re.search(r"Contents of section (\..*):",line)
+                    name_match = 0
+                    m = re.search(r"Contents of section (.*):",line)
                     if m:
+                        name = m.group(1)
+                        if eq(name,"__libc_thread_freeres_fn"):
+                            name = "__libc_thread_fre"
+                        if eq(name,"__libc_thread_subfreeres"):
+                            name = "__libc_thread_sub"
+                        if eq(name,".note.gnu.build-id"):
+                            name = ".note.gnu.build-i"
                         for index in self.c_code_sec_info:
-                            if eq(m.group(1),index["Name"]):
+                            if eq(name,index["Name"]):
+                                name_match = 1
                                 if not index["Load"]:
                                     if self.mode == "long_mode":
                                         if ne(index["Addr"],"0000000000000000"):
@@ -146,6 +162,8 @@ class C_parser(Util):
                                             self.Load_c_asm_sec(index)
                                 else:
                                     pass
+                        if not name_match:
+                            error("section %s is not in sec file"%(name))
                 else:
                     self.Error_exit("file seek cnt is error!")
             else:
@@ -179,7 +197,8 @@ class C_parser(Util):
         
     def Load_c_asm_sec(self,sec_info):
         line_num = int(math.ceil(int(sec_info["Size"],16)/0x10))
-        #info(line_num)
+#         if eq(sec_info["Name"],"__libc_subfreeres"):
+#             info(line_num)
         extra_data_size = int(sec_info["Size"],16)%0x10
         self.Comment("#####%s"%(sec_info["Name"]))
         self.Text_write("org 0x%08x"%(self.c_code_mem_info[sec_info["Name"]]["start"]))
@@ -187,6 +206,8 @@ class C_parser(Util):
             line = self.c_code_asm.readline()
             line = line.strip()
             line_list = line.split()
+#             if eq(sec_info["Name"],"__libc_subfreeres"):
+#                 info(line_list)
             del line_list[0]
             if i < line_num-1 or extra_data_size == 0:
                 extra_data_size_num = 4

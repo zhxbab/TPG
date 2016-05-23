@@ -237,12 +237,14 @@ class Test_generator(Args,Util):
     
     def Load_asm_code(self,thread, num):
         self.c_parser.Load_c_asm(thread,self.hlt_code,num)
-
+        
+    def Vmx_load_asm_code(self,thread,num):
+        self.c_parser.Vmx_load_c_asm(thread,self.hlt_code,num)
     
     def Gen_asm_code(self,thread, num):
         self.c_parser = C_parser(self.bin_path,self.avp_dir_name,self.mode,self.instr_manager,self.mpg)
         self.c_parser.asm_file = self.asm_file
-        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num,self.mode)
+        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num)
         if ret_gen_asm_code:
             del_asm = self.asm_list.pop()
             os.system("rm -f %s"%(self.asm_file))
@@ -259,7 +261,6 @@ class Test_generator(Args,Util):
         
     def Start_user_code(self,thread):
         self.Comment("##Usr code")
-        self.Instr_write("call [eax+&@%s]"%(self.mode_code.thread_info_pointer["name"]))
         self.Text_write("org 0x%x"%(self.user_code_segs[thread]["start"]))
         self.Tag_write(self.user_code_segs[thread]["name"])
         if self.mode == "long_mode":
