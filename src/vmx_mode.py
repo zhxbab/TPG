@@ -7,7 +7,7 @@ __author__ = 'Ken Zhao'
 ########################################################
 import os, sys
 from operator import eq, ne
-sys.path.append("/%s/../src"%(sys.path[0]))
+sys.path.append("/%s/src"%(sys.path[0]))
 from mode import Mode
 class Vmx_mode(Mode):
     def __init__(self,hlt_code,mpg, instr_manager, ptg, threads, simcmd, intel, interrupt,c_parser=None):
@@ -87,15 +87,18 @@ class Vmx_mode(Mode):
                 self.Text_write("@vmcs.guest_gs_base = 0x%08x"%(self.c_parser.c_code_mem_info[".tbss"]["start"]))       
             else:
                 self.Text_write("@vmcs.guest_gs_sel= &SELECTOR($%s)"%(self.selector_name_ds32_0))
-                self.Text_write("@vmcs.guest_fs_sel= &SELECTOR($%s)"%(self.selector_name_ds32_0))
-                
+                self.Text_write("@vmcs.guest_fs_sel= &SELECTOR($%s)"%(self.selector_name_ds32_0))    
             self.Text_write("@vmcs.guest_gs_attr= 0xC093")              
             self.Text_write("@vmcs.guest_fs_attr= 0xC093")
-           
+            
+        self.Text_write("@vmcs.entry_controls = 0x000053ff")
         self.Text_write("@vmcs.guest_rip = 0x%x"%(self.vmx_guest_entry_0["start"]))
         self.Text_write("@vmcs.guest_rsp = 0x%x"%(self.stack_segs[self.threads-1]["end"]-0x8))
         self.Text_write("@vmcs.guest_cr3 = 0x%x"%(self.ptg.vmx_tlb_base["start"]))
-        
+        self.Text_write("@vmcs.guest_ia32_pat_full = 0x00070406")
+        self.Text_write("@vmcs.guest_ia32_pat_high = 0x00070406")
+
+            
     def Set_gdt_table(self,gdt_table_base,c_gen):
         self.Comment("###########################GDT definition######################")
         self.Text_write("org 0x%x"%(gdt_table_base["start"]))

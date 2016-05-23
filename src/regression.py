@@ -285,7 +285,7 @@ class Regression(Util):
         runpclmsi_p = subprocess.Popen(cmd,stdout=None, stderr=None, shell=True)
         runpclmsi_p_ret = runpclmsi_p.poll()
         info("The test_runpclmsi subprocess pid is %d"%(runpclmsi_p.pid))
-        t = threading.Timer(20,self.timer_function,(runpclmsi_p,))
+        t = threading.Timer(30,self.timer_function,(runpclmsi_p,))
         t.start()
         while runpclmsi_p_ret == None and self.stop_flag == 0:
             runpclmsi_p_ret = runpclmsi_p.poll()

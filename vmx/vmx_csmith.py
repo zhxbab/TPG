@@ -183,3 +183,4 @@ class Vmx_csmith(Test_generator):
         #self.Text_write("@vmcs.guest_cr0= 0xC0000031")
         #self.Text_write("&TO_MEMORY_ALL()")
         pass
+    
