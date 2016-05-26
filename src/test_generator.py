@@ -242,7 +242,7 @@ class Test_generator(Args,Util):
         self.c_parser.Vmx_load_c_asm(thread,self.hlt_code,num)
     
     def Gen_asm_code(self,thread, num):
-        self.c_parser = C_parser(self.bin_path,self.avp_dir_name,self.mode,self.instr_manager,self.mpg)
+        self.c_parser = C_parser(self.bin_path,self.avp_dir_path,self.mode,self.instr_manager,self.mpg)
         self.c_parser.asm_file = self.asm_file
         ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num)
         if ret_gen_asm_code:
@@ -266,4 +266,11 @@ class Test_generator(Args,Util):
         if self.mode == "long_mode":
             self.Text_write("use 64")
         else:
-            self.Text_write("use 32")           
+            self.Text_write("use 32")
+                   
+    def Remove_dir(self):
+        if not os.listdir(self.cnsim_fail_dir):
+            rmcmd = "rm -rf %s"%(self.avp_dir_path)
+            info(rmcmd)
+            os.system(rmcmd)
+            os.system("rm -f %s.del"%(self.avp_dir_path))

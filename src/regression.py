@@ -177,7 +177,7 @@ class Regression(Util):
             info("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc))
             os.system("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc))
             runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s"%(self.runpclmsi,self.device,self.temp_list,self.base_name)
-            runpclmsi_p_ret = self.Do_runpclmsi(runpclmsi_cmd)
+            runpclmsi_p_ret = self.Do_runpclmsi(runpclmsi_cmd,100)
             if runpclmsi_p_ret == 0x0:
                 info("PCLMSI SUCCESSFULLY")
                 result = self.Parse_pclmsi_log_jtrk("%s.jtrk"%(self.base_name))
@@ -195,7 +195,7 @@ class Regression(Util):
                         self.sleep_flag = 1
                         info("Sleep 60s!")
                         time.sleep(60)
-                        test_result = self.Do_runpclmsi(self.runpclmsi_test_cmd)
+                        test_result = self.Do_runpclmsi(self.runpclmsi_test_cmd,20)
                         if test_result == 0x0:
                             info("HOST %s DEVICE %s RESET SUCCESSFULLY"%(os.getenv("HOSTNAME"),self.device))
                             continue
@@ -266,7 +266,7 @@ class Regression(Util):
     def sleep_timer_function(self):
         self.mail_num = self.mail_num + 1
         #info("send mail num is %d"%(self.mail_num))
-        test_result = self.Do_runpclmsi(self.runpclmsi_test_cmd)
+        test_result = self.Do_runpclmsi(self.runpclmsi_test_cmd,20)
         if test_result == 0x0:
             self.sleep_flag = 0
             self.Send_info("HOST %s DEVICE %s Has RESET!"%(os.getenv("HOSTNAME"),self.device))
@@ -279,13 +279,13 @@ class Regression(Util):
         return
 
                 
-    def Do_runpclmsi(self,cmd):
+    def Do_runpclmsi(self,cmd,time):
         self.stop_flag = 0
         info(cmd)
         runpclmsi_p = subprocess.Popen(cmd,stdout=None, stderr=None, shell=True)
         runpclmsi_p_ret = runpclmsi_p.poll()
         info("The test_runpclmsi subprocess pid is %d"%(runpclmsi_p.pid))
-        t = threading.Timer(30,self.timer_function,(runpclmsi_p,))
+        t = threading.Timer(time,self.timer_function,(runpclmsi_p,))
         t.start()
         while runpclmsi_p_ret == None and self.stop_flag == 0:
             runpclmsi_p_ret = runpclmsi_p.poll()

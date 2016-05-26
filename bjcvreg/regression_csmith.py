@@ -57,3 +57,4 @@ class Regression_csmith(Csmith):
     def Set_mode(self,mode,page_mode):
         self.mode = mode
         self.page_mode = page_mode
+

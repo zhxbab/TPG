@@ -12,7 +12,7 @@ from logging import info, error, debug, warning, critical
 from operator import eq, ne
 from copy import deepcopy
 class C_parser(Util):
-    def __init__(self, bin_path, avp_dir_name, mode, instr_manager, mpg):
+    def __init__(self, bin_path, avp_dir_path, mode, instr_manager, mpg):
         self.cmsith = "%s/csmith"%(bin_path)
         self.objdump = "%s/objdump"%(bin_path)
         self.readelf = "%s/readelf"%(bin_path)
@@ -20,7 +20,7 @@ class C_parser(Util):
         self.clang = "%s/clang"%(bin_path)
         self.gcc_cplus = "%s/gcc++"%(bin_path)
         self.clang_cplus = "%s/clang++"%(bin_path)
-        self.avp_dir_name = avp_dir_name
+        self.avp_dir_path = avp_dir_path
         self.c_compiler = [self.gcc, self.clang][random.randint(0,1)]
         self.cplus_compiler = [self.gcc_cplus, self.clang_cplus][random.randint(0,1)]
         self.mode = mode
@@ -41,7 +41,7 @@ class C_parser(Util):
             self.optimize = ["O2","O3","Os","O0","O1"][random.randint(0,4)]
         else:
             self.optimize = optimize
-        os.chdir(self.avp_dir_name)
+        os.chdir(self.avp_dir_path)
         if self.mode == "protect_mode" or self.mode == "compatibility_mode":
             extra_cmd = "-m32"
         else:
