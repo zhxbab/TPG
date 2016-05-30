@@ -4,10 +4,23 @@
 # change_pclmsi_list is used for modifying the pclmsi.list
 #
 ########################################################
-import sys, os, logging, re
+import sys, os, logging, re, signal, subprocess
 from optparse import OptionParser
 from logging import info,debug,error,warning,critical
 from operator import eq
+global run_pclmsi_p
+#########################################Sub route##################################
+def Sigint_handler(signal, frame):
+    critical("Ctrl+C pressed and Exit!!!")
+    run_pclmsi_p.kill()
+    sys.exit(0)
+def Sigstop_handler(signal, frame):
+    global run_pclmsi_p
+    run_pclmsi_p.kill()
+    sys.exit(0)
+#########################################MAIN#######################################
+signal.signal(signal.SIGINT,Sigint_handler)
+signal.signal(signal.SIGTERM,Sigstop_handler)
 parser = OptionParser(usage="%prog arg1 arg2", version="%prog 0.1") #2016-01-15 version 0.2
 parser.add_option("-f","--file", dest="list_file", help="The pclmsi list file", default = "None", type = "str")
 parser.add_option("--rerun", dest="rerun_times", help="change pclmsi list rerun_times", default = -1, type = "int")
@@ -95,7 +108,11 @@ else:
         error("When log level is not 2, you must not set log name")
         sys.exit()
 if option.enable_run_pclmsi == True:
-    pclmsi_cmd = os.getenv("LOCATION_RUN_PCLMSI")
-    info("%s +device:%d +avpl:%s %s"%(pclmsi_cmd,option.device_num,list_file_full_path,log_cmd))
-    os.system("%s +device:%d +avpl:%s %s"%(pclmsi_cmd,option.device_num,list_file_full_path,log_cmd))
+    run_pclmsi_location = os.getenv("LOCATION_RUN_PCLMSI")
+    run_pclmsi_cmd = "%s +device:%d +avpl:%s %s"%(run_pclmsi_location,option.device_num,list_file_full_path,log_cmd)
+    info("%s +device:%d +avpl:%s %s"%(run_pclmsi_location,option.device_num,list_file_full_path,log_cmd))
+    run_pclmsi_p = subprocess.Popen(run_pclmsi_cmd,stdout=None, stderr=None, shell=True)
+    ret = run_pclmsi_p.poll()
+    while ret == None:
+        ret = run_pclmsi_p.poll()
 info("runpclmsi done!")

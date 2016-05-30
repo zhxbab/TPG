@@ -30,7 +30,8 @@ class Vmx_csmith(Test_generator):
         args_parser.add_option("-f","--file", dest="elf_file", help="The elf file, when input a elf file, the TPG function will cancel", type="str", default = None)
         args_parser.add_option("--gcc", dest="gcc", help="Force use gcc", action="store_true", default = False)
         args_parser.add_option("--clang", dest="clang", help="Force use clang", action="store_true", default = False)
-        args_parser.add_option("--set_Op", dest="Op", help="Set the Op level", type="str", default = None) 
+        args_parser.add_option("--set_Op", dest="Op", help="Set the Op level", type="str", default = None)
+        args_parser.add_option("--ma", dest="ma", help="Set cnsim instruction num", type="int", default = None)
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -70,6 +71,11 @@ class Vmx_csmith(Test_generator):
             self.Op = self.args_option.Op
         else:
             Util.Error_exit("Invalid optimize level!")
+            
+        if self.args_option.ma == None:
+            pass
+        else:
+            self.very_short_num = self.args_option.ma
             
     def Force_compiler_and_optimize(self):
         if self.force_gcc == 1:
@@ -194,6 +200,7 @@ class Vmx_csmith(Test_generator):
         self.Instr_write("vmlaunch")
         
     def Vmx_exit(self):
+        self.Text_write("use 64")
         self.Instr_write("vmclear [0x%x]"%(self.vmx_mode_code.vmcs_pointer["start"]),0)
         self.Instr_write("vmxoff",0)
         
