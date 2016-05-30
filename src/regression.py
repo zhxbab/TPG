@@ -38,8 +38,10 @@ class Regression(Util):
         self.sleep_flag = 0        
         self.mail_num = 0
         self.sleep_timer_start = 0
-
-    def Handle_vecor(self,ic_file,c_code_base_name=None):
+        self.runpclmsi_time = 20
+        
+    def Handle_vecor(self,ic_file,time,c_code_base_name=None):
+        self.runpclmsi_time = time
         self.c_code_base_name = c_code_base_name
         self.ic_file = ic_file
         self.base_name = self.ic_file.replace(".ic.gz","")
@@ -54,7 +56,7 @@ class Regression(Util):
         self.Tune_clk()
         self.Check_result()
         os.system("rm -f %s*"%(self.temp_list))
-        
+
     def Remove_all(self):
         if self.remove_flag:
             info("rm -f %s.*"%(self.base_name))
@@ -136,7 +138,7 @@ class Regression(Util):
                         hang_flag = int(m.group(4))
                         if (fail_flag-last_fail) or (hang_flag-last_hang):
                             if not fail_vectors.has_key(vector):
-                                fail_vectors[vector] = "%s PCLMSI FAIL IN RATIO %s"%(vector,ratio)
+                                fail_vectors[vector] = "%s PCLMSI FAIL IN RATIO %s IN DEVICE %d"%(vector,ratio,self.device)
                                 fail_log = self.Record_fail_log(vector,fail_vectors[vector])                     
                                 self.Copy_ic_log(vector,fail_log)
 
@@ -155,7 +157,7 @@ class Regression(Util):
                             pass
                         else:
                             if not fail_vectors.has_key(vector):
-                                fail_vectors[vector] = "%s PCLMSI FAIL(RESET or HANG) IN RATIO %s"%(vector,ratio)
+                                fail_vectors[vector] = "%s PCLMSI FAIL(RESET or HANG) IN RATIO %s IN DEVICE %d"%(vector,ratio,self.device)
                                 fail_log = self.Record_fail_log(vector,fail_vectors[vector])
                                 self.Copy_ic_log(vector,fail_log)
                                 result = 1
@@ -177,14 +179,15 @@ class Regression(Util):
             info("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc))
             os.system("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc))
             runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s"%(self.runpclmsi,self.device,self.temp_list,self.base_name)
-            runpclmsi_p_ret = self.Do_runpclmsi(runpclmsi_cmd,100)
+            runpclmsi_p_ret = self.Do_runpclmsi(runpclmsi_cmd,self.runpclmsi_time)
             if runpclmsi_p_ret == 0x0:
                 info("PCLMSI SUCCESSFULLY")
                 result = self.Parse_pclmsi_log_jtrk("%s.jtrk"%(self.base_name))
                 if result:
                     break
-            elif runpclmsi_p_ret == 1:
-                self.Error_exit("Device is not ready, Please try again!")
+#            elif runpclmsi_p_ret == 1:
+#                if self.runpclmsi_time<= 20: #run_pclmsi end self
+#                    self.Error_exit("Device is not ready, Please try again!")
             else:
                 info("PCLMSI RESET or HANG")
                 if os.path.exists("%s.sum"%(self.base_name)):

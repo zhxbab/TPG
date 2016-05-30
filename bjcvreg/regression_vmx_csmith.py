@@ -46,11 +46,13 @@ class Regression_vmx_csmith(Vmx_csmith):
         self.very_short_cmd = "-very-short"
         self.very_short_num = "10000000"
         self.regression = Regression(self.device)
+        self.elf_file = None
         
     def Regression_vector(self):
+        time = 2000
         self.c_code_base_name = os.path.join(self.avp_dir_path,self.c_parser.base_name)
         self.regression.Set_remove_flag()
-        self.regression.Handle_vecor(self.ic_file,self.c_code_base_name)
+        self.regression.Handle_vecor(self.ic_file,time,self.c_code_base_name)
             
     def Set_fail_dir(self):
         self.regression.fail_dir = self.fail_dir

@@ -29,7 +29,7 @@ class C_parser(Util):
         self.stop_flag = 0
         self.c_code_sec_info = []
         self.c_code_mem_info ={}
-
+        self.c_code_rel_info = []
         
     def Gen_c_asm(self,thread,num,optimize=None):
         self.base_name = "c_code_%d"%(num)
@@ -37,6 +37,7 @@ class C_parser(Util):
         elf_file = "c_code_%d.elf"%(num)
         disasm_file = "c_code_%d"%(num)
         c_code_sec = "c_code_%d.sec"%(num)
+        c_code_rel = elf_file.replace(".elf",".rel")
         if optimize == None:
             self.optimize = ["O2","O3","Os","O0","O1"][random.randint(0,4)]
         else:
@@ -71,6 +72,8 @@ class C_parser(Util):
             self.Error_exit("Execute %s error!"%(self.objdump))
         if os.system("%s -S %s > %s"%(self.readelf,elf_file,c_code_sec)):
             self.Error_exit("Execute %s error!"%(self.readelf))
+        if os.system("%s -r %s > %s"%(self.readelf,elf_file,c_code_rel)):
+            self.Error_exit("Execute %s -r error!"%(self.readelf))
         else:
             self.c_code_sec_file = open(c_code_sec,"r")
             if self.mode == "long_mode":
@@ -79,19 +82,97 @@ class C_parser(Util):
                 self.Parse_c_sec()
             for list_index in self.c_code_sec_info:
                 #info(list_index) # for debug
-                if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss"):
+                if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss") and ne(list_index["Name"],".got.plt"):
                     self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_fix_mem(list_index["Name"],int(list_index["Addr"],16),int(list_index["Size"],16))
                     # in 32bit single thread, .tbss is overlap with .ctors and .dtors, so need to find a new mem and intial to 0x0. then set gs to this location
                     # in 64bit single thread, .tbss is overlap with .init_array and .fini_array and .jcr, so need to find a new mem and intial to 0x0. then set fs to this location
                 elif eq(list_index["Name"],".tbss"):                   
                     self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x10000000,end=0x80000000,name=list_index["Name"])
             #info(self.c_code_mem_info)
-        self.c_code_sec_file.close()      
+            self.c_code_sec_file.close()
+            self.c_code_re_file = open(c_code_rel,"r")
+            self.Parse_c_rel()
+            self.c_code_re_file.close()
         self.c_code_asm = open(disasm_file,"r")
         os.chdir("../")
 
         return 0
     
+    def Get_fix_c_asm(self,elf_file):
+        self.base_name = elf_file.split(".")[0]
+        disasm_file = elf_file.split(".")[0]
+        c_code_sec = elf_file.replace(".elf",".sec")
+        c_code_rel = elf_file.replace(".elf",".rel")
+        if os.system("%s -s -d %s > %s"%(self.objdump,elf_file,disasm_file)):
+            self.Error_exit("Execute %s -s -d error!"%(self.objdump))
+        if os.system("%s -S %s > %s"%(self.readelf,elf_file,c_code_sec)):
+            self.Error_exit("Execute %s -S error!"%(self.readelf))
+        if os.system("%s -r %s > %s"%(self.readelf,elf_file,c_code_rel)):
+            self.Error_exit("Execute %s -r error!"%(self.readelf))
+        else:
+            self.c_code_sec_file = open(c_code_sec,"r")
+            if self.mode == "long_mode":
+                self.Parse_c_sec_long_mode()
+            else:
+                self.Parse_c_sec()
+            for list_index in self.c_code_sec_info:
+                #info(list_index) # for debug
+                if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss") and ne(list_index["Name"],".got.plt"):
+                    self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_fix_mem(list_index["Name"],int(list_index["Addr"],16),int(list_index["Size"],16))
+                    # in 32bit single thread, .tbss is overlap with .ctors and .dtors, so need to find a new mem and intial to 0x0. then set gs to this location
+                    # in 64bit single thread, .tbss is overlap with .init_array and .fini_array and .jcr, so need to find a new mem and intial to 0x0. then set fs to this location
+                    # .got.plt need rewrite data
+                elif eq(list_index["Name"],".tbss"):                   
+                    self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x10000000,end=0x80000000,name=list_index["Name"])
+            self.c_code_sec_file.close() 
+            self.c_code_re_file = open(c_code_rel,"r")
+            self.Parse_c_rel()
+            self.c_code_re_file.close()
+        self.c_code_asm = open(disasm_file,"r")
+        return 0
+    
+    def Parse_c_rel(self):
+        i = 0
+        start = 0
+        while True:
+            line = self.c_code_re_file.readline()
+            if line:
+                line = line.strip()
+                m = re.search(r"Relocation section",line)
+                if m:
+                    start = 1
+                    continue
+                if start == 1:
+                    #info(line)
+                    addr = line.split(" ")[0]
+                    if addr != "Offset":
+                        if self.mode == "long_mode":
+                            #self.mpg.check_spare_mem()
+                            #self.mpg.check_selected_mem()
+                            addr_hash = self.mpg.Apply_fix_mem("rel_entry_%d"%(i),int(addr,16),0x8)
+                            self.c_code_rel_info.append(addr_hash)
+                            del addr_hash
+                        else:
+                            addr_hash = self.mpg.Apply_fix_mem("rel_entry_%d"%(i),int(addr,16),0x4)
+                            self.c_code_rel_info.append(addr_hash)
+                            del addr_hash
+                        i = i+1
+            else:
+                break
+        self.real_rel_entry = self.mpg.Apply_mem(0x20,0x10,start=0x1000,end=0xA0000,name="real_rel_entry")
+        
+    def Load_c_rel(self):
+        for rel in self.c_code_rel_info:
+            self.Text_write("org 0x%x"%(rel["start"]))
+            self.Text_write("dd 0x%x"%(self.real_rel_entry["start"]))
+            self.Text_write("dd 0x00000000")
+        self.Text_write("org 0x%x"%(self.real_rel_entry["start"]))
+#        if self.mode == "long_mode":
+#            self.Instr_write("add rsp,0x8")
+#        else:
+#            self.Instr_write("add esp,0x8")
+        self.Instr_write("ret")
+        
     def Load_c_asm(self,thread,hlt_code,num):
         self.Instr_write("mov eax,&SELECTOR($%s)"%(self.selector_name_c_gen_0),thread)
         if self.mode == "long_mode": 
@@ -174,6 +255,7 @@ class C_parser(Util):
                 else:
                     break
         self.Load_c_asm_NOBITS()
+        self.Load_c_rel()
         self.c_code_asm.close()
 #
 #        for index in self.c_code_sec_info:
@@ -196,9 +278,9 @@ class C_parser(Util):
         
         
     def Load_c_asm_sec(self,sec_info):
+        if sec_info["Name"] == ".got.plt":
+            return
         line_num = int(math.ceil(int(sec_info["Size"],16)/0x10))
-#         if eq(sec_info["Name"],"__libc_subfreeres"):
-#             info(line_num)
         extra_data_size = int(sec_info["Size"],16)%0x10
         self.Comment("#####%s"%(sec_info["Name"]))
         self.Text_write("org 0x%08x"%(self.c_code_mem_info[sec_info["Name"]]["start"]))

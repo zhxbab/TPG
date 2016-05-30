@@ -21,7 +21,7 @@ class Test_generator(Args,Util):
     def __init__(self,args):
         signal.signal(signal.SIGINT,self.Sigint_handler)
         Args.__init__(self,args)
-   
+        
     def Create_dir(self):
         self.avp_dir_seed = random.randint(1,0xFFFF)
         self.avp_dir_name = "%s_%sT_%s_%d"%(self.realbin_name,self.threads,self.mode,self.avp_dir_seed)

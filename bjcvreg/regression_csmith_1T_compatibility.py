@@ -28,6 +28,6 @@ if __name__ == "__main__":
         tests.Gen_hlt_code(0)
         tests.Gen_vector()
         tests.Regression_vector()
-    #tests.Gen_pclmsi_file_list()
+    tests.Remove_dir()
 
 

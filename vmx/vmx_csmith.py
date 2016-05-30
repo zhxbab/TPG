@@ -26,8 +26,16 @@ class Vmx_csmith(Test_generator):
                           , type = "int", default = 0x0)
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
         args_parser.add_option("--intel", dest="intel", help="Support intel platform, APIC ID is 0,2,4,6", action="store_true", default = False)
-        args_parser.add_option("--no_very_short", dest="very_short", help="Change -very-short to short", action="store_true", default = False)  
-        (self.args_option, self.args_additions) = args_parser.parse_args(args)       
+        args_parser.add_option("--very_short", dest="very_short", help="Change -short to -very-short", action="store_true", default = False)
+        args_parser.add_option("-f","--file", dest="elf_file", help="The elf file, when input a elf file, the TPG function will cancel", type="str", default = None)
+        args_parser.add_option("--gcc", dest="gcc", help="Force use gcc", action="store_true", default = False)
+        args_parser.add_option("--clang", dest="clang", help="Force use clang", action="store_true", default = False)
+        args_parser.add_option("--set_Op", dest="Op", help="Set the Op level", type="str", default = None) 
+        (self.args_option, self.args_additions) = args_parser.parse_args(args)
+        if not self.args_option.elf_file == None:
+            self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
+        else:
+            self.elf_file = None     
         if self.args_option.seed:
             self.seed = self.args_option.seed
         else:
@@ -49,6 +57,32 @@ class Vmx_csmith(Test_generator):
             self.vmx_client_mode = "compatibility_mode"
         else:
             self.Error_exit("Invalid vmx client mode!")
+        if self.args_option.gcc == True:
+            self.force_gcc = 1
+        else:
+            self.force_gcc = 0
+        if self.args_option.clang == True:
+            self.force_clang = 1
+        else:
+            self.force_clang = 0
+        if self.args_option.Op == "O0" or self.args_option.Op == "O1" or self.args_option.Op == "O2" \
+        or self.args_option.Op == "Os" or self.args_option.Op == "O3" or self.args_option.Op == None:
+            self.Op = self.args_option.Op
+        else:
+            Util.Error_exit("Invalid optimize level!")
+            
+    def Force_compiler_and_optimize(self):
+        if self.force_gcc == 1:
+            self.c_parser.c_compiler = self.c_parser.gcc
+            self.c_parser.cplus_compiler = self.c_parser.gcc_cplus
+        elif self.force_clang == 1:
+            self.c_parser.c_compiler = self.c_parser.clang
+            self.c_parser.cplus_compiler = self.c_parser.clang_cplus
+        elif self.force_clang == 0 and self.force_gcc == 0:
+            self.c_parser.c_compiler = [self.c_parser.gcc,self.c_parser.clang][random.randint(0,1)]
+            self.c_parser.cplus_compiler = [self.c_parser.gcc_cplus,self.c_parser.clang_cplus][random.randint(0,1)]
+        else:
+            self.Error("Compiler is not used")
             
     def Create_asm(self,index=0x0):
         self.asm_name = "%s_%s_%sT_%s_%d.asm"%(self.realbin_name,index,self.threads,self.vmx_client_mode,self.seed)
@@ -82,7 +116,11 @@ class Vmx_csmith(Test_generator):
     def Gen_asm_code(self,thread, num):
         self.c_parser = C_parser(self.bin_path,self.avp_dir_path,self.vmx_client_mode,self.instr_manager,self.mpg)
         self.c_parser.asm_file = self.asm_file
-        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num)
+        if self.elf_file != None:
+            ret_gen_asm_code = self.c_parser.Get_fix_c_asm(self.elf_file)
+        else:
+            self.Force_compiler_and_optimize()
+            ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num)
         if ret_gen_asm_code:
             del_asm = self.asm_list.pop()
             os.system("rm -f %s"%(self.asm_file))
