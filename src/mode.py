@@ -64,8 +64,10 @@ class Mode(Util):
                 self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],i,self.stack_seg["end"]))
                 self.Text_write("@%s[%d].code = 0x%016x"%(self.thread_info_pointer["name"],i,self.user_code_seg["start"]))
     
-    def Mode_code(self,mode,c_gen):
+    def Mode_code(self,mode,c_gen,disable_avx,disable_pcid):
+        self.disable_avx = disable_avx
         self.mode = mode
+        self.disable_pcid = disable_pcid
         self.Comment("###########################vars definition######################")
         gdt_table_base = self.mpg.Apply_mem(0x1000,16,start=0,end=0x10000,name="gdt_table_base") # for 512 gdt descriptor
         idt_table_base = self.mpg.Apply_mem(0x1000,16,start=0,end=0x10000,name="idt_table_base") # 256 interrupt and every gate is 128bit
@@ -147,14 +149,21 @@ class Mode(Util):
                 self.Vars_write(self.c_parser.selector_name_c_gen_0,self.selector_value_c_gen_0)
                 self.Text_write("@gdt[$%s].type = 0x3"%(self.c_parser.selector_name_c_gen_0))
                 self.Text_write("@gdt[$%s].l = 0x1"%(self.c_parser.selector_name_c_gen_0))
-                self.Text_write("@gdt[$%s].base = 0x%08x"%(self.c_parser.selector_name_c_gen_0,self.c_parser.c_code_mem_info[".tbss"]["start"]))
+                if self.c_parser.c_code_mem_info.has_key(".tbss"):
+                    self.Text_write("@gdt[$%s].base = 0x%08x"%(self.c_parser.selector_name_c_gen_0,self.c_parser.c_code_mem_info[".tbss"]["start"]))
+                else:
+                    #self.Text_write("@gdt[$%s].base = 0x%08x"%(self.c_parser.selector_name_c_gen_0,self.c_parser.c_code_mem_info[".tbss"]["start"]))
+                    warning("This elf file don't have tbss seg")
             else:
                 self.c_parser.selector_name_c_gen_0 = "c_gen_32"
                 self.selector_name_c_gen_0 = self.c_parser.selector_name_c_gen_0
                 self.Vars_write(self.c_parser.selector_name_c_gen_0,self.selector_value_c_gen_0)
                 self.Text_write("@gdt[$%s].type = 0x3"%(self.c_parser.selector_name_c_gen_0))
                 self.Text_write("@gdt[$%s].db = 0x1"%(self.c_parser.selector_name_c_gen_0))
-                self.Text_write("@gdt[$%s].base = 0x%08x"%(self.c_parser.selector_name_c_gen_0,self.c_parser.c_code_mem_info[".tbss"]["start"]))
+                if self.c_parser.c_code_mem_info.has_key(".tbss"):
+                    self.Text_write("@gdt[$%s].base = 0x%08x"%(self.c_parser.selector_name_c_gen_0,self.c_parser.c_code_mem_info[".tbss"]["start"]))
+                else:
+                    warning("This elf file don't have tbss seg")
 
 
             
@@ -212,16 +221,17 @@ class Mode(Util):
             self.Instr_write("mov dword [eax],0xc06%02x"%(self.apic_jmp_addr["start"]/0x1000))
             self.Tag_write("SKIP_WAKEUP")
         #######################################################################################
-        self.Comment("##enable xsave(xset/xget), this will fail in intel celeron platform")
-        self.Instr_write("mov eax,cr4")
-        self.Instr_write("bts eax,0x12")
-        self.Instr_write("mov cr4,eax")
-        self.Comment("##enable avx")
-        self.Instr_write("mov ecx,0x0") #ecx must be 0 for xgetbv
-        self.Instr_write("xgetbv")
-        self.Instr_write("bts eax,0x1")
-        self.Instr_write("bts eax,0x2")
-        self.Instr_write("xsetbv")
+        if self.disable_avx == False:
+            self.Comment("##enable xsave(xset/xget), this will fail in intel celeron platform")
+            self.Instr_write("mov eax,cr4")
+            self.Instr_write("bts eax,0x12")
+            self.Instr_write("mov cr4,eax")
+            self.Comment("##enable avx")
+            self.Instr_write("mov ecx,0x0") #ecx must be 0 for xgetbv
+            self.Instr_write("xgetbv")
+            self.Instr_write("bts eax,0x1")
+            self.Instr_write("bts eax,0x2")
+            self.Instr_write("xsetbv")
         self.Comment("##set cache default")
         self.Msr_Write(0x2ff,eax=0x806,edx=0x0)
         ####### set page and cr3##################
@@ -234,9 +244,10 @@ class Mode(Util):
         self.Instr_write("and eax,0x9fffffff")
         self.Instr_write("or eax,0x80000020")
         self.Instr_write("mov cr0,eax")
-        self.Comment("##enable PCID")
-        self.Instr_write("mov eax, 0x606A0")
-        self.Instr_write("mov cr4,eax")
+        if self.disable_pcid == False:
+            self.Comment("##enable PCID")
+            self.Instr_write("mov eax, 0x606A0")
+            self.Instr_write("mov cr4,eax")
         ########enter long mode###############################
         self.Instr_write("jmpf &SELECTOR($%s):0x%x"%(self.selector_name_cs_0,self.long_mode_code_start["start"]))         
         self.Text_write("org 0x%x"%(self.long_mode_code_start["start"]))
@@ -331,16 +342,17 @@ class Mode(Util):
             self.Instr_write("mov dword [eax],0xc06%02x"%(self.apic_jmp_addr["start"]/0x1000))
             self.Tag_write("SKIP_WAKEUP")
         #######################################################################################
-        self.Comment("##enable xsave(xset/xget), this will fail in intel celeron platform")
-        self.Instr_write("mov eax,cr4")
-        self.Instr_write("bts eax,0x12")
-        self.Instr_write("mov cr4,eax")
-        self.Comment("##enable avx")
-        self.Instr_write("mov ecx,0x0") #ecx must be 0 for xgetbv
-        self.Instr_write("xgetbv")
-        self.Instr_write("bts eax,0x1")
-        self.Instr_write("bts eax,0x2")
-        self.Instr_write("xsetbv")
+        if self.disable_avx == False:
+            self.Comment("##enable xsave(xset/xget), this will fail in intel celeron platform")
+            self.Instr_write("mov eax,cr4")
+            self.Instr_write("bts eax,0x12")
+            self.Instr_write("mov cr4,eax")
+            self.Comment("##enable avx")
+            self.Instr_write("mov ecx,0x0") #ecx must be 0 for xgetbv
+            self.Instr_write("xgetbv")
+            self.Instr_write("bts eax,0x1")
+            self.Instr_write("bts eax,0x2")
+            self.Instr_write("xsetbv")
         self.Comment("##set cache default")
         self.Msr_Write(0x2ff,eax=0x806,edx=0x0)
         ####### set page and cr3##################

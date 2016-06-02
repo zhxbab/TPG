@@ -69,7 +69,7 @@ class Test_generator(Args,Util):
     def Gen_mode_code(self):
         self.mode_code = Mode(self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel, self.interrupt,self.c_parser)
         self.mode_code.asm_file = self.asm_file
-        [self.stack_segs,self.user_code_segs] = self.mode_code.Mode_code(self.mode,self.c_gen)
+        [self.stack_segs,self.user_code_segs] = self.mode_code.Mode_code(self.mode,self.c_gen,self.disable_avx,self.disable_pcid)
 
     def Gen_cnsim_param(self):
         if self.intel:
@@ -137,13 +137,13 @@ class Test_generator(Args,Util):
             error("Gen vector fail, Please check!")
             self.fail_list.append(avp_file)
             if self.c_gen:
-                info("mv %s.* %s"%(self.c_parser.base_name,self.cnsim_fail_dir))
-                os.system("mv %s* %s"%(self.c_parser.base_name,self.cnsim_fail_dir))
-                info("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))
-                os.system("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))
+                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
+                os.system("cp %s* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
+                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                os.system("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
             else:
-                info("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))
-                os.system("mv %s.* %s"%(self.vector_base_name,self.cnsim_fail_dir))   
+                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                os.system("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))   
         else:
             self.ic_file = avp_file.replace(".avp",".ic")
             gzip_cmd = "gzip %s"%(self.ic_file)

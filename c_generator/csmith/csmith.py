@@ -35,6 +35,8 @@ class Csmith(Test_generator):
         args_parser.add_option("--clang", dest="clang", help="Force use clang", action="store_true", default = False)
         args_parser.add_option("--set_Op", dest="Op", help="Set the Op level", type="str", default = None)
         args_parser.add_option("-f","--file", dest="elf_file", help="The elf file, when input a elf file, the TPG function will cancel", type="str", default = None)
+        args_parser.add_option("--disable_avx", dest="disable_avx", help="disable AVX for support old intel platform", action="store_true", default = False)
+        args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)                
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -87,7 +89,7 @@ class Csmith(Test_generator):
             self.very_short_num = "100000000"
         else:
             self.very_short_cmd = "-short"
-            self.very_short_num = "200000"
+            self.very_short_num = "500000"
         if self.args_option.gcc == True:
             self.force_gcc = 1
         else:
@@ -101,7 +103,9 @@ class Csmith(Test_generator):
             self.Op = self.args_option.Op
         else:
             Util.Error_exit("Invalid optimize level!")
-            
+        self.disable_avx = self.args_option.disable_avx
+        self.disable_pcid = self.args_option.disable_pcid
+        
     def Force_compiler_and_optimize(self):
         if self.force_gcc == 1:
             self.c_parser.c_compiler = self.c_parser.gcc

@@ -4,3 +4,4 @@ add "#define NOT_PRINT_CHECKSUM 1" in /usr/local/inclue/csmith-2.2.0/platform_ge
 3. IPAT in cnsim not work, so need to check design work or not?
 4. cnsim guest phsical address always show UC? it seems has a problem
 5. I want to change ept attribute and guest page attribute, but found not changed in cnsim and silicion, so weird, I don't know does ucode do something I don't know
+6. In cnsim, if do rdtsc or rdpmc,etc. cnsim cannot get the correct data, so it will add mask automatically, then eflags may be effected. Cnsim 0 indicate mask, 1 no mask

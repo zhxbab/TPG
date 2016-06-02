@@ -48,7 +48,7 @@ class Regression_csmith(Csmith):
         self.elf_file = None
         
     def Regression_vector(self):
-        time = 200
+        time = 300
         self.c_code_base_name = os.path.join(self.avp_dir_path,self.c_parser.base_name)
         self.regression.Set_remove_flag()
         self.regression.Handle_vecor(self.ic_file,time,self.c_code_base_name)

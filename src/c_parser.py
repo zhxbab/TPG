@@ -80,9 +80,14 @@ class C_parser(Util):
                 self.Parse_c_sec_long_mode()
             else:
                 self.Parse_c_sec()
+            self.c_code_re_file = open(c_code_rel,"r")
+            self.rela_dyn_flag = self.Parse_c_rel()
+            self.c_code_re_file.close()
             for list_index in self.c_code_sec_info:
                 #info(list_index) # for debug
                 if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss") and ne(list_index["Name"],".got.plt"):
+                    if self.rela_dyn_flag and eq(list_index["Name"],".got"):
+                        continue
                     self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_fix_mem(list_index["Name"],int(list_index["Addr"],16),int(list_index["Size"],16))
                     # in 32bit single thread, .tbss is overlap with .ctors and .dtors, so need to find a new mem and intial to 0x0. then set gs to this location
                     # in 64bit single thread, .tbss is overlap with .init_array and .fini_array and .jcr, so need to find a new mem and intial to 0x0. then set fs to this location
@@ -90,9 +95,6 @@ class C_parser(Util):
                     self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x10000000,end=0x80000000,name=list_index["Name"])
             #info(self.c_code_mem_info)
             self.c_code_sec_file.close()
-            self.c_code_re_file = open(c_code_rel,"r")
-            self.Parse_c_rel()
-            self.c_code_re_file.close()
         self.c_code_asm = open(disasm_file,"r")
         os.chdir("../")
 
@@ -115,37 +117,46 @@ class C_parser(Util):
                 self.Parse_c_sec_long_mode()
             else:
                 self.Parse_c_sec()
+            self.c_code_re_file = open(c_code_rel,"r")
+            self.rela_dyn_flag = self.Parse_c_rel()
+            self.c_code_re_file.close()
             for list_index in self.c_code_sec_info:
                 #info(list_index) # for debug
                 if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss") and ne(list_index["Name"],".got.plt"):
+                #and ne(list_index["Name"],".got"):
+                    if self.rela_dyn_flag and eq(list_index["Name"],".got"):
+                        continue
                     self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_fix_mem(list_index["Name"],int(list_index["Addr"],16),int(list_index["Size"],16))
                     # in 32bit single thread, .tbss is overlap with .ctors and .dtors, so need to find a new mem and intial to 0x0. then set gs to this location
                     # in 64bit single thread, .tbss is overlap with .init_array and .fini_array and .jcr, so need to find a new mem and intial to 0x0. then set fs to this location
                     # .got.plt need rewrite data
                 elif eq(list_index["Name"],".tbss"):                   
                     self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x10000000,end=0x80000000,name=list_index["Name"])
+                #info("Name is %s and Addr is %08x"%(list_index["Name"],int(list_index["Addr"],16)))
+                else:
+                    pass
             self.c_code_sec_file.close() 
-            self.c_code_re_file = open(c_code_rel,"r")
-            self.Parse_c_rel()
-            self.c_code_re_file.close()
         self.c_code_asm = open(disasm_file,"r")
         return 0
     
     def Parse_c_rel(self):
         i = 0
         start = 0
+        rela_dyn_flag = 0
         while True:
             line = self.c_code_re_file.readline()
             if line:
                 line = line.strip()
-                m = re.search(r"Relocation section",line)
+                m = re.search(r"Relocation section \'(.*)\'",line)
                 if m:
+                    if m.group(1) == ".rela.dyn" or m.group(1) == ".rel.dyn":
+                        rela_dyn_flag = 1
                     start = 1
-                    continue
+                    continue 
                 if start == 1:
                     #info(line)
                     addr = line.split(" ")[0]
-                    if addr != "Offset":
+                    if addr != "Offset" and addr != "":
                         if self.mode == "long_mode":
                             #self.mpg.check_spare_mem()
                             #self.mpg.check_selected_mem()
@@ -160,7 +171,8 @@ class C_parser(Util):
             else:
                 break
         self.real_rel_entry = self.mpg.Apply_mem(0x20,0x10,start=0x1000,end=0xA0000,name="real_rel_entry")
-        
+        return rela_dyn_flag
+    
     def Load_c_rel(self):
         for rel in self.c_code_rel_info:
             self.Text_write("org 0x%x"%(rel["start"]))
@@ -179,7 +191,10 @@ class C_parser(Util):
             self.Instr_write("mov fs,eax",thread)
         else:
             self.Instr_write("mov gs,eax",thread)
-        self.Instr_write("call $init",thread)
+        self.Instr_write("mov eax,cr4",thread)
+        self.Instr_write("or eax,0x104",thread)
+        self.Instr_write("mov cr4,eax",thread)       
+        self.Instr_write("call $_init",thread)
         self.Instr_write("call $main",thread)
         self.Text_write("jmp $%s"%(hlt_code["name"]))
         self.Parse_c_asm(thread)
@@ -190,6 +205,7 @@ class C_parser(Util):
     
     def Parse_c_asm(self,thread):
         cnt = 0
+        stop_asm_flag = 0
         while True:
             line = self.c_code_asm.readline()
             if line:
@@ -197,22 +213,28 @@ class C_parser(Util):
                 if cnt == 0:
                     m = re.search(r'(\w+) <(.*)>:',line)
                     if m:
+                        stop_asm_flag = 0
                         self.Text_write("org 0x%s"%(m.group(1)))  
                         self.Comment("#### %s"%(line))           
                         if eq(m.group(2),"main"):
                             self.Tag_write("main")
-                        elif eq(m.group(2),"init"):
-                            self.Tag_write("init")
+                            debug("Main match")
+                        elif eq(m.group(2),"_init"):
+                            self.Tag_write("_init")
                             if self.mode == "long_mode":
                                 self.Text_write("use 64")
                             elif self.mode == "compatibility_mode":
                                 self.Text_write("use 32")
-                        
+                            debug("Init match")
+                        elif eq(m.group(2),"__init_cpu_features"):
+                            self.Text_write("ret")
+                            stop_asm_flag = 1
                     else:
-                        asm_code_list = line.split("\t") # the data before program use " " split
-                        if len(asm_code_list) > 1:
+                        if stop_asm_flag == 0:
+                            asm_code_list = line.split("\t") # the data before program use " " split
+                            if len(asm_code_list) > 1:
                             #info(asm_code_list)
-                            self.Asm_write(asm_code_list,thread)
+                                self.Asm_write(asm_code_list,thread)
                     
                     m = re.search(r"Disassembly of section (\..*):",line)
                     if m:
@@ -279,6 +301,8 @@ class C_parser(Util):
         
     def Load_c_asm_sec(self,sec_info):
         if sec_info["Name"] == ".got.plt":
+            return
+        elif sec_info["Name"] == ".got" and self.rela_dyn_flag:
             return
         line_num = int(math.ceil(int(sec_info["Size"],16)/0x10))
         extra_data_size = int(sec_info["Size"],16)%0x10
