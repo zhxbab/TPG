@@ -138,7 +138,7 @@ class Vmx_csmith(Test_generator):
         self.vmx_mode_code = Vmx_mode(self.hlt_code,self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel, self.interrupt,self.c_parser)
         self.vmx_mode_code.asm_file = self.asm_file
         self.vmx_mode_code.inc_path = self.inc_path
-        [self.stack_segs,self.user_code_segs] = self.vmx_mode_code.Mode_code(self.mode,self.c_gen,self.vmx_client_mode)
+        [self.stack_segs,self.user_code_segs] = self.vmx_mode_code.Mode_code(self.mode,self.c_gen,self.vmx_client_mode,self.disable_avx,self.disable_pcid)
 
     def Gen_hlt_code(self,thread_num):
         if thread_num == 0:
@@ -214,7 +214,7 @@ class Vmx_csmith(Test_generator):
     def Set_guest_entry(self):
         self.Text_write("org 0x%x"%(self.vmx_mode_code.vmx_guest_entry_0["start"]))
         self.Text_write("use 64")
-        self.Instr_write("call $init",0)
+        self.Instr_write("call $_init",0)
         self.Instr_write("call $main",0)  
         #self.Instr_write("mov qword ptr [0x40000000], r8")
         #self.Instr_write("mov rbx,0x%x"%(self.vmx_mode_code.vmcs_data["start"]))

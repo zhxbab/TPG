@@ -28,7 +28,7 @@ class Regression(Util):
         self.device = device
         self.test_list = "%s/bjcvreg/test.ic.gz"%(os.getenv("LOCATION_TPG"))
         self.runpclmsi_test_cmd = "%s +device:%d +load:%s +no_log:1 +ignore_all_checks:1"%(self.runpclmsi,self.device,self.test_list)
-        self.clk_list = [12,11,10,9,8]
+        self.clk_list = [4,4.5,5,5.5,6]
         self.fail_dir = os.getenv("LOCATION_CVREG_VECTOR")
         self.result = 0
         self.fail_log_base_name = "fail"
@@ -178,7 +178,7 @@ class Regression(Util):
         for clc in self.clk_list:
             info("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc))
             os.system("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc))
-            runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s"%(self.runpclmsi,self.device,self.temp_list,self.base_name)
+            runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc)
             runpclmsi_p_ret = self.Do_runpclmsi(runpclmsi_cmd,self.runpclmsi_time)
             if runpclmsi_p_ret == 0x0:
                 info("PCLMSI SUCCESSFULLY")

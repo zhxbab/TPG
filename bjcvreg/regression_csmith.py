@@ -46,6 +46,8 @@ class Regression_csmith(Csmith):
         self.very_short_num = "10000000"
         self.regression = Regression(self.device)
         self.elf_file = None
+        self.disable_avx = 0
+        self.disable_pcid = 0
         
     def Regression_vector(self):
         time = 300

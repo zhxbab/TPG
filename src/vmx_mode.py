@@ -15,8 +15,10 @@ class Vmx_mode(Mode):
         self.hlt_code = hlt_code
         Mode.__init__(self,mpg, instr_manager, ptg, threads, simcmd, intel, interrupt,c_parser)
         
-    def Mode_code(self,mode,c_gen,vmx_client_mode):
+    def Mode_code(self,mode,c_gen,vmx_client_mode,disable_avx,disable_pcid):
         self.mode = mode
+        self.disable_avx = disable_avx
+        self.disable_pcid = disable_pcid
         self.c_gen = c_gen
         self.vmx_client_mode = vmx_client_mode
         self.Comment("###########################vars definition######################")
