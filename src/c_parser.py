@@ -30,12 +30,14 @@ class C_parser(Util):
         self.c_code_sec_info = []
         self.c_code_mem_info ={}
         self.c_code_rel_info = []
+        self.multi_page=0
         
     def Gen_c_asm(self,thread,num,optimize=None):
         self.base_name = "c_code_%d"%(num)
         c_file = "c_code_%d.c"%(num)
         elf_file = "c_code_%d.elf"%(num)
         disasm_file = "c_code_%d"%(num)
+        #self.disasm_file = disasm_file
         c_code_sec = "c_code_%d.sec"%(num)
         c_code_rel = elf_file.replace(".elf",".rel")
         if optimize == None:
@@ -92,7 +94,7 @@ class C_parser(Util):
                     # in 32bit single thread, .tbss is overlap with .ctors and .dtors, so need to find a new mem and intial to 0x0. then set gs to this location
                     # in 64bit single thread, .tbss is overlap with .init_array and .fini_array and .jcr, so need to find a new mem and intial to 0x0. then set fs to this location
                 elif eq(list_index["Name"],".tbss"):                   
-                    self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x10000000,end=0x80000000,name=list_index["Name"])
+                    self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x400000,end=0x8000000,name=list_index["Name"])
             #info(self.c_code_mem_info)
             self.c_code_sec_file.close()
         self.c_code_asm = open(disasm_file,"r")
@@ -194,9 +196,11 @@ class C_parser(Util):
         self.Instr_write("mov eax,cr4",thread)
         self.Instr_write("or eax,0x104",thread)
         self.Instr_write("mov cr4,eax",thread)       
-        self.Instr_write("call $_init",thread)
-        self.Instr_write("call $main",thread)
+        self.Instr_write("call $_init_%d"%(thread),thread)
+        self.Instr_write("call $main_%d"%(thread),thread)
         self.Text_write("jmp $%s"%(hlt_code["name"]))
+        if self.multi_page:
+            self.Text_write("PAGING $tlb_pointer_%d"%(thread))
         self.Parse_c_asm(thread)
         return 0
     
@@ -204,8 +208,11 @@ class C_parser(Util):
         self.Parse_c_asm(thread)
     
     def Parse_c_asm(self,thread):
+        #self.c_code_asm = open(self.disasm_file,"r")
         cnt = 0
+        self.c_code_asm.seek(0,0)
         stop_asm_flag = 0
+        #end_flag = 0
         while True:
             line = self.c_code_asm.readline()
             if line:
@@ -214,13 +221,13 @@ class C_parser(Util):
                     m = re.search(r'(\w+) <(.*)>:',line)
                     if m:
                         stop_asm_flag = 0
-                        self.Text_write("org 0x%s"%(m.group(1)))  
                         self.Comment("#### %s"%(line))           
+                        self.Text_write("org 0x%s"%(m.group(1)))  
                         if eq(m.group(2),"main"):
-                            self.Tag_write("main")
+                            self.Tag_write("main_%d"%(thread))
                             debug("Main match")
                         elif eq(m.group(2),"_init"):
-                            self.Tag_write("_init")
+                            self.Tag_write("_init_%d"%(thread))
                             if self.mode == "long_mode":
                                 self.Text_write("use 64")
                             elif self.mode == "compatibility_mode":
@@ -235,10 +242,10 @@ class C_parser(Util):
                             if len(asm_code_list) > 1:
                             #info(asm_code_list)
                                 self.Asm_write(asm_code_list,thread)
-                    
+                                #pass
                     m = re.search(r"Disassembly of section (\..*):",line)
                     if m:
-                        #info(m.group(1))
+#                        #info(m.group(1))
                         for index in self.c_code_sec_info:
                             if eq(m.group(1),index["Name"]):
                                 index["Load"] = 1
@@ -278,7 +285,7 @@ class C_parser(Util):
                     break
         self.Load_c_asm_NOBITS()
         self.Load_c_rel()
-        self.c_code_asm.close()
+
 #
 #        for index in self.c_code_sec_info:
 #            if not index["Load"]:

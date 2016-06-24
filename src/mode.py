@@ -34,20 +34,32 @@ class Mode(Util):
         self.stack_segs = []
         self.user_code_segs = []
         self.thread_info_pointer = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="thread_info_pointer")
+        self.ptg.thread_info_pointer = self.thread_info_pointer
         self.Text_write("org 0x%x"%(self.thread_info_pointer["start"]))
         self.Text_write("@%s = new std::thread_info[%d]"%(self.thread_info_pointer["name"],8))#support 8 threads
         for i in range(0,self.threads):
             if c_gen == 0x0:
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
-                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x1000000,end=0x80000000,name="user_code_seg_T%d"%(i))
+                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x1000000,end=0x40000000,name="user_code_seg_T%d"%(i))
+                #because if enable multi page, above addr 0x40000000 is different for different core 
             else:
+                if self.mode == "long_mode":
+                    if i == 0:
+                        for k in range(0,self.threads):
+                            if k != 0:
+                                self.mpg.Apply_fix_mem("csmith_code_%d"%(i),0x400000+128*0x200000*k,0x400000)
+                else:
+                    if i == 0:
+                        for k in range(0,self.threads):
+                            if k != 0:
+                                self.mpg.Apply_fix_mem("csmith_code_%d"%(i),0x8000000+128*k*0x400000,0x400000)                    
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
-                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x20000000,end=0x80000000,name="user_code_seg_T%d"%(i))
-                self.Comment("##########Initial stack###########")
-                self.Text_write("org 0x%08x"%(self.stack_seg["start"]))
-                for j in range(0,0x100000,8):
-                    self.Text_write("dq 0x0000000000000000")
-                self.Comment("##########Initial stack end###########")
+                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x20000000,end=0x40000000,name="user_code_seg_T%d"%(i))
+#                self.Comment("##########Initial stack###########")
+#                self.Text_write("org 0x%08x"%(self.stack_seg["start"]))
+#                for j in range(0,0x100000,8):
+#                    self.Text_write("dq 0x0000000000000000")
+#                self.Comment("##########Initial stack end###########")
             if self.mode == "long_mode":
                 self.stack_seg["end"] = self.stack_seg["start"]+self.stack_seg["size"]-stack_align+0x8
             else:
@@ -63,6 +75,12 @@ class Mode(Util):
             else:
                 self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],i,self.stack_seg["end"]))
                 self.Text_write("@%s[%d].code = 0x%016x"%(self.thread_info_pointer["name"],i,self.user_code_seg["start"]))
+                
+    def Set_page_info(self):
+        self.page_info_pointer = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="page_info_pointer")
+        self.ptg.page_info_pointer = self.page_info_pointer
+        self.Text_write("org 0x%x"%(self.page_info_pointer["start"]))
+        self.Text_write("@%s = new std::page_info[%d]"%(self.page_info_pointer["name"],8))#support 8 threads
     
     def Mode_code(self,mode,c_gen,disable_avx,disable_pcid):
         self.disable_avx = disable_avx
@@ -77,6 +95,7 @@ class Mode(Util):
         self.idt_table_base_pointer = self.Set_table_pointer(idt_table_base["name"])
         self.Set_gdt_table(gdt_table_base,c_gen)
         self.Set_idt_table(idt_table_base)
+        self.Set_page_info()
         self.ptg.Gen_page()
         self.Set_user_code_stack(c_gen)
         self.Text_write("&TO_MEMORY_ALL()")

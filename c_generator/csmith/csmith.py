@@ -80,6 +80,10 @@ class Csmith(Test_generator):
             Util.Error_exit("Invalid Mode!")
             
         self.threads = self.args_option.thread_nums
+        if self.threads>1:
+            self.multi_page=1
+        else:
+            self.multi_page=0            
         self.intel = self.args_option.intel
         if self.mode != "protect_mode" and self.page_mode == "4KB_64bit":
             Util.Error_exit("Not support convert csmith code to avp in 4KB page Mode!")
@@ -87,14 +91,14 @@ class Csmith(Test_generator):
             self.c_gen = 1
         if self.args_option.very_short == True:
             self.very_short_cmd = "-very-short"
-            self.very_short_num = "100000000"
+            self.very_short_num = "%d"%(100000000*self.threads)
         else:
             if self.args_option.instr_only:
                 self.very_short_cmd = "-instr-only"
-                self.very_short_num = "5000000"                
+                self.very_short_num = "%d"%(50000000*self.threads)                
             else:
                 self.very_short_cmd = "-short"
-                self.very_short_num = "500000"
+                self.very_short_num = "%d"%(500000*self.threads)
                 
         if self.args_option.gcc == True:
             self.force_gcc = 1

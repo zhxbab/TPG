@@ -9,11 +9,15 @@ from operator import eq, ne
 from util import Util
 from logging import info, error, debug, warning, critical
 class Page(Util):
-    def __init__(self,page_mode,tpg_path,mpg,instr_manager):
+    def __init__(self,page_mode,tpg_path,mpg,instr_manager,threads):
         self.page_mode = page_mode
         self.tpg_path = tpg_path
         self.mpg = mpg
         self.instr_manager = instr_manager
+        self.threads = threads
+        self.page_info_pointer={}
+        self.c_gen = 0
+        self.intel = 0
         
     def Gen_page(self):
         self.Comment("######################gen page addr#######################")
@@ -67,62 +71,232 @@ class Page(Util):
         self.Instr_write("mov cr3,eax")
         
     def Gen_page_4M(self):
-
-        self.tlb_base = self.mpg.Apply_mem(0x4000,0x1000,start=0x100000,end=0x400000,name="tlb_base") # 8MB for page_table above 1MB
-
+        if self.multi_page == 0:
+            self.tlb_base = self.mpg.Apply_mem(0x4000,0x1000,start=0x100000,end=0x400000,name="tlb_base") # 8MB for page_table above 1MB
+        else:
+            self.tlb_base = []
+            for i in range(0,self.threads):
+                tlb_base = self.mpg.Apply_mem(0x4000,0x1000,start=0x100000,end=0x400000,name="tlb_base_%d"%(i)) # 8MB for page_table above 1MB
+                if self.intel:
+                    intel_id = i * 2
+                    self.Text_write("@%s[%d].cr3 = 0x%016x"%(self.page_info_pointer["name"],intel_id,tlb_base["start"]))
+                else:
+                    self.Text_write("@%s[%d].cr3 = 0x%016x"%(self.page_info_pointer["name"],i,tlb_base["start"]))
+                self.tlb_base.append(tlb_base)
+                del tlb_base
                 
     def Write_page_4M(self):
-        self.Vars_write(self.tlb_base["name"],self.tlb_base["start"])
-        self.Instr_write("mov eax,$%s"%(self.tlb_base["name"]))
-        self.Instr_write("mov cr3,eax")
-        self.Text_write("$tlb_pointer = INIT_TLB $%s"%(self.tlb_base["name"]))
-        self.Text_write("PAGING $tlb_pointer")
-        for i in range(0,1024):
-            if i < 768:
-                self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))
-            else:
-                self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))
-    
-    def Write_page_2M(self):
-        pdes = [self.pde0,self.pde1,self.pde2,self.pde3]
-        self.Vars_write(self.tlb_base["name"],self.tlb_base["start"])
-        self.Instr_write("mov eax,$%s"%(self.tlb_base["name"]))
-        self.Instr_write("mov cr3,eax")
-        self.Text_write("$tlb_pointer = INIT_TLB $%s"%(self.tlb_base["name"]))
-        self.Text_write("PAGING $tlb_pointer")
-
-        for i in range(0,512):
-            if i == 0:
-                self.Text_write("PAE64_PML4E\t%d\t\t0x0\t0x%05x007"%(i,self.pdpte["start"]/self.pdpte["size"]))
-            else:
-                self.Text_write("PAE64_PML4E\t%d\t\t0x0\t0x%05x007\t0"%(i,self.pdpte["start"]/self.pdpte["size"]))
-                
-        for i in range(0,512):
-            if 0x0 <= i <=0x3:
-                self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x%05x007"%(i,pdes[i%4]["start"]/pdes[i%4]["size"])) 
-            else:
-                self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x%05x007\t%d"%(i,pdes[i%4]["start"]/pdes[i%4]["size"],i%4))
-                
-        for i in range(0,4):
-            for j in range(0,512):
-                addr = (j*0x200000+i*0x40000000)/0x1000
-                if i == 0x3:
-                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
-                elif i == 0x1:
-                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+        if self.multi_page == 0:
+            self.Comment("####Page Info####")
+            self.Vars_write(self.tlb_base["name"],self.tlb_base["start"])
+            self.Text_write("$tlb_pointer = INIT_TLB $%s"%(self.tlb_base["name"]))
+            self.Instr_write("mov eax,$%s"%(self.tlb_base["name"]))
+            self.Instr_write("mov cr3,eax")
+            self.Text_write("PAGING $tlb_pointer")
+            for i in range(0,1024):
+                if i < 758:
+                    self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))         
                 else:
-                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
-        
-        
+                    self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))
+        else:
+            n = 0
+            if self.c_gen == 0:
+                for tlb_base in self.tlb_base:
+                    self.Comment("####Core %d page####"%(n))
+                    self.Vars_write(tlb_base["name"],tlb_base["start"])
+                    self.Text_write("$tlb_pointer_%d = INIT_TLB $%s"%(n,tlb_base["name"]))
+                    if n == 0:
+                        self.Instr_write("mov eax,$%s"%(tlb_base["name"]))
+                        self.Instr_write("mov cr3,eax")
+                        self.Text_write("PAGING $tlb_pointer_0")
+                    for i in range(0,1024):
+                        if i < 256:
+                            self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))
+                        elif 256 <=i<384:
+                            new_i = i + n*128
+                            self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,new_i*0x400000/0x1000))
+                        elif 384 <=i<512:
+                            new_i = i - 128 + n*128
+                            self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,new_i*0x400000/0x1000))
+                        elif 512 <=i<640:
+                            new_i = i - 128*2 + n*128
+                            self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,new_i*0x400000/0x1000))
+                        elif 640 <=i<758:
+                            new_i = i - 128*3 + n*128
+                            self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,new_i*0x400000/0x1000))           
+                        else:
+                            self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))
+                    n=n+1
+            else:
+                #csmith_page_num = 32 #0x8000000/0x400000
+                #offset = 128
+                for tlb_base in self.tlb_base:
+                    self.Comment("####Core %d page####"%(n))
+                    self.Vars_write(tlb_base["name"],tlb_base["start"])
+                    self.Text_write("$tlb_pointer_%d = INIT_TLB $%s"%(n,tlb_base["name"]))
+                    if n == 0:
+                        self.Instr_write("mov eax,$%s"%(tlb_base["name"]))
+                        self.Instr_write("mov cr3,eax")
+                        self.Text_write("PAGING $tlb_pointer_0")
+                    for i in range(0,1024):
+                        if i < 758 and i != 32:
+                            self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))
+                        elif i==32:
+                            new_i = i + n*128
+                            self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,new_i*0x400000/0x1000)) 
+                        else:
+                            self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))
+                    n=n+1
+            
+    def Write_page_2M(self):
+        if self.multi_page == 0:
+            pdes = [self.pde0,self.pde1,self.pde2,self.pde3]
+            self.Vars_write(self.tlb_base["name"],self.tlb_base["start"])
+            self.Instr_write("mov eax,$%s"%(self.tlb_base["name"]))
+            self.Instr_write("mov cr3,eax")
+            self.Text_write("$tlb_pointer = INIT_TLB $%s"%(self.tlb_base["name"]))
+            self.Text_write("PAGING $tlb_pointer")
+    
+            for i in range(0,512):
+                if i == 0:
+                    self.Text_write("PAE64_PML4E\t%d\t\t0x0\t0x%05x007"%(i,self.pdpte["start"]/self.pdpte["size"]))
+                else:
+                    self.Text_write("PAE64_PML4E\t%d\t\t0x0\t0x%05x007\t0"%(i,self.pdpte["start"]/self.pdpte["size"]))
+                    
+            for i in range(0,512):
+                if 0x0 <= i <=0x3:
+                    self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x%05x007"%(i,pdes[i%4]["start"]/pdes[i%4]["size"])) 
+                else:
+                    self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x%05x007\t%d"%(i,pdes[i%4]["start"]/pdes[i%4]["size"],i%4))
+                    
+            for i in range(0,4):
+                for j in range(0,512):
+                    addr = (j*0x200000+i*0x40000000)/0x1000
+                    if i == 0x3:
+                        self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
+                    elif i == 0x1:
+                        self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+                    else:
+                        self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+        else:
+            if self.c_gen == 0:
+                for index in range(0,len(self.tlb_base)):
+                    pdes = [self.pde0[index],self.pde1[index],self.pde2[index],self.pde3[index]]
+                    self.Vars_write(self.tlb_base[index]["name"],self.tlb_base[index]["start"])
+                    self.Text_write("$tlb_pointer_%d = INIT_TLB $%s"%(index,self.tlb_base[index]["name"]))
+                    if index == 0:
+                        self.Instr_write("mov eax,$%s"%(self.tlb_base[index]["name"]))
+                        self.Instr_write("mov cr3,eax")
+                        self.Text_write("PAGING $tlb_pointer_0")
+                    for i in range(0,512):
+                        if i == 0:
+                            self.Text_write("PAE64_PML4E\t%d\t\t0x0\t0x%05x007"%(i,self.pdpte[index]["start"]/self.pdpte[index]["size"]))
+                        else:
+                            self.Text_write("PAE64_PML4E\t%d\t\t0x0\t0x%05x007\t0"%(i,self.pdpte[index]["start"]/self.pdpte[index]["size"]))
+                            
+                    for i in range(0,512):
+                        if 0x0 <= i <=0x3:
+                            self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x%05x007"%(i,pdes[i%4]["start"]/pdes[i%4]["size"])) 
+                        else:
+                            self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x%05x007\t%d"%(i,pdes[i%4]["start"]/pdes[i%4]["size"],i%4))
+                            
+                    for i in range(0,4):
+                        for j in range(0,512):
+                            addr = (j*0x200000+i*0x40000000)/0x1000
+                            if i == 0x3:
+                                self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
+                            elif i == 0x1 or i == 0x2:
+                                if j<128:
+                                    new_j = j + index*128
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                elif 128<=j<256:
+                                    new_j = j + (index-1)*128
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                elif 256<=j<384:
+                                    new_j = j+ (index-2)*128
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                else:
+                                    new_j = j+ (index-3)*128
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                                    
+                            else:
+                                self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+                    
+            else:
+                #csmith_page_num = 2 , 3
+                #offset = 128
+                for index in range(0,len(self.tlb_base)):
+                    pdes = [self.pde0[index],self.pde1[index],self.pde2[index],self.pde3[index]]
+                    self.Vars_write(self.tlb_base[index]["name"],self.tlb_base[index]["start"])
+                    self.Text_write("$tlb_pointer_%d = INIT_TLB $%s"%(index,self.tlb_base[index]["name"]))
+                    if index == 0:
+                        self.Instr_write("mov eax,$%s"%(self.tlb_base[index]["name"]))
+                        self.Instr_write("mov cr3,eax")
+                        self.Text_write("PAGING $tlb_pointer_0")
+                    for i in range(0,512):
+                        if i == 0:
+                            self.Text_write("PAE64_PML4E\t%d\t\t0x0\t0x%05x007"%(i,self.pdpte[index]["start"]/self.pdpte[index]["size"]))
+                        else:
+                            self.Text_write("PAE64_PML4E\t%d\t\t0x0\t0x%05x007\t0"%(i,self.pdpte[index]["start"]/self.pdpte[index]["size"]))
+                            
+                    for i in range(0,512):
+                        if 0x0 <= i <=0x3:
+                            self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x%05x007"%(i,pdes[i%4]["start"]/pdes[i%4]["size"])) 
+                        else:
+                            self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x%05x007\t%d"%(i,pdes[i%4]["start"]/pdes[i%4]["size"],i%4))
+                            
+                    for i in range(0,4):
+                        for j in range(0,512):
+                            addr = (j*0x200000+i*0x40000000)/0x1000
+                            if i == 0x3:
+                                self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
+                            elif i == 0x1 or i == 0x2:
+                                self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                                    
+                            else:
+                                if 2<=j<=3:
+                                    new_j = j+ index*128
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+
+                                else:
+                                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
     def Gen_page_2M(self):
-
-        self.tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="tlb_base") # allocate 4KB for PML4E, one entry include 512G.
-        self.pdpte = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pdpte") # allocate 4KB for PDPTE, all the PML4E point to the same pdpte base. 
-        self.pde0 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde0")
-        self.pde1 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde1")
-        self.pde2 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde2")
-        self.pde3 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde3") # allocate 4*4KB for PDE, PDPTE(0-3) use different PDE 
-
+        if self.multi_page == 0:
+            self.tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="tlb_base") # allocate 4KB for PML4E, one entry include 512G.
+            self.pdpte = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pdpte") # allocate 4KB for PDPTE, all the PML4E point to the same pdpte base. 
+            self.pde0 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde0")
+            self.pde1 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde1")
+            self.pde2 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde2")
+            self.pde3 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde3") # allocate 4*4KB for PDE, PDPTE(0-3) use different PDE 
+        else:
+            self.tlb_base=[]
+            self.pdpte=[]
+            self.pde0=[]
+            self.pde1=[]
+            self.pde2=[]
+            self.pde3=[]
+            for i in range(0,self.threads):
+                tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="tlb_base_%d"%(i)) # allocate 4KB for PML4E, one entry include 512G.
+                pdpte = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pdpte_%d"%(i)) # allocate 4KB for PDPTE, all the PML4E point to the same pdpte base. 
+                pde0 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde0_%d"%(i))
+                pde1 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde1_%d"%(i))
+                pde2 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde2_%d"%(i))
+                pde3 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pde3_%d"%(i)) # allocate 4*4KB for PDE, PDPTE(0-3) use different PDE
+                if self.intel:
+                    intel_id = i * 2
+                    self.Text_write("@%s[%d].cr3 = 0x%016x"%(self.page_info_pointer["name"],intel_id,tlb_base["start"]))
+                else:
+                    self.Text_write("@%s[%d].cr3 = 0x%016x"%(self.page_info_pointer["name"],i,tlb_base["start"]))
+                self.tlb_base.append(tlb_base)
+                self.pdpte.append(pdpte)
+                self.pde0.append(pde0)
+                self.pde1.append(pde1)
+                self.pde2.append(pde2)
+                self.pde3.append(pde3)
+                del tlb_base,pdpte,pde0,pde1,pde2,pde3
                     
     def Gen_vmx_page_2M_addr(self):
 

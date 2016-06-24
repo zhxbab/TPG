@@ -25,16 +25,16 @@ if __name__ == "__main__":
             tests.Start_user_code(j)
             if j == 0:
         ################## Thread 0 Code#################
-                tests.Instr_write("mov eax,0x0",j)
+                tests.Instr_write("mov eax,[0x40000010]",j)
             elif j == 1:
         ################# Thread 1 Code#################
-                tests.Instr_write("mov eax,0x1",j)
+                tests.Instr_write("mov eax,[0x40000010]",j)
             elif j == 2:
         ################# Thread 2 Code#################
-                tests.Instr_write("mov eax,0x2",j)
+                tests.Instr_write("mov eax,[0x40000010]",j)
             else:
         ################# Thread 3 Code#################
-                tests.Instr_write("mov eax,0x3",j)                 
+                tests.Instr_write("mov eax,[0x40000010]",j)                 
             tests.Gen_hlt_code(j)
             tests.Gen_sim_cmd(j)
         tests.Gen_vector()

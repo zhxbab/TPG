@@ -41,7 +41,8 @@ class Test_generator(Args,Util):
 
     def Fix_threads(self,threads):
         self.threads = threads
-
+        if self.threads > 1 and self.c_gen==1:
+            self.multi_page=1
     def Create_global_info(self):
         self.asm_list = []
         self.inc_path = "%s/include"%(self.tpg_path)
@@ -69,6 +70,11 @@ class Test_generator(Args,Util):
     def Gen_mode_code(self):
         self.mode_code = Mode(self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel, self.interrupt,self.c_parser)
         self.mode_code.asm_file = self.asm_file
+        self.ptg.c_gen = self.c_gen
+        self.ptg.intel = self.intel
+        if self.c_gen:
+            self.c_parser.multi_page = self.multi_page
+        self.ptg.multi_page = self.multi_page
         [self.stack_segs,self.user_code_segs] = self.mode_code.Mode_code(self.mode,self.c_gen,self.disable_avx,self.disable_pcid)
 
     def Gen_cnsim_param(self):
@@ -104,7 +110,7 @@ class Test_generator(Args,Util):
     def Reset_asm(self):
         self.mpg.Reset_mem()
         self.instr_manager = Instr(self.threads)
-        self.ptg = Page(self.page_mode,self.tpg_path,self.mpg,self.instr_manager)
+        self.ptg = Page(self.page_mode,self.tpg_path,self.mpg,self.instr_manager,self.threads)
         self.simcmd = Simcmd(self.threads)
         self.spin_lock_num = 0x0
         self.interrupt = Interrupt(self.mode,self.mpg)
@@ -261,7 +267,12 @@ class Test_generator(Args,Util):
         
     def Start_user_code(self,thread):
         self.Comment("##Usr code")
+        if self.multi_page:
+            self.Text_write("PAGING $tlb_pointer_%d"%(thread))
         self.Text_write("org 0x%x"%(self.user_code_segs[thread]["start"]))
+        if self.multi_page:
+            self.Instr_write("mov ebx,[eax+&@%s]"%(self.ptg.page_info_pointer["name"])) # +2
+            self.Instr_write("mov cr3,ebx")
         self.Tag_write(self.user_code_segs[thread]["name"])
         if self.mode == "long_mode":
             self.Text_write("use 64")

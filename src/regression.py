@@ -67,6 +67,7 @@ class Regression(Util):
     
     def Copy_ic_log(self,file,file_log):
         if os.path.exists(file):
+            info(self.fail_dir)
             info("cp  %s %s"%(file,self.fail_dir))
             os.system("cp  %s %s"%(file,self.fail_dir))
             info("cp  %s %s"%(file_log,self.fail_dir))
@@ -237,6 +238,7 @@ class Regression(Util):
         
 
     def Send_mail_vectors(self,fail_vectors):
+        info("Send Mail")
         content = "fail vector:"
         for key in fail_vectors:
             content = content + "\t%s\t\n"%(fail_vectors[key]) 
@@ -244,14 +246,16 @@ class Regression(Util):
 
         
     def Send_mail(self,content):
-        sender = "%s@zhaoxin.com"%(os.getenv("HOSTNAME"))
+        #info("Send Mail 1111")
+        #sender = "%s@zhaoxin.com"%(os.getenv("HOSTNAME"))
+        sender = "%s@ic.com"%(os.getenv("HOSTNAME"))#can't use zhaoxin.com
         receivers = 'KenZhao@zhaoxin.com'
         msg = MIMEText('%s'%(content), 'plain', 'utf-8')
         msg['From'] = _format_addr(u'CV-2 <%s>' % sender)
         msg['To'] = _format_addr(u'KenZhao <%s>' % receivers)
         msg['Subject'] = Header(u'"PCLMSI FAIL NOTITION', 'utf-8').encode()
         smtpObj = smtplib.SMTP('localhost') 
-        smtpObj.sendmail(sender, [receivers], msg.as_string())
+        smtpObj.sendmail(sender, [receivers,], msg.as_string())
            
     def Send_info(self,content):
         self.Send_mail(content)

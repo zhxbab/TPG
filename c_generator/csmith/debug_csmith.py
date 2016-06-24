@@ -20,8 +20,11 @@ if __name__ == "__main__":
     tests.Gen_asm_code(0,i)
     tests.Gen_mode_code()
         ################## Thread 0 Code#################
-    tests.Start_user_code(0)
-    tests.Load_asm_code(0,i)
-    tests.Gen_hlt_code(0)
+    for j in range(0,tests.args_option.thread_nums):
+        tests.Start_user_code(j)
+        tests.Load_asm_code(j,i)
+        tests.Gen_hlt_code(j)
+    tests.c_parser.c_code_asm.close()
     tests.Gen_vector()
     tests.Gen_pclmsi_file_list()
+    

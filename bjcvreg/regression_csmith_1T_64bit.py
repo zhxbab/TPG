@@ -11,6 +11,7 @@ from regression_csmith import Regression_csmith
 ##############################################MAIN##########################################
 if __name__ == "__main__":
     tests = Regression_csmith(sys.argv[1:])
+    tests.Fix_threads(1)
     tests.Set_mode("long_mode","2MB")
     tests.Create_dir()
     tests.Set_fail_dir()
@@ -26,6 +27,7 @@ if __name__ == "__main__":
         tests.Start_user_code(0)
         tests.Load_asm_code(0,i)
         tests.Gen_hlt_code(0)
+        tests.c_parser.c_code_asm.close()
         tests.Gen_vector()
         tests.Regression_vector()
     tests.Remove_dir()
