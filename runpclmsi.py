@@ -1,4 +1,5 @@
 #!/usr/bin/env python2.7
+#from __future__ import division
 # -*- coding: utf-8 -*-
 ########################################################
 # change_pclmsi_list is used for modifying the pclmsi.list
@@ -9,6 +10,7 @@ from optparse import OptionParser
 from logging import info,debug,error,warning,critical
 from operator import eq
 global run_pclmsi_p
+
 #########################################Sub route##################################
 def Sigint_handler(signal, frame):
     critical("Ctrl+C pressed and Exit!!!")
@@ -25,7 +27,7 @@ parser = OptionParser(usage="%prog arg1 arg2", version="%prog 0.1") #2016-01-15 
 parser.add_option("-f","--file", dest="list_file", help="The pclmsi list file", default = "None", type = "str")
 parser.add_option("--rerun", dest="rerun_times", help="change pclmsi list rerun_times", default = -1, type = "int")
 parser.add_option("-p","--path", dest="files_path", help="change pclmsi list path", default = "Not Change", type = "str")
-parser.add_option("-c", dest="core_ratio", help="set core ratio(only 8 - 15 is available), don't use this parameter if you want the default core ratio", default = 0, type = "int")
+parser.add_option("-c", dest="core_ratio", help="set core ratio(only 8 - 15 is available), don't use this parameter if you want the default core ratio", default = 0, type = "float")
 parser.add_option("-l", dest="log_level", help="set log level, 0:no_log; 1:normal; 2:log_name. [default:%default]", default = 0, type = "int")
 parser.add_option("--name", dest="log_name", help="when log level = 2, set log name", default = "None", type = "str")
 parser.add_option("--debug", dest="_debug", help="Enable the debug mode for change_pclmsi_list", action="store_true", default = False)
@@ -77,7 +79,8 @@ with open(list_file_full_path,"r") as f_old:
             new_line = new_line + " +ignore_all_checks:1"
             if not option.core_ratio == 0:
                 if option.core_ratio <= 15 and option.core_ratio >= 8:
-                    new_line = new_line + " +clkRatio:%d"%(option.core_ratio)
+                    new_line = new_line + " +clkRatio:%.1f"%(option.core_ratio/2.0)
+                    info(new_line)
                 else:
                     error("Invalidate pstate!")
             new_file = new_file + new_line + "\n"

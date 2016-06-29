@@ -23,14 +23,17 @@ class Vmx_basic(Test_generator):
                           , type = "int", default = 0x0)
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
         args_parser.add_option("--intel", dest="intel", help="Support intel platform, APIC ID is 0,2,4,6", action="store_true", default = False)
-        args_parser.add_option("--no_very_short", dest="very_short", help="Change -very-short to short", action="store_true", default = False)
-        args_parser.add_option("--multi_page", dest="multi_page", help="enable_multi_page", action="store_true", default = False)    
+        args_parser.add_option("--no_very_short", dest="very_short", help="Change -very-short to short", action="store_true", default = False)   
         (self.args_option, self.args_additions) = args_parser.parse_args(args)       
         if self.args_option.seed:
             self.seed = self.args_option.seed
         else:
             self.seed = random.randint(1,0xFFFFFFFF)                  
         self.threads = self.args_option.thread_nums
+        if self.threads > 1:
+            self.multi_ept = 1
+        else:
+            self.multi_ept = 0
         self.intel = self.args_option.intel
         self.c_gen = 0
         self.mode = "long_mode"
@@ -44,17 +47,21 @@ class Vmx_basic(Test_generator):
         self.vmx_client_mode = "long_mode"
         self.disable_avx = False
         self.disable_pcid = False
-        self.multi_page = self.args_option.multi_page
+        self.multi_page = 0 
         
     def Gen_mode_code(self):
         self.vmx_mode_code = Vmx_mode(self.hlt_code,self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel, self.interrupt,self.c_parser)
         self.vmx_mode_code.asm_file = self.asm_file
         self.vmx_mode_code.inc_path = self.inc_path
+        self.vmx_mode_code.multi_ept = self.multi_ept
         self.ptg.c_gen = self.c_gen
         self.ptg.intel = self.intel
+        self.ptg.vmx_client_mode = self.vmx_client_mode
         if self.c_gen:
             self.c_parser.multi_page = self.multi_page
+            self.c_parser.multi_ept = self.multi_ept
         self.ptg.multi_page = self.multi_page
+        self.ptg.multi_ept = self.multi_ept
         [self.stack_segs,self.user_code_segs] = self.vmx_mode_code.Mode_code(self.mode,self.c_gen,self.vmx_client_mode,self.disable_avx,self.disable_pcid)
 
     def Gen_hlt_code(self,thread_num):
@@ -72,10 +79,11 @@ class Vmx_basic(Test_generator):
         self.Vmx_vmcs_initial(thread)
         self.Vmx_entry(thread)
         self.Set_guest_entry(thread)
+        self.vmx_mode_code.Exit_code_addr(thread)
         self.Set_exit_code(thread)
+        #del vmx_exit_addr
         
     def Set_exit_code(self,thread):
-        self.Text_write("org 0x%x"%(self.vmx_exit_addr[thread]["start"]))
         self.Vmx_exit(thread)
         self.Text_write("jmp $%s"%(self.hlt_code["name"]))
         
@@ -97,17 +105,19 @@ class Vmx_basic(Test_generator):
         self.Instr_write("vmxon [0x%x]"%(self.vmx_mode_code.vmxon_pointer[thread]["start"]),0)
         
     def Vmx_vmcs_initial(self,thread):
+        #info("vmcs_pointer_%d is 0x%x"%(thread,self.vmx_mode_code.vmcs_pointer[thread]["start"]))
         self.Set_vmcs_id(self.vmx_mode_code.vmcs[thread]["start"],self.vmx_mode_code.vmcs_pointer[thread]["start"])
         self.Instr_write("vmclear [0x%x]"%(self.vmx_mode_code.vmcs_pointer[thread]["start"]))
         self.Instr_write("vmptrld [0x%x]"%(self.vmx_mode_code.vmcs_pointer[thread]["start"]))
         self.Comment("#now initialize the guest vmcs")
         self.Instr_write("mov rbx,0x%x"%(self.vmx_mode_code.vmcs_data[thread]["start"]))
-        self.Instr_write("call $std_vmcs_initialize_guest_vmcs")  # this label is from "std_vmx_code.inc"
+        self.Instr_write("call $std_vmcs_initialize_guest_vmcs_%d"%(thread))  # this label is from "std_vmx_code.inc"
         self.Tag_write("vmcs_initialize_end_%d"%(thread))
         self.Text_write("org 0x%x"%(self.vmx_mode_code.vmcs_initial_code[thread]["start"]));  
-        self.Text_write("include \"%s/std_vmx_code.inc\""%(self.inc_path));  # this is the code to setup vm guest
+        self.Text_write("include \"%s/std_vmx_code_%d.inc\""%(self.inc_path,thread));  # this is the code to setup vm guest
         self.Text_write("org $vmcs_initialize_end_%d"%(thread))
-        self.vmx_mode_code.Write_vmx_page()
+        if thread == 0:
+            self.vmx_mode_code.Write_vmx_page()
         
     def Vmx_entry(self,thread):
         self.Instr_write("vmlaunch")

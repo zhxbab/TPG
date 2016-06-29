@@ -43,6 +43,7 @@ class Test_generator(Args,Util):
         self.threads = threads
         if self.threads > 1 and self.c_gen==1:
             self.multi_page=1
+            
     def Create_global_info(self):
         self.asm_list = []
         self.inc_path = "%s/include"%(self.tpg_path)
@@ -72,6 +73,7 @@ class Test_generator(Args,Util):
         self.mode_code.asm_file = self.asm_file
         self.ptg.c_gen = self.c_gen
         self.ptg.intel = self.intel
+        self.ptg.mode = self.mode
         if self.c_gen:
             self.c_parser.multi_page = self.multi_page
         self.ptg.multi_page = self.multi_page

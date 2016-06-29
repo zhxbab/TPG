@@ -21,9 +21,10 @@ if __name__ == "__main__":
     tests.Initial_interrupt()
     tests.Gen_asm_code(0,i)
     tests.Gen_mode_code()
-    tests.Start_user_code(0)
-    tests.Vmx_load_asm_code(0,i)
-    tests.Gen_hlt_code(0)
+    for j in range(0,tests.args_option.thread_nums):
+        tests.Start_user_code(j)
+        tests.Vmx_load_asm_code(j,i)
+    tests.Gen_hlt_code()
     tests.Gen_vector()
     tests.Gen_pclmsi_file_list()
 

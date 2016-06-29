@@ -94,7 +94,7 @@ class C_parser(Util):
                     # in 32bit single thread, .tbss is overlap with .ctors and .dtors, so need to find a new mem and intial to 0x0. then set gs to this location
                     # in 64bit single thread, .tbss is overlap with .init_array and .fini_array and .jcr, so need to find a new mem and intial to 0x0. then set fs to this location
                 elif eq(list_index["Name"],".tbss"):                   
-                    self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x400000,end=0x8000000,name=list_index["Name"])
+                    self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_mem(int(list_index["Size"],16),16,start=0x1000000,end=0x8000000,name=list_index["Name"])
             #info(self.c_code_mem_info)
             self.c_code_sec_file.close()
         self.c_code_asm = open(disasm_file,"r")
@@ -204,8 +204,12 @@ class C_parser(Util):
         self.Parse_c_asm(thread)
         return 0
     
-    def Vmx_load_c_asm(self,thread,hlt_code,num):     
-        self.Parse_c_asm(thread)
+    def Vmx_load_c_asm(self,thread,hlt_code,num):
+        if self.multi_ept:
+            self.Text_write("EPT $ept_tlb_pointer_%d"%(thread))
+            self.Parse_c_asm(thread)
+        else:
+            self.Parse_c_asm(thread)
     
     def Parse_c_asm(self,thread):
         #self.c_code_asm = open(self.disasm_file,"r")

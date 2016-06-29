@@ -32,6 +32,9 @@ class Vmx_csmith(Test_generator):
         args_parser.add_option("--clang", dest="clang", help="Force use clang", action="store_true", default = False)
         args_parser.add_option("--set_Op", dest="Op", help="Set the Op level", type="str", default = None)
         args_parser.add_option("--ma", dest="ma", help="Set cnsim instruction num", type="int", default = None)
+        args_parser.add_option("--disable_avx", dest="disable_avx", help="disable AVX for support old intel platform", action="store_true", default = False)
+        args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)
+        args_parser.add_option("--instr_only", dest="instr_only", help="Cnsim instr only", action="store_true", default = False)  
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -42,16 +45,25 @@ class Vmx_csmith(Test_generator):
         else:
             self.seed = random.randint(1,0xFFFFFFFF)                  
         self.threads = self.args_option.thread_nums
+        if self.threads > 1:
+            self.multi_ept = 1
+        else:
+            self.multi_ept = 0
         self.intel = self.args_option.intel
         self.c_gen = 1
         self.mode = "long_mode"
         self.page_mode = "2MB"
         if self.args_option.very_short == True:
             self.very_short_cmd = "-very-short"
-            self.very_short_num = "10000000"
+            self.very_short_num = "%d"%(100000000*self.threads)
         else:
-            self.very_short_cmd = "-short"
-            self.very_short_num = "100000"
+            if self.args_option.instr_only:
+                self.very_short_cmd = "-instr-only"
+                self.very_short_num = "%d"%(50000000*self.threads)                
+            else:
+                self.very_short_cmd = "-short"
+                self.very_short_num = "%d"%(500000*self.threads)
+                
         if self.args_option.client_mode == 0x0:
             self.vmx_client_mode = "long_mode"
         elif self.args_option.client_mode == 0x1:
@@ -76,7 +88,10 @@ class Vmx_csmith(Test_generator):
             pass
         else:
             self.very_short_num = self.args_option.ma
-            
+        self.disable_avx = self.args_option.disable_avx
+        self.disable_pcid = self.args_option.disable_pcid
+        self.multi_page = 0
+        
     def Force_compiler_and_optimize(self):
         if self.force_gcc == 1:
             self.c_parser.c_compiler = self.c_parser.gcc
@@ -138,20 +153,26 @@ class Vmx_csmith(Test_generator):
         self.vmx_mode_code = Vmx_mode(self.hlt_code,self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel, self.interrupt,self.c_parser)
         self.vmx_mode_code.asm_file = self.asm_file
         self.vmx_mode_code.inc_path = self.inc_path
+        self.vmx_mode_code.multi_ept = self.multi_ept
+        self.ptg.c_gen = self.c_gen
+        self.ptg.intel = self.intel
+        self.ptg.vmx_client_mode = self.vmx_client_mode
+        if self.c_gen:
+            self.c_parser.multi_page = self.multi_page
+            self.c_parser.multi_ept = self.multi_ept
+        self.ptg.multi_page = self.multi_page
+        self.ptg.multi_ept = self.multi_ept
         [self.stack_segs,self.user_code_segs] = self.vmx_mode_code.Mode_code(self.mode,self.c_gen,self.vmx_client_mode,self.disable_avx,self.disable_pcid)
+        
+    def Gen_hlt_code(self):
+        self.Text_write("org 0x%x"%(self.hlt_code["start"]))
+        self.Tag_write(self.hlt_code["name"])
+        self.Text_write("hlt")
 
-    def Gen_hlt_code(self,thread_num):
-        if thread_num == 0:
-            self.Text_write("jmp $%s"%(self.hlt_code["name"]))
-            self.Text_write("org 0x%x"%(self.hlt_code["start"]))
-            self.Tag_write(self.hlt_code["name"])
-            self.Vmx_exit()
-            self.Text_write("hlt")
-        elif 0 < thread_num < 4:
-            self.Text_write("jmp $%s"%(self.hlt_code["name"]))
-        else:
-            self.Error_exit("Invalid thread num!")
-
+    def Set_exit_code(self,thread):
+        self.Vmx_exit(thread)
+        self.Text_write("jmp $%s"%(self.hlt_code["name"]))
+        
     def Start_user_code(self,thread):
         self.Comment("##Usr code")
         self.Instr_write("call [eax+&@%s]"%(self.vmx_mode_code.thread_info_pointer["name"]))
@@ -160,14 +181,16 @@ class Vmx_csmith(Test_generator):
         self.Text_write("use 64")
         self.Instr_write("mov eax,&SELECTOR($%s)"%(self.c_parser.selector_name_c_gen_0),thread)
         self.Instr_write("mov fs,eax",thread)
-        self.Vmx_initial()
-        self.Vmx_vmcs_initial()
-        self.Vmx_entry()
-        self.Set_guest_entry()
+        self.Vmx_initial(thread)
+        self.Vmx_vmcs_initial(thread)
+        self.Vmx_entry(thread)
+        self.Set_guest_entry(thread)
+        self.vmx_mode_code.Exit_code_addr(thread)
+        self.Set_exit_code(thread)
 
         
-    def Vmx_initial(self):
-
+    def Vmx_initial(self,thread):
+        self.Vmcs_extra_setting()
         self.Comment("#### enable cr4 bit 13 vmex")
         self.Instr_write("mov eax,cr4")
         self.Instr_write("bts eax,0xd")
@@ -176,32 +199,36 @@ class Vmx_csmith(Test_generator):
         self.Instr_write("mov ecx, 0x3a")
         self.Instr_write("rdmsr")
         self.Instr_write("bt eax, 0")
-        self.Instr_write("jc $skip_wrmsr")
+        self.Instr_write("jc $skip_wrmsr_%d"%(thread))
         self.Msr_Write(0x3a,0,edx=0,eax=5)
-        self.Tag_write("skip_wrmsr")
+        self.Tag_write("skip_wrmsr_%d"%(thread))
         self.Comment("#### initialize_revision_id ####")
-        self.Set_vmcs_id(self.vmx_mode_code.vmxon["start"],self.vmx_mode_code.vmxon_pointer["start"])
-        self.Instr_write("vmxon [0x%x]"%(self.vmx_mode_code.vmxon_pointer["start"]),0)
+        self.Set_vmcs_id(self.vmx_mode_code.vmxon[thread]["start"],self.vmx_mode_code.vmxon_pointer[thread]["start"])
+        self.Instr_write("vmxon [0x%x]"%(self.vmx_mode_code.vmxon_pointer[thread]["start"]),0)
         
-    def Vmx_vmcs_initial(self):
-        self.Set_vmcs_id(self.vmx_mode_code.vmcs["start"],self.vmx_mode_code.vmcs_pointer["start"])
-        self.Instr_write("vmclear [0x%x]"%(self.vmx_mode_code.vmcs_pointer["start"]))
-        self.Instr_write("vmptrld [0x%x]"%(self.vmx_mode_code.vmcs_pointer["start"]))
+        
+        
+        
+    def Vmx_vmcs_initial(self,thread):
+        
+        self.Set_vmcs_id(self.vmx_mode_code.vmcs[thread]["start"],self.vmx_mode_code.vmcs_pointer[thread]["start"])
+        self.Instr_write("vmclear [0x%x]"%(self.vmx_mode_code.vmcs_pointer[thread]["start"]))
+        self.Instr_write("vmptrld [0x%x]"%(self.vmx_mode_code.vmcs_pointer[thread]["start"]))
         self.Comment("#now initialize the guest vmcs")
-        self.Instr_write("mov rbx,0x%x"%(self.vmx_mode_code.vmcs_data["start"]))
-        self.Instr_write("call $std_vmcs_initialize_guest_vmcs")  # this label is from "std_vmx_code.inc"
-        self.Tag_write("vmcs_initialize_end")
-        self.Text_write("org 0x%x"%(self.vmx_mode_code.vmcs_initial_code["start"]));  
-        self.Text_write("include \"%s/std_vmx_code.inc\""%(self.inc_path));  # this is the code to setup vm guest
-        self.Text_write("org $vmcs_initialize_end")
-        self.vmx_mode_code.Write_vmx_page()
+        self.Instr_write("mov rbx,0x%x"%(self.vmx_mode_code.vmcs_data[thread]["start"]))
+        self.Instr_write("call $std_vmcs_initialize_guest_vmcs_%d"%(thread))  # this label is from "std_vmx_code.inc"
+        self.Tag_write("vmcs_initialize_end_%d"%(thread))
+        self.Text_write("org 0x%x"%(self.vmx_mode_code.vmcs_initial_code[thread]["start"]));  
+        self.Text_write("include \"%s/std_vmx_code_%d.inc\""%(self.inc_path,thread));  # this is the code to setup vm guest
+        self.Text_write("org $vmcs_initialize_end_%d"%(thread))
+        if thread == 0:
+            self.vmx_mode_code.Write_vmx_page()
         
-    def Vmx_entry(self):
+    def Vmx_entry(self,thread):
         self.Instr_write("vmlaunch")
-        
-    def Vmx_exit(self):
-        self.Text_write("use 64")
-        self.Instr_write("vmclear [0x%x]"%(self.vmx_mode_code.vmcs_pointer["start"]),0)
+
+    def Vmx_exit(self,thread):
+        self.Instr_write("vmclear [0x%x]"%(self.vmx_mode_code.vmcs_pointer[thread]["start"]),0)
         self.Instr_write("vmxoff",0)
         
     def Set_vmcs_id(self,vmcs,vmcs_pointer):
@@ -211,11 +238,11 @@ class Vmx_csmith(Test_generator):
         self.Instr_write("mov [0x%x], 0x0"%(vmcs_pointer+4))
         self.Instr_write("mov [0x%x], eax"%(vmcs))
         
-    def Set_guest_entry(self):
-        self.Text_write("org 0x%x"%(self.vmx_mode_code.vmx_guest_entry_0["start"]))
+    def Set_guest_entry(self,thread):
+        self.Text_write("org 0x%x"%(self.vmx_mode_code.vmx_guest_entry_0[thread]["start"]))
         self.Text_write("use 64")
-        self.Instr_write("call $_init",0)
-        self.Instr_write("call $main",0)  
+        self.Instr_write("call $_init_%d"%(thread),0)
+        self.Instr_write("call $main_%d"%(thread),0)  
         #self.Instr_write("mov qword ptr [0x40000000], r8")
         #self.Instr_write("mov rbx,0x%x"%(self.vmx_mode_code.vmcs_data["start"]))
         #self.Instr_write("mov [rbx + disp32 &OFFSET(@std_vmcs_data.host_cr3)],0x%x"%(self.vmx_mode_code.ptg.tlb_base["start"]));
@@ -229,3 +256,8 @@ class Vmx_csmith(Test_generator):
         #self.Text_write("&TO_MEMORY_ALL()")
         pass
     
+    def Fix_threads(self,threads):
+        self.threads = threads
+        if self.threads > 1 and self.c_gen==1:
+            self.multi_ept = 1
+            self.multi_page = 0

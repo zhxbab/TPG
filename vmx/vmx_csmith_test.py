@@ -12,7 +12,6 @@ from vmx_csmith import Vmx_csmith
 ##############################################MAIN##########################################
 if __name__ == "__main__":
     tests = Vmx_csmith(sys.argv[1:])
-    tests.Fix_threads(1)
     tests.Create_dir()
     tests.Gen_del_file()
     for i in range(0,tests.args_option.nums):
@@ -22,11 +21,12 @@ if __name__ == "__main__":
         if tests.Gen_asm_code(0,i):
             continue
         tests.Gen_mode_code()
-        tests.Start_user_code(0)
-        tests.Vmx_load_asm_code(0,i)
+        for j in range(0,tests.threads):
+            tests.Start_user_code(j)
+            tests.Vmx_load_asm_code(j,i)
         #tests.Instr_write("vmxon [$vmxon_ptr]",0)
         tests.c_parser.c_code_asm.close()
-        tests.Gen_hlt_code(0)
+        tests.Gen_hlt_code()
         tests.Gen_vector()
     tests.Gen_pclmsi_file_list()
 

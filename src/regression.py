@@ -179,12 +179,13 @@ class Regression(Util):
         for clc in self.clk_list:
             info("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc))
             os.system("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc))
-            runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc)
+            runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc)
             runpclmsi_p_ret = self.Do_runpclmsi(runpclmsi_cmd,self.runpclmsi_time)
             if runpclmsi_p_ret == 0x0:
                 info("PCLMSI SUCCESSFULLY")
                 result = self.Parse_pclmsi_log_jtrk("%s.jtrk"%(self.base_name))
                 if result:
+                    #sys.exit(0) #for debug fail case.
                     break
 #            elif runpclmsi_p_ret == 1:
 #                if self.runpclmsi_time<= 20: #run_pclmsi end self

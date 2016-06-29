@@ -18,6 +18,8 @@ class Page(Util):
         self.page_info_pointer={}
         self.c_gen = 0
         self.intel = 0
+        self.vmx_client_mode = "long_mode"
+        self.mode = "long_mode"
         
     def Gen_page(self):
         self.Comment("######################gen page addr#######################")
@@ -256,13 +258,22 @@ class Page(Util):
                             elif i == 0x1 or i == 0x2:
                                 self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                                    
                             else:
-                                if 2<=j<=3:
-                                    new_j = j+ index*128
-                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
-                                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
-
+                                if self.mode == "long_mode":
+                                    if 2<=j<=3:
+                                        new_j = j+ index*128
+                                        addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                        self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+    
+                                    else:
+                                        self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
                                 else:
-                                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                    if 64<=j<=65:
+                                        new_j = j+ index*128
+                                        addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                        self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+    
+                                    else:
+                                        self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
     def Gen_page_2M(self):
         if self.multi_page == 0:
             self.tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="tlb_base") # allocate 4KB for PML4E, one entry include 512G.
@@ -336,45 +347,172 @@ class Page(Util):
 
            
     def Gen_ept_2M_addr(self):
-        
-        self.ept_tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_tlb_base") # allocate 4KB for PML4E, one entry include 512G.
-        self.ept_pdpte = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pdpte") # allocate 4KB for PDPTE, all the PML4E point to the same pdpte base. 
-        self.ept_pde0 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde0")
-        self.ept_pde1 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde1")
-        self.ept_pde2 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde2")
-        self.ept_pde3 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde3") # allocate 4*4KB for PDE, PDPTE(0-3) use different PDE 
-
+        if self.multi_ept == 0:
+            self.ept_tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_tlb_base") # allocate 4KB for PML4E, one entry include 512G.
+            self.ept_pdpte = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pdpte") # allocate 4KB for PDPTE, all the PML4E point to the same pdpte base. 
+            self.ept_pde0 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde0")
+            self.ept_pde1 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde1")
+            self.ept_pde2 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde2")
+            self.ept_pde3 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde3") # allocate 4*4KB for PDE, PDPTE(0-3) use different PDE 
+        else:
+            self.ept_tlb_base=[]
+            self.ept_pdpte=[]
+            self.ept_pde0=[]
+            self.ept_pde1=[]
+            self.ept_pde2=[]
+            self.ept_pde3=[]
+            for i in range(0,self.threads):
+                ept_tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_tlb_base_%d"%(i)) # allocate 4KB for PML4E, one entry include 512G.
+                ept_pdpte = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pdpte_%d"%(i)) # allocate 4KB for PDPTE, all the PML4E point to the same pdpte base. 
+                ept_pde0 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde0_%d"%(i))
+                ept_pde1 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde1_%d"%(i))
+                ept_pde2 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde2_%d"%(i))
+                ept_pde3 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="ept_pde3_%d"%(i)) # allocate 4*4KB for PDE, PDPTE(0-3) use different PDE
+#                if self.intel:
+#                    intel_id = i * 2
+#                    self.Text_write("@%s[%d].cr3 = 0x%016x"%(self.page_info_pointer["name"],intel_id,tlb_base["start"]))
+#                else:
+#                    self.Text_write("@%s[%d].cr3 = 0x%016x"%(self.page_info_pointer["name"],i,tlb_base["start"]))
+                self.ept_tlb_base.append(ept_tlb_base)
+                self.ept_pdpte.append(ept_pdpte)
+                self.ept_pde0.append(ept_pde0)
+                self.ept_pde1.append(ept_pde1)
+                self.ept_pde2.append(ept_pde2)
+                self.ept_pde3.append(ept_pde3)
+                del ept_tlb_base,ept_pdpte,ept_pde0,ept_pde1,ept_pde2,ept_pde3            
                     
     def Write_ept_2M(self):
-        ept_pdes = [self.ept_pde0,self.ept_pde1,self.ept_pde2,self.ept_pde3]
-        self.Vars_write(self.ept_tlb_base["name"],self.ept_tlb_base["start"])
-        #self.Instr_write("mov eax,$%s"%(self.ept_tlb_base["name"]))
-        #self.Instr_write("mov cr3,eax")
-        self.Text_write("$ept_tlb_pointer = INIT_TLB $%s"%(self.ept_tlb_base["name"]))
-
-
-        for i in range(0,512):
-            if i == 0:
-                self.Text_write("EPT_PAE64_PML4E\t%d\t\t0x0\t0x%05x007"%(i,self.ept_pdpte["start"]/self.ept_pdpte["size"]))
-            else:
-                self.Text_write("EPT_PAE64_PML4E\t%d\t\t0x0\t0x%05x007\t0"%(i,self.ept_pdpte["start"]/self.ept_pdpte["size"]))
-                
-        for i in range(0,512):
-            if 0x0 <= i <=0x3:
-                self.Text_write("EPT_PAE64_PDPT\t0\t%d\t0x0\t0x%05x007"%(i,ept_pdes[i%4]["start"]/ept_pdes[i%4]["size"])) 
-            else:
-                self.Text_write("EPT_PAE64_PDPT\t0\t%d\t0x0\t0x%05x007\t%d"%(i,ept_pdes[i%4]["start"]/ept_pdes[i%4]["size"],i%4))
-                
-        for i in range(0,4):
-            for j in range(0,512):
-                addr = (j*0x200000+i*0x40000000)/0x1000
-                if i == 0x3:
-                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
-                elif i == 0x1:
-                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+        if self.multi_ept == 0:
+            ept_pdes = [self.ept_pde0,self.ept_pde1,self.ept_pde2,self.ept_pde3]
+            self.Vars_write(self.ept_tlb_base["name"],self.ept_tlb_base["start"])
+            #self.Instr_write("mov eax,$%s"%(self.ept_tlb_base["name"]))
+            #self.Instr_write("mov cr3,eax")
+            self.Text_write("$ept_tlb_pointer = INIT_TLB $%s"%(self.ept_tlb_base["name"]))
+    
+    
+            for i in range(0,512):
+                if i == 0:
+                    self.Text_write("EPT_PAE64_PML4E\t%d\t\t0x0\t0x%05x007"%(i,self.ept_pdpte["start"]/self.ept_pdpte["size"]))
                 else:
-                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))# for ept, if want to ignore pat, need to set ipat = 1
-        self.Text_write("EPT $ept_tlb_pointer")#this cmd must put the finall for ept, but not mush for page          
+                    self.Text_write("EPT_PAE64_PML4E\t%d\t\t0x0\t0x%05x007\t0"%(i,self.ept_pdpte["start"]/self.ept_pdpte["size"]))
+                    
+            for i in range(0,512):
+                if 0x0 <= i <=0x3:
+                    self.Text_write("EPT_PAE64_PDPT\t0\t%d\t0x0\t0x%05x007"%(i,ept_pdes[i%4]["start"]/ept_pdes[i%4]["size"])) 
+                else:
+                    self.Text_write("EPT_PAE64_PDPT\t0\t%d\t0x0\t0x%05x007\t%d"%(i,ept_pdes[i%4]["start"]/ept_pdes[i%4]["size"],i%4))
+                    
+            for i in range(0,4):
+                for j in range(0,512):
+                    addr = (j*0x200000+i*0x40000000)/0x1000
+                    if i == 0x3:
+                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
+                    elif i == 0x1:
+                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+                    else:
+                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))# for ept, if want to ignore pat, need to set ipat = 1
+            self.Text_write("EPT $ept_tlb_pointer")#this cmd must put the finall for ept, but not mush for page
+        else:
+            if self.c_gen == 0:
+                for index in range(0,len(self.ept_tlb_base)):
+                    ept_pdes = [self.ept_pde0[index],self.ept_pde1[index],self.ept_pde2[index],self.ept_pde3[index]]
+                    self.Vars_write(self.ept_tlb_base[index]["name"],self.ept_tlb_base[index]["start"])
+                    self.Text_write("$ept_tlb_pointer_%d = INIT_TLB $%s"%(index,self.ept_tlb_base[index]["name"]))
+#                    if index == 0:
+#                        self.Instr_write("mov eax,$%s"%(self.tlb_base[index]["name"]))
+#                        self.Instr_write("mov cr3,eax")
+#                        self.Text_write("PAGING $tlb_pointer_0")
+                    for i in range(0,512):
+                        if i == 0:
+                            self.Text_write("EPT_PAE64_PML4E\t%d\t\t0x0\t0x%05x007"%(i,self.ept_pdpte[index]["start"]/self.ept_pdpte[index]["size"]))
+                        else:
+                            self.Text_write("EPT_PAE64_PML4E\t%d\t\t0x0\t0x%05x007\t0"%(i,self.ept_pdpte[index]["start"]/self.ept_pdpte[index]["size"]))
+                            
+                    for i in range(0,512):
+                        if 0x0 <= i <=0x3:
+                            self.Text_write("EPT_PAE64_PDPT\t0\t%d\t0x0\t0x%05x007"%(i,ept_pdes[i%4]["start"]/ept_pdes[i%4]["size"])) 
+                        else:
+                            self.Text_write("EPT_PAE64_PDPT\t0\t%d\t0x0\t0x%05x007\t%d"%(i,ept_pdes[i%4]["start"]/ept_pdes[i%4]["size"],i%4))
+                            
+                    for i in range(0,4):
+                        for j in range(0,512):
+                            addr = (j*0x200000+i*0x40000000)/0x1000
+                            if i == 0x3:
+                                self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
+                            elif i == 0x1 or i == 0x2:
+                                if j<128:
+                                    new_j = j + index*128
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                elif 128<=j<256:
+                                    new_j = j + (index-1)*128
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                elif 256<=j<384:
+                                    new_j = j+ (index-2)*128
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                else:
+                                    new_j = j+ (index-3)*128
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                                    
+                            else:
+                                self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+                    #self.Text_write("EPT $ept_tlb_pointer_%d"%(index))#this cmd must put the finall for ept, but not mush for page
+            else:
+                #csmith_page_num = 2 , 3
+                #offset = 128
+                for index in range(0,len(self.ept_tlb_base)):
+                    ept_pdes = [self.ept_pde0[index],self.ept_pde1[index],self.ept_pde2[index],self.ept_pde3[index]]
+                    self.Vars_write(self.ept_tlb_base[index]["name"],self.ept_tlb_base[index]["start"])
+                    self.Text_write("$ept_tlb_pointer_%d = INIT_TLB $%s"%(index,self.ept_tlb_base[index]["name"]))
+#                    if index == 0:
+#                        self.Instr_write("mov eax,$%s"%(self.tlb_base[index]["name"]))
+#                        self.Instr_write("mov cr3,eax")
+#                        self.Text_write("PAGING $tlb_pointer_0")
+                    for i in range(0,512):
+                        if i == 0:
+                            self.Text_write("EPT_PAE64_PML4E\t%d\t\t0x0\t0x%05x007"%(i,self.ept_pdpte[index]["start"]/self.ept_pdpte[index]["size"]))
+                        else:
+                            self.Text_write("EPT_PAE64_PML4E\t%d\t\t0x0\t0x%05x007\t0"%(i,self.ept_pdpte[index]["start"]/self.ept_pdpte[index]["size"]))
+                            
+                    for i in range(0,512):
+                        if 0x0 <= i <=0x3:
+                            self.Text_write("EPT_PAE64_PDPT\t0\t%d\t0x0\t0x%05x007"%(i,ept_pdes[i%4]["start"]/ept_pdes[i%4]["size"])) 
+                        else:
+                            self.Text_write("EPT_PAE64_PDPT\t0\t%d\t0x0\t0x%05x007\t%d"%(i,ept_pdes[i%4]["start"]/ept_pdes[i%4]["size"],i%4))
+                            
+                    for i in range(0,4):
+                        for j in range(0,512):
+                            if self.vmx_client_mode == "long_mode":
+                                addr = (j*0x200000+i*0x40000000)/0x1000
+                                if i == 0x3:
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
+                                elif i == 0x1 or i == 0x2:
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                                    
+                                else:
+                                    if 2<=j<=3:
+                                        new_j = j+ index*128
+                                        addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+    
+                                    else:
+                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                            else:
+                                addr = (j*0x200000+i*0x40000000)/0x1000
+                                if i == 0x3:
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
+                                elif i == 0x1 or i == 0x2:
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                                    
+                                else:
+                                    if 64<=j<=65:
+                                        new_j = j+ index*128
+                                        addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+    
+                                    else:
+                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                               
+                    #self.Text_write("EPT $ept_tlb_pointer_%d"%(index))#this cmd must put the finall for ept, but not mush for page                   
    
     def Gen_page_1G(self): # intel platform use this page pattern fails
 

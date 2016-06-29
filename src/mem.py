@@ -114,10 +114,14 @@ class Mem(Util):
                     #debug("update_mem_1 start addr is 0x%x, end addr is 0x%x and size is 0x%x"%(update_mem_1["start"],update_mem_1["start"]+update_mem_1["size"],update_mem_1["size"]))
         if n > 1:
             error("Error mem %s start is %x and size is %x is in above one range!"%(selected_mem["name"],selected_mem["start"],selected_mem["size"]))
+            self.check_selected_mem()
             self.Error_exit("Update mem error!")
+
         elif n == 0:
             error("Error mem %s start is %x and size is %x not in any range!"%(selected_mem["name"],selected_mem["start"],selected_mem["size"]))
-            self.Error_exit("Update mem error!")            
+            self.check_selected_mem()
+            self.Error_exit("Update mem error!")
+
         else:
             pass
         
