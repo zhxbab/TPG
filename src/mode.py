@@ -47,12 +47,12 @@ class Mode(Util):
                     if i == 0:
                         for k in range(0,self.threads):
                             if k != 0:
-                                self.mpg.Apply_fix_mem("csmith_code_%d"%(i),0x400000+128*0x200000*k,0x400000)
+                                self.mpg.Apply_fix_mem("csmith_code_%d"%(k),0x400000+128*0x200000*k,0x400000)# 0x400000 and 0x600000
                 else:
                     if i == 0:
                         for k in range(0,self.threads):
                             if k != 0:
-                                self.mpg.Apply_fix_mem("csmith_code_%d"%(i),0x8000000+128*k*0x400000,0x400000)                    
+                                self.mpg.Apply_fix_mem("csmith_code_%d"%(k),0x8000000+128*k*0x400000,0x400000)                    
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
                 self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x20000000,end=0x40000000,name="user_code_seg_T%d"%(i))
 #                self.Comment("##########Initial stack###########")

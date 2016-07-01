@@ -408,9 +408,9 @@ class Page(Util):
                     if i == 0x3:
                         self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
                     elif i == 0x1:
-                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x1B7"%(i,j,addr))#ept is different from 2M page
                     else:
-                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))# for ept, if want to ignore pat, need to set ipat = 1
+                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))# for ept, if want to ignore pat, need to set ipat = 1
             self.Text_write("EPT $ept_tlb_pointer")#this cmd must put the finall for ept, but not mush for page
         else:
             if self.c_gen == 0:
@@ -443,21 +443,21 @@ class Page(Util):
                                 if j<128:
                                     new_j = j + index*128
                                     addr = (new_j*0x200000+i*0x40000000)/0x1000
-                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
                                 elif 128<=j<256:
                                     new_j = j + (index-1)*128
                                     addr = (new_j*0x200000+i*0x40000000)/0x1000
-                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
                                 elif 256<=j<384:
                                     new_j = j+ (index-2)*128
                                     addr = (new_j*0x200000+i*0x40000000)/0x1000
-                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
                                 else:
                                     new_j = j+ (index-3)*128
                                     addr = (new_j*0x200000+i*0x40000000)/0x1000
-                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                                    
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))                                    
                             else:
-                                self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+                                self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x1B7"%(i,j,addr))
                     #self.Text_write("EPT $ept_tlb_pointer_%d"%(index))#this cmd must put the finall for ept, but not mush for page
             else:
                 #csmith_page_num = 2 , 3
@@ -489,29 +489,29 @@ class Page(Util):
                                 if i == 0x3:
                                     self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
                                 elif i == 0x1 or i == 0x2:
-                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                                    
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))                                    
                                 else:
                                     if 2<=j<=3:
                                         new_j = j+ index*128
                                         addr = (new_j*0x200000+i*0x40000000)/0x1000
-                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
     
                                     else:
-                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
                             else:
                                 addr = (j*0x200000+i*0x40000000)/0x1000
                                 if i == 0x3:
                                     self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
                                 elif i == 0x1 or i == 0x2:
-                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                                    
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))                                    
                                 else:
                                     if 64<=j<=65:
                                         new_j = j+ index*128
                                         addr = (new_j*0x200000+i*0x40000000)/0x1000
-                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
+                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
     
                                     else:
-                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                               
+                                        self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))                               
                     #self.Text_write("EPT $ept_tlb_pointer_%d"%(index))#this cmd must put the finall for ept, but not mush for page                   
    
     def Gen_page_1G(self): # intel platform use this page pattern fails

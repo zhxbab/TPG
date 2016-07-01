@@ -144,7 +144,8 @@ class Vmx_csmith(Test_generator):
             ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num)
         if ret_gen_asm_code:
             del_asm = self.asm_list.pop()
-            os.system("rm -f %s"%(self.asm_file))
+            #info("rm -f %s"%(del_asm))
+            os.system("rm -f %s"%(del_asm))
             warning("%s's c code can't be executed successfully, so remove it from asm list"%(del_asm))
         return ret_gen_asm_code 
             
@@ -175,7 +176,7 @@ class Vmx_csmith(Test_generator):
         
     def Start_user_code(self,thread):
         self.Comment("##Usr code")
-        self.Instr_write("call [eax+&@%s]"%(self.vmx_mode_code.thread_info_pointer["name"]))
+        #self.Instr_write("call [eax+&@%s]"%(self.vmx_mode_code.thread_info_pointer["name"]))
         self.Text_write("org 0x%x"%(self.user_code_segs[thread]["start"]))
         self.Tag_write(self.user_code_segs[thread]["name"])
         self.Text_write("use 64")

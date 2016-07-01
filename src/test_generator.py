@@ -255,7 +255,8 @@ class Test_generator(Args,Util):
         ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num)
         if ret_gen_asm_code:
             del_asm = self.asm_list.pop()
-            os.system("rm -f %s"%(self.asm_file))
+            #warning("rm -f %s"%(self.asm_file))
+            os.system("rm -f %s"%(del_asm))
             warning("%s's c code can't be executed successfully, so remove it from asm list"%(del_asm))
         return ret_gen_asm_code
      

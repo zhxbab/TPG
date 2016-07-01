@@ -193,7 +193,53 @@ class Vmx_mode(Mode):
         self.ptg.Write_ept_2M()
 
 
-
+    def Set_user_code_stack(self,c_gen):
+        self.Comment("###########################Thread Info######################")
+        stack_align = 0x100
+        self.stack_segs = []
+        self.user_code_segs = []
+        self.thread_info_pointer = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="thread_info_pointer")
+        self.ptg.thread_info_pointer = self.thread_info_pointer
+        self.Text_write("org 0x%x"%(self.thread_info_pointer["start"]))
+        self.Text_write("@%s = new std::thread_info[%d]"%(self.thread_info_pointer["name"],8))#support 8 threads
+        for i in range(0,self.threads):
+            if c_gen == 0x0:
+                self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
+                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x1000000,end=0x40000000,name="user_code_seg_T%d"%(i))
+                #because if enable multi page, above addr 0x40000000 is different for different core 
+            else:
+                if self.vmx_client_mode == "long_mode":
+                    if i == 0:
+                        for k in range(0,self.threads):
+                            if k != 0:
+                                self.mpg.Apply_fix_mem("csmith_code_%d"%(k),0x400000+128*0x200000*k,0x400000)# 0x400000 and 0x600000
+                else:
+                    if i == 0:
+                        for k in range(0,self.threads):
+                            if k != 0:
+                                self.mpg.Apply_fix_mem("csmith_code_%d"%(k),0x8000000+128*k*0x400000,0x400000)                    
+                self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
+                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x20000000,end=0x40000000,name="user_code_seg_T%d"%(i))
+#                self.Comment("##########Initial stack###########")
+#                self.Text_write("org 0x%08x"%(self.stack_seg["start"]))
+#                for j in range(0,0x100000,8):
+#                    self.Text_write("dq 0x0000000000000000")
+#                self.Comment("##########Initial stack end###########")
+            if self.mode == "long_mode":
+                self.stack_seg["end"] = self.stack_seg["start"]+self.stack_seg["size"]-stack_align+0x8
+            else:
+                self.stack_seg["end"] = self.stack_seg["start"]+self.stack_seg["size"]-stack_align+0x4
+            # because need to execute call user_code, esp will -4,
+            #so in there resever some space
+            self.stack_segs.append(self.stack_seg)
+            self.user_code_segs.append(self.user_code_seg)
+            if self.intel:
+                intel_id = i * 2
+                self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],intel_id,self.stack_seg["end"]))
+                self.Text_write("@%s[%d].code = 0x%016x"%(self.thread_info_pointer["name"],intel_id,self.user_code_seg["start"]))
+            else:
+                self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],i,self.stack_seg["end"]))
+                self.Text_write("@%s[%d].code = 0x%016x"%(self.thread_info_pointer["name"],i,self.user_code_seg["start"]))
 
 
  
