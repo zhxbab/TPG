@@ -76,6 +76,7 @@ class Test_generator(Args,Util):
         self.ptg.mode = self.mode
         if self.c_gen:
             self.c_parser.multi_page = self.multi_page
+            #info("c plus is %d"%(self.c_parser.c_plus))
         self.ptg.multi_page = self.multi_page
         [self.stack_segs,self.user_code_segs] = self.mode_code.Mode_code(self.mode,self.c_gen,self.disable_avx,self.disable_pcid)
 
@@ -145,13 +146,13 @@ class Test_generator(Args,Util):
             error("Gen vector fail, Please check!")
             self.fail_list.append(avp_file)
             if self.c_gen:
-                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
-                os.system("cp %s* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
-                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
-                os.system("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                info("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
+                os.system("mv %s* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
+                info("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                os.system("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
             else:
-                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
-                os.system("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))   
+                info("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                os.system("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))   
         else:
             self.ic_file = avp_file.replace(".avp",".ic")
             gzip_cmd = "gzip %s"%(self.ic_file)
@@ -248,17 +249,6 @@ class Test_generator(Args,Util):
         
     def Vmx_load_asm_code(self,thread,num):
         self.c_parser.Vmx_load_c_asm(thread,self.hlt_code,num)
-    
-    def Gen_asm_code(self,thread, num):
-        self.c_parser = C_parser(self.bin_path,self.avp_dir_path,self.mode,self.instr_manager,self.mpg)
-        self.c_parser.asm_file = self.asm_file
-        ret_gen_asm_code = self.c_parser.Gen_c_asm(thread,num)
-        if ret_gen_asm_code:
-            del_asm = self.asm_list.pop()
-            #warning("rm -f %s"%(self.asm_file))
-            os.system("rm -f %s"%(del_asm))
-            warning("%s's c code can't be executed successfully, so remove it from asm list"%(del_asm))
-        return ret_gen_asm_code
      
     def Updata_interrupt(self,index,handler):
         self.interrupt.Update_interrupt_handler(index,handler)
@@ -288,3 +278,49 @@ class Test_generator(Args,Util):
             info(rmcmd)
             os.system(rmcmd)
             os.system("rm -f %s.del"%(self.avp_dir_path))
+            
+    def Init_PMC(self,thread):
+        #### set PMC0
+        self.Instr_write("mov ecx,0x186",thread)
+        self.Instr_write("rdmsr",thread)
+        self.Instr_write("or eax,0x0003003C",thread)
+        self.Instr_write("and eax,0x0003003C",thread)
+        self.Instr_write("wrmsr",thread)
+        ####enable global ctrl       
+        self.Instr_write("mov ecx,0x38f",thread)
+        self.Instr_write("rdmsr",thread)
+        self.Instr_write("or eax,0x1",thread)
+        self.Instr_write("wrmsr",thread)
+    def Enable_PMC0(self,thread):
+        self.Instr_write("mov ecx,0x186",thread)
+        self.Instr_write("rdmsr",thread)
+        self.Instr_write("or eax,0x400000",thread)
+        self.Instr_write("wrmsr",thread)
+        
+    def Disable_PMC0(self,thread):
+        self.Instr_write("mov ecx,0x186",thread)
+        self.Instr_write("rdmsr",thread)
+        self.Instr_write("or eax,0xBfffff",thread)
+        self.Instr_write("wrmsr",thread)
+        
+    def Read_PMC0(self,addr,thread):
+        self.Instr_write("mov eax,0x0")
+        #self.Instr_write("cpuid")
+        self.Instr_write("mov ecx,0x0",thread)
+        self.Instr_write("rdpmc",thread)
+        self.Instr_write("mov [%s],eax"%(addr),thread)
+        self.Instr_write("mov [%s+0x4],edx"%(addr),thread)
+
+    def Set_mode(self,mode,threads,force_disable_multi_page = 0):
+        if mode == "protect_mode":
+            self.page_mode = "4MB"
+        else:
+            self.page_mode = "2MB"
+        self.mode = mode
+        if threads == 1:
+            self.multi_page = 0
+        else:
+            if force_disable_multi_page == 1:
+                self.multi_page = 0
+            else:
+                self.multi_page = 1

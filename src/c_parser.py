@@ -18,7 +18,7 @@ class C_parser(Util):
         self.readelf = "%s/readelf"%(bin_path)
         self.gcc = "%s/gcc"%(bin_path)
         self.clang = "%s/clang"%(bin_path)
-        self.gcc_cplus = "%s/gcc++"%(bin_path)
+        self.gcc_cplus = "%s/g++"%(bin_path)
         self.clang_cplus = "%s/clang++"%(bin_path)
         self.avp_dir_path = avp_dir_path
         self.c_compiler = [self.gcc, self.clang][random.randint(0,1)]
@@ -31,10 +31,17 @@ class C_parser(Util):
         self.c_code_mem_info ={}
         self.c_code_rel_info = []
         self.multi_page=0
+        self.c_plus = False
         
     def Gen_c_asm(self,thread,num,optimize=None):
         self.base_name = "c_code_%d"%(num)
-        c_file = "c_code_%d.c"%(num)
+        #info("c plus 99 is %d"%(self.c_plus))
+        if not self.c_plus:
+            c_file = "c_code_%d.c"%(num)
+            csmith_extra_cmd ="--max-funcs 10"
+        else:
+            c_file = "c_code_%d.cpp"%(num)
+            csmith_extra_cmd ="--max-funcs 10 --lang-cpp"         
         elf_file = "c_code_%d.elf"%(num)
         disasm_file = "c_code_%d"%(num)
         #self.disasm_file = disasm_file
@@ -49,18 +56,28 @@ class C_parser(Util):
             extra_cmd = "-m32"
         else:
             extra_cmd = ""
-        info("%s -o c_code_%d.c"%(self.cmsith,num))
-        csmith_extra_cmd ="--max-funcs 10"
+        info("%s %s -o %s"%(self.cmsith,csmith_extra_cmd,c_file))
         if os.system("%s %s -o %s"%(self.cmsith,csmith_extra_cmd,c_file)):
             self.Error_exit("Execute csmith error!")
-        info("%s -w %s -%s -static -fPIC %s -o %s"%(self.c_compiler,extra_cmd,self.optimize,c_file,elf_file))
-        if os.system("%s -w %s -%s -static -fPIC %s -o %s"%(self.c_compiler,extra_cmd,self.optimize,c_file,elf_file)):
-            self.Error_exit("Execute %s error!"%(self.c_compiler)) # use -static need glibc-static.x86-64 and i686
+        if not self.c_plus:
+            info("%s -w %s -%s -static -fPIC %s -o %s"%(self.c_compiler,extra_cmd,self.optimize,c_file,elf_file))
+            if os.system("%s -w %s -%s -static -fPIC %s -o %s"%(self.c_compiler,extra_cmd,self.optimize,c_file,elf_file)):
+                os.system("rm -f %s*"%(self.base_name))
+                os.chdir("../")
+                return 1
+                #self.Error_exit("Execute %s error!"%(self.c_compiler)) # use -static need glibc-static.x86-64 and i686
+        else:
+            info("%s -w %s -%s -static -fPIC %s -o %s"%(self.cplus_compiler,extra_cmd,self.optimize,c_file,elf_file))
+            if os.system("%s -w %s -%s -static -fPIC %s -o %s"%(self.cplus_compiler,extra_cmd,self.optimize,c_file,elf_file)):
+                #self.Error_exit("Execute %s error!"%(self.cplus_compiler)) # use -static need glibc-static.x86-64 and i686
+                os.system("rm -f %s*"%(self.base_name))
+                os.chdir("../")
+                return 1            
         csmith_cmd = "./%s"%(elf_file)
         csmith_p = subprocess.Popen(csmith_cmd,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         ret = csmith_p.poll()
         info("The csmith subprocess pid is %d"%(csmith_p.pid))
-        t = threading.Timer(10,self.timer_function,(csmith_p,))
+        t = threading.Timer(5,self.timer_function,(csmith_p,))
         t.start()
         while ret == None and self.stop_flag == 0:
             ret = csmith_p.poll()

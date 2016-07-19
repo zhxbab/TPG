@@ -40,7 +40,7 @@ class Mode(Util):
         for i in range(0,self.threads):
             if c_gen == 0x0:
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
-                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x1000000,end=0x40000000,name="user_code_seg_T%d"%(i))
+                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x1000000,end=0x10000000,name="user_code_seg_T%d"%(i))
                 #because if enable multi page, above addr 0x40000000 is different for different core 
             else:
                 if self.mode == "long_mode":

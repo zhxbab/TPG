@@ -3,7 +3,7 @@
 ' regression_csmith module '
 __author__ = 'Ken Zhao'
 ########################################################
-# regression_csmith module is base class for regression csmith code
+# Regression_vmx_csmith module 
 ########################################################
 import sys, os, re, random, time
 sys.path.append("/%s/../src"%(sys.path[0]))
@@ -21,7 +21,7 @@ class Regression_vmx_csmith(Vmx_csmith):
         Vmx_csmith.__init__(self,args)
         
     def Parse_input(self,args):
-        args_parser = OptionParser(usage="Regression_csmith *args, **kwargs", version="%Regression_csmith 0.1") #2016-04-25 version 0.1
+        args_parser = OptionParser(usage="Regression_vmx_csmith *args, **kwargs", version="%Regression_vmx_csmith 0.1") #2016-04-25 version 0.1
 #        args_parser.add_option("--seed", dest="seed", help="Set the seed. [default: %default]\nFor the default value, tpg will generate random seed instead."\
 #                          , type = "int", default = 0x0)
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
@@ -41,7 +41,7 @@ class Regression_vmx_csmith(Vmx_csmith):
         self.c_gen = 1
         self.vector_nums = self.args_option.nums
         self.very_short_cmd = "-very-short"
-        self.very_short_num = "400000000"
+        self.very_short_num = "50000000"
         self.regression = Regression(self.device)
         self.elf_file = None
         self.disable_avx = 0
@@ -49,7 +49,11 @@ class Regression_vmx_csmith(Vmx_csmith):
         self.multi_page = 0
         self.multi_ept = 0
         self.intel = 0
-        
+        if random.randint(0,1):
+            self.c_plus = True
+        else:
+            self.c_plus = False 
+                    
     def Regression_vector(self):
         time = 2000
         self.c_code_base_name = os.path.join(self.avp_dir_path,self.c_parser.base_name)
@@ -59,8 +63,43 @@ class Regression_vmx_csmith(Vmx_csmith):
     def Set_fail_dir(self):
         self.regression.fail_dir = self.fail_dir
 
-    def Set_mode(self,mode,page_mode,vmx_client_mode,multi_ept):
-        self.mode = mode
-        self.page_mode = page_mode
+    def Set_mode(self,host_mode,vmx_client_mode,threads):
+        if host_mode == "protect_mode":
+            self.page_mode = "4MB"
+        else:
+            self.page_mode = "2MB"
+        self.mode = host_mode
+        #info(self.mode)
         self.vmx_client_mode = vmx_client_mode
-        self.multi_ept = multi_ept
+        if threads == 1:
+            self.multi_ept = 0
+        else:
+            self.multi_ept = 1
+        self.multi_page = 0
+        
+##############################################MAIN##########################################
+if __name__ == "__main__":
+    threads = [1,4][random.randint(0,1)]
+    host_mode = "long_mode"
+    vmx_client_mode = ["long_mode","compatibility_mode"][random.randint(0,1)]
+    tests = Regression_vmx_csmith(sys.argv[1:])
+    tests.Set_mode(host_mode,vmx_client_mode,threads)
+    tests.Fix_threads(threads)
+    tests.Create_dir()
+    tests.Gen_del_file()
+    for i in range(0,tests.args_option.nums):
+        tests.Reset_asm()
+        tests.Create_asm(i)
+        tests.Initial_interrupt()
+        if tests.Gen_asm_code(0,i):
+            continue
+        tests.Gen_mode_code()
+        for j in range(0,tests.threads):
+            tests.Start_user_code(j)
+            tests.Vmx_load_asm_code(j,i)
+        #tests.Instr_write("vmxon [$vmxon_ptr]",0)
+        tests.Gen_hlt_code()
+        tests.c_parser.c_code_asm.close()
+        tests.Gen_vector()
+        tests.Regression_vector()
+    tests.Remove_dir()

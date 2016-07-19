@@ -149,3 +149,18 @@ class Vmx_basic(Test_generator):
         #self.Text_write("@vmcs.guest_cr0= 0xC0000031")
         #self.Text_write("&TO_MEMORY_ALL()")
         pass
+##############################################MAIN##########################################
+if __name__ == "__main__":
+    tests = Vmx_basic(sys.argv[1:])
+    tests.Create_dir()
+    tests.Gen_del_file()
+    for i in range(0,tests.args_option.nums):
+        tests.Reset_asm()
+        tests.Create_asm(i)
+        tests.Initial_interrupt()
+        tests.Gen_mode_code()
+        for j in range(0,tests.threads):
+            tests.Start_user_code(j)
+        tests.Gen_hlt_code(j)
+        tests.Gen_vector()
+    tests.Gen_pclmsi_file_list()

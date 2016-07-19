@@ -41,13 +41,17 @@ class Regression_csmith(Csmith):
         self.c_gen = 1
         self.vector_nums = self.args_option.nums
         self.very_short_cmd = "-very-short"
-        self.very_short_num = "400000000"
+        self.very_short_num = "50000000"
         self.regression = Regression(self.device)
         self.elf_file = None
         self.disable_avx = 0
         self.disable_pcid = 0
         self.intel = 0
         self.multi_page = 0
+        if random.randint(0,1):
+            self.c_plus = True
+        else:
+            self.c_plus = False            
         
     def Regression_vector(self):
         time = 300
@@ -60,8 +64,30 @@ class Regression_csmith(Csmith):
             error("Not env para LOCATION_CVREG_VECTOR")
             sys.exit(0)
 
-    def Set_mode(self,mode,page_mode,multi_page=0):
-        self.mode = mode
-        self.page_mode = page_mode
-        self.multi_page = multi_page
+        
+##############################################MAIN##########################################
+if __name__ == "__main__":
+    threads = [1,4][random.randint(0,1)]
+    mode = ["long_mode","protect_mode","compatibility_mode"][random.randint(0,2)]
+    tests = Regression_csmith(sys.argv[1:])
+    tests.Set_mode(mode,threads,0)
+    tests.Fix_threads(threads)
+    tests.Create_dir()
+    tests.Set_fail_dir()
+    tests.Gen_del_file()
+    for i in range(0,tests.vector_nums):
+        tests.Reset_asm()
+        tests.Create_asm(i)
+        tests.Initial_interrupt()
+        if tests.Gen_asm_code(0,i):
+            continue
+        tests.Gen_mode_code()
+        for j in range(0,tests.threads):
+            tests.Start_user_code(j)
+            tests.Load_asm_code(j,i)
+            tests.Gen_hlt_code(j)
+        tests.c_parser.c_code_asm.close()
+        tests.Gen_vector()
+        tests.Regression_vector()
+    tests.Remove_dir()
 
