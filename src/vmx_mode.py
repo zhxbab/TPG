@@ -52,12 +52,12 @@ class Vmx_mode(Mode):
     def Set_vmcs_data(self):
         #self.Text_write("include \"%s/std_vmx_code.inc\""%(self.inc_path))
         for i in range(0,self.threads):
-            vmxon = self.mpg.Apply_mem(0x1000,0x1000,start=0x1000000,end=0x8000000,name="vmxon_%d"%(i)) #vmxon is most 0x1000
+            vmxon = self.mpg.Apply_mem(0x2000,0x1000,start=0x1000000,end=0x8000000,name="vmxon_%d"%(i)) #vmxon is most 0x1000
             vmxon_pointer = self.mpg.Apply_mem(0x8,16,start=0x1000000,end=0x8000000,name="vmxon_pointer_%d"%(i))
-            vmcs = self.mpg.Apply_mem(0x1000,0x1000,start=0x1000000,end=0x8000000,name="vmcs_%d"%(i))
+            vmcs = self.mpg.Apply_mem(0x2000,0x1000,start=0x1000000,end=0x8000000,name="vmcs_%d"%(i))
             vmcs_pointer = self.mpg.Apply_mem(0x8,16,start=0x1000000,end=0x8000000,name="vmcs_pointer_%d"%(i))
             vmx_guest_entry_0 = self.mpg.Apply_mem(0x10000,16,start=0x1000000,end=0x8000000,name="vmx_guest_entry_0_%d"%(i))
-            vmcs_data = self.mpg.Apply_mem(0x1000,0x1000,start=0x1000000,end=0x8000000,name="vmcs_data_%d"%(i))# because some field has two id, so it is twice of vmcs
+            vmcs_data = self.mpg.Apply_mem(0x2000,0x1000,start=0x1000000,end=0x8000000,name="vmcs_data_%d"%(i))# because some field has two id, so it is twice of vmcs
             vmcs_initial_code = self.mpg.Apply_mem(0x1000,0x1000,start=0x1000000,end=0x8000000,name="vmcs_initial_code_%d"%(i))
             vmx_exit_addr = self.mpg.Apply_mem(0x200,0x20,start=0x1000000,end=0x8000000,name="vmx_exit_addr_%d"%(i))
             self.vmxon.append(vmxon)

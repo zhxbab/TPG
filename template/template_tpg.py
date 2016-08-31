@@ -26,7 +26,7 @@ class Template_tpg(Test_generator):
                           , type = "int", default = 0x0)
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
         args_parser.add_option("--intel", dest="intel", help="Support intel platform, APIC ID is 0,2,4,6", action="store_true", default = False)
-        args_parser.add_option("--no_very_short", dest="very_short", help="Change -very-short to short", action="store_true", default = False)
+        args_parser.add_option("--very_short", dest="very_short", help="Change -short to -very-short", action="store_true", default = False)
         args_parser.add_option("--disable_avx", dest="disable_avx", help="disable AVX for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--multi_page", dest="multi_page", help="enable_multi_page", action="store_true", default = False)       
@@ -73,7 +73,7 @@ class Template_tpg(Test_generator):
         self.c_gen = 0
         if self.args_option.very_short == True:
             self.very_short_cmd = "-very-short"
-            self.very_short_num = "10000000"
+            self.very_short_num = "1000000000"
         else:
             self.very_short_cmd = "-short"
             self.very_short_num = "100000"

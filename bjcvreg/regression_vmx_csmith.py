@@ -86,6 +86,7 @@ if __name__ == "__main__":
     tests.Set_mode(host_mode,vmx_client_mode,threads)
     tests.Fix_threads(threads)
     tests.Create_dir()
+    tests.Check_fail_dir()
     tests.Gen_del_file()
     for i in range(0,tests.args_option.nums):
         tests.Reset_asm()

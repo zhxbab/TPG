@@ -81,7 +81,7 @@ class Args:
         self.c_gen = self.args_option.c_gen
         if self.args_option.very_short == True:
             self.very_short_cmd = "-very-short"
-            self.very_short_num = "10000000"
+            self.very_short_num = "100000000"
         else:
             self.very_short_cmd = "-short"
             self.very_short_num = "100000"

@@ -51,6 +51,10 @@ class Pclmsi_spc(Test_generator):
         self.threads = 4
         self.very_short_cmd = "-short"
         self.very_short_num = "100000"
+        self.multi_page = 0
+        self.disable_avx = 0
+        self.disable_pcid = 0
+        
         
     def Load_ucode_patch(self):
 

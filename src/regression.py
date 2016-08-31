@@ -39,7 +39,8 @@ class Regression(Util):
         self.mail_num = 0
         self.sleep_timer_start = 0
         self.runpclmsi_time = 20
-        
+        self.skip_check_fail = False
+
     def Handle_vecor(self,ic_file,time,c_code_base_name=None):
         self.runpclmsi_time = time
         self.c_code_base_name = c_code_base_name
@@ -183,7 +184,8 @@ class Regression(Util):
             runpclmsi_p_ret = self.Do_runpclmsi(runpclmsi_cmd,self.runpclmsi_time)
             if runpclmsi_p_ret == 0x0:
                 info("PCLMSI SUCCESSFULLY")
-                result = self.Parse_pclmsi_log_jtrk("%s.jtrk"%(self.base_name))
+                if not self.skip_check_fail:
+                    result = self.Parse_pclmsi_log_jtrk("%s.jtrk"%(self.base_name))
                 if result:
                     #sys.exit(0) #for debug fail case.
                     break

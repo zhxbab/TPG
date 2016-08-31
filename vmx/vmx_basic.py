@@ -11,8 +11,9 @@ from logging import info, error, debug, warning, critical
 from test_generator import Test_generator
 from optparse import OptionParser
 from vmx_mode import Vmx_mode
+from simcmd import Simcmd
 #####################################################Sub Classes###########################
-class Vmx_basic(Test_generator):        
+class Vmx_basic(Test_generator):   
     def Parse_input(self,args):
         args_parser = OptionParser(usage="Vmx *args, **kwargs", version="%Vmx 0.1") #2016-04-25 version 0.1
         args_parser.add_option("-n","--nums", dest="nums", help="The vector nums."\
@@ -48,6 +49,7 @@ class Vmx_basic(Test_generator):
         self.disable_avx = False
         self.disable_pcid = False
         self.multi_page = 0 
+        self.simcmd = Simcmd(self.threads)     
         
     def Gen_mode_code(self):
         self.vmx_mode_code = Vmx_mode(self.hlt_code,self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel, self.interrupt,self.c_parser)
@@ -81,18 +83,17 @@ class Vmx_basic(Test_generator):
         self.Set_guest_entry(thread)
         self.vmx_mode_code.Exit_code_addr(thread)
         self.Set_exit_code(thread)
-        #del vmx_exit_addr
         
     def Set_exit_code(self,thread):
         self.Vmx_exit(thread)
         self.Text_write("jmp $%s"%(self.hlt_code["name"]))
         
-    def Vmx_initial(self,thread):
+    def Vmx_initial(self,thread): #Ivybridge cannot run the vmx code, but Skylake can
         self.Vmcs_extra_setting()
         self.Comment("#### enable cr4 bit 13 vmex")
         self.Instr_write("mov eax,cr4")
         self.Instr_write("bts eax,0xd")
-        self.Instr_write("mov cr4,eax")
+        self.Instr_write("mov cr4,eax")       
         self.Comment("#### initialize feature control msr ####")
         self.Instr_write("mov ecx, 0x3a")
         self.Instr_write("rdmsr")
@@ -102,8 +103,15 @@ class Vmx_basic(Test_generator):
         self.Tag_write("skip_wrmsr_%d"%(thread))
         self.Comment("#### initialize_revision_id ####")
         self.Set_vmcs_id(self.vmx_mode_code.vmxon[thread]["start"],self.vmx_mode_code.vmxon_pointer[thread]["start"])
-        self.Instr_write("vmxon [0x%x]"%(self.vmx_mode_code.vmxon_pointer[thread]["start"]),0)
-        
+        self.Instr_write("vmxon [0x%x]"%(self.vmx_mode_code.vmxon_pointer[thread]["start"]),thread)
+        if self.intel:
+            self.simcmd.Add_sim_cmd("at RDMSR 0x480 set msr 0x480 to 0x12:0x00",0,0) #Intel is about 0x12, 0x10
+            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x14"%((self.vmx_mode_code.vmxon[thread]["start"])),0,0)
+            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x1000"%(self.vmx_mode_code.vmcs[thread]["start"]),0,1)
+#        ### test #####
+#        self.Instr_write("vmxoff",thread)
+#        self.Instr_write("hlt",thread)      
+         
     def Vmx_vmcs_initial(self,thread):
         #info("vmcs_pointer_%d is 0x%x"%(thread,self.vmx_mode_code.vmcs_pointer[thread]["start"]))
         self.Set_vmcs_id(self.vmx_mode_code.vmcs[thread]["start"],self.vmx_mode_code.vmcs_pointer[thread]["start"])
@@ -123,8 +131,8 @@ class Vmx_basic(Test_generator):
         self.Instr_write("vmlaunch")
         
     def Vmx_exit(self,thread):
-        self.Instr_write("vmclear [0x%x]"%(self.vmx_mode_code.vmcs_pointer[thread]["start"]),0)
-        self.Instr_write("vmxoff",0)
+        self.Instr_write("vmclear [0x%x]"%(self.vmx_mode_code.vmcs_pointer[thread]["start"]),thread)
+        self.Instr_write("vmxoff",thread)
         
     def Set_vmcs_id(self,vmcs,vmcs_pointer):
         self.Msr_Read(0x480,0)
@@ -136,7 +144,7 @@ class Vmx_basic(Test_generator):
     def Set_guest_entry(self,thread):
         self.Text_write("org 0x%x"%(self.vmx_mode_code.vmx_guest_entry_0[thread]["start"]))
         self.Text_write("use 64")
-        for i in range(0,100):
+        for i in range(0,1000):
             self.Instr_write("mov r8,qword ptr [0x40000000]")
         #self.Instr_write("mov rbx,0x%x"%(self.vmx_mode_code.vmcs_data["start"]))
         #self.Instr_write("mov [rbx + disp32 &OFFSET(@std_vmcs_data.host_cr3)],0x%x"%(self.vmx_mode_code.ptg.tlb_base["start"]));
@@ -162,5 +170,6 @@ if __name__ == "__main__":
         for j in range(0,tests.threads):
             tests.Start_user_code(j)
         tests.Gen_hlt_code(j)
+        tests.simcmd.Simcmd_write(j)
         tests.Gen_vector()
     tests.Gen_pclmsi_file_list()

@@ -59,10 +59,6 @@ class Regression_csmith(Csmith):
         self.regression.Set_remove_flag()
         self.regression.Handle_vecor(self.ic_file,time,self.c_code_base_name)
             
-    def Set_fail_dir(self):
-        if os.getenv("LOCATION_CVREG_VECTOR") == None:
-            error("Not env para LOCATION_CVREG_VECTOR")
-            sys.exit(0)
 
         
 ##############################################MAIN##########################################
@@ -73,7 +69,7 @@ if __name__ == "__main__":
     tests.Set_mode(mode,threads,0)
     tests.Fix_threads(threads)
     tests.Create_dir()
-    tests.Set_fail_dir()
+    tests.Check_fail_dir()
     tests.Gen_del_file()
     for i in range(0,tests.vector_nums):
         tests.Reset_asm()

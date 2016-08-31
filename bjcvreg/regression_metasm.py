@@ -61,7 +61,7 @@ if __name__ == "__main__":
     tests.Fix_threads(threads)
     tests.Set_mode(mode,threads)    
     tests.Create_dir()
-    tests.Set_fail_dir()
+    tests.Check_fail_dir()
     tests.Gen_del_file()
     for i in range(0,tests.args_option.nums):
         tests.Reset_asm()

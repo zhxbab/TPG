@@ -14,9 +14,20 @@ class Simcmd(Util):
         self.ctrl = []
         self.ctrl_id = 0
         self.current_instr = [0]*4
-    def Add_sim_cmd(self,cmd,thread):
-        sim_cmd = "//sim: %s"%(cmd)
-        self.sim[thread].append(sim_cmd)
+        self.chain = [0,0,0,0,0,0,0,0]
+    def Add_sim_cmd(self,cmd, thread, chain=0):
+        if len(self.sim[thread]) == 0:
+            self.Create_sim_chain(thread)
+        if 0< len(self.sim[thread]) < chain+1:
+            for i in range(len(self.sim[thread]), chain+1):
+                self.Create_sim_chain(thread)
+            self.sim[thread][chain].append(cmd)
+        else:
+            self.sim[thread][chain].append(cmd)                      
+        
+    def Create_sim_chain(self,thread):
+        self.chain[thread] = self.chain[thread] + 1
+        self.sim[thread].append([])
         
     def Add_rem_cmd(self,cmd,thread):
         rem_cmd = "//rem: %s"%(cmd)
@@ -34,13 +45,15 @@ class Simcmd(Util):
                 
     
     def Simcmd_write(self,thread):
-        self.Comment("//sim: chain begin")
-        self.Comment("//sim: assume thread %d"%(thread))
-        for i in self.sim[thread]:
-            self.Comment(i)
-        self.Comment("//sim: chain end")
-        for i in self.rem[thread]:
-            self.Comment(i)
+        for chain in range(0, self.chain[thread]):
+            self.Comment("//sim: chain begin %d"%(chain))
+            self.Comment("//sim: assume thread %d"%(thread))
+            for i in self.sim[thread][chain]:
+                self.Comment("//sim: %s"%(i))
+            self.Comment("//sim: chain end")
+        for t in self.rem[thread]:
+            self.Comment("//rem: %s"%(i))
+
         
     def Ctrlcmd_write(self):
         for i in self.ctrl:

@@ -86,9 +86,10 @@ class Test_generator(Args,Util):
         else:
             intel_cnsim_cmd = " "
         cnsim_param_pclmsi = " "
-        cnsim_param_normal = "-ma %s -no-tbdm-warnings -va -no-mask-page -trait-change %s "%(self.very_short_num,self.very_short_cmd)
+        cnsim_param_normal = "-ma %s  -va -no-mask-page -trait-change %s "%(self.very_short_num,self.very_short_cmd)
         cnsim_param_mem = "-mem 0xF4 "
         cnsim_param_thread = "-threads %d "%(self.threads)
+        #-no-tbdm-warnings
         # remove no stack, -no-apic-intr -all-mem -addr-chk -memread-chk 
         self.cnsim_param = cnsim_param_pclmsi + cnsim_param_normal + cnsim_param_mem + cnsim_param_thread + intel_cnsim_cmd
         
@@ -324,3 +325,47 @@ class Test_generator(Args,Util):
                 self.multi_page = 0
             else:
                 self.multi_page = 1
+                
+    def Check_fail_dir(self):
+        if os.getenv("LOCATION_CVREG_VECTOR") == None:
+            error("Not env para LOCATION_CVREG_VECTOR")
+            sys.exit(0)
+    def Enable_apic(self,thread):
+        self.Instr_write("mov ecx,0x1b",thread)
+        self.Instr_write("rdmsr",thread)
+        self.Instr_write("bts eax,11",thread)
+        self.Instr_write("wrmsr",thread)
+        self.Instr_write("mov esi, 0xfee000f0",thread)
+        self.Instr_write("mov eax,[esi]",thread)
+        self.Instr_write("bts eax,8",thread)
+        self.Instr_write("mov ds:[esi],eax",thread)
+    def Set_PMC_vector(self,thread,vector):
+        self.Instr_write("mov esi,0xfee00340",thread)
+        self.Instr_write("mov [esi],0x000000%s"%(vector),thread)
+        self.Instr_write("mov esi,0xfee00080",thread)
+        self.Instr_write("xor eax,eax",thread)
+        self.Instr_write("mov [esi],eax",thread)
+        self.Instr_write("sti",thread)
+        
+    def PXP_PMC_setting(self,thread):
+        self.Msr_Write(0x38f,thread,eax=0,edx=0)
+        self.Msr_Write(0x390,thread,eax=7,edx=7)
+        self.Msr_Write(0x38d,thread,eax=0,edx=0)
+        self.Msr_Write(0x309,thread,eax=0,edx=0)
+        self.Msr_Write(0x30a,thread,eax=0,edx=0)
+        self.Msr_Write(0x30b,thread,eax=0,edx=0)
+        self.Msr_Write(0x38d,thread,eax=0x333,edx=0)
+        self.Msr_Write(0x186,thread,eax=0x0,edx=0)
+        self.Msr_Write(0x187,thread,eax=0x0,edx=0)
+        self.Msr_Write(0x188,thread,eax=0x0,edx=0)
+        self.Msr_Write(0xC2,thread,eax=0x0,edx=0)
+        self.Msr_Write(0xC3,thread,eax=0x0,edx=0)
+        self.Instr_write("mov eax, 0xFFFFFFFF",thread)
+        self.Instr_write("sub eax, 0x2625A00",thread)
+        self.Instr_write("mov ecx,0xC1",thread)
+        self.Instr_write("wrmsr",thread)
+        self.Msr_Write(0x186,thread,eax=0x005300C0,edx=0)
+        self.Msr_Write(0x186,thread,eax=0x00430001,edx=0)
+        self.Msr_Write(0x38f,thread,eax=0x3,edx=0x7)
+        self.Instr_write("mov eax, 0xa5a5a5a5",thread)
+        self.Instr_write("out 0x80, eax",thread)

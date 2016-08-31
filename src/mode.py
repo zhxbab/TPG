@@ -281,7 +281,7 @@ class Mode(Util):
         self.Instr_write("mov eax,0xfee00020")
         self.Instr_write("mov eax,dword [eax]") # get apic id        
         self.Instr_write("shr eax, 24 - (8 / 2)")
-        if self.intel:
+        if self.intel and self.threads > 1:
             for i in range(0,self.threads):
                 if i == 0x0:
                     self.instr_manager.Set_instr(67,0)
