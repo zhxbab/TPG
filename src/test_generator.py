@@ -292,6 +292,7 @@ class Test_generator(Args,Util):
         self.Instr_write("rdmsr",thread)
         self.Instr_write("or eax,0x1",thread)
         self.Instr_write("wrmsr",thread)
+        
     def Enable_PMC0(self,thread):
         self.Instr_write("mov ecx,0x186",thread)
         self.Instr_write("rdmsr",thread)
@@ -305,13 +306,16 @@ class Test_generator(Args,Util):
         self.Instr_write("wrmsr",thread)
         
     def Read_PMC0(self,addr,thread):
-        self.Instr_write("mov eax,0x0")
+        self.Instr_write("mfence",thread)
+        self.Instr_write("mov eax,0x0",thread)
         #self.Instr_write("cpuid")
         self.Instr_write("mov ecx,0x0",thread)
         self.Instr_write("rdpmc",thread)
         self.Instr_write("mov [%s],eax"%(addr),thread)
         self.Instr_write("mov [%s+0x4],edx"%(addr),thread)
-
+        self.Instr_write("mov eax,0x0",thread)
+        self.Instr_write("mov edx,0x0",thread)
+        
     def Set_mode(self,mode,threads,force_disable_multi_page = 0):
         if mode == "protect_mode":
             self.page_mode = "4MB"
@@ -369,3 +373,15 @@ class Test_generator(Args,Util):
         self.Msr_Write(0x38f,thread,eax=0x3,edx=0x7)
         self.Instr_write("mov eax, 0xa5a5a5a5",thread)
         self.Instr_write("out 0x80, eax",thread)
+        
+    def Report_PMC(self,pmc_addr,thread):
+        self.Instr_write("mov eax, [0x%x]"%(pmc_addr["start"]),thread)
+        self.Instr_write("mov ebx, [0x%x]"%(pmc_addr["start"]+0x4),thread)        
+        self.Instr_write("mov ecx, [0x%x]"%(pmc_addr["start"]+0x8),thread)
+        self.Instr_write("mov edx, [0x%x]"%(pmc_addr["start"]+0xC),thread)        
+        self.Instr_write("sub ecx,eax",thread)
+        self.Instr_write("sub edx,ebx",thread)
+        self.Instr_write("mov [0x%x], ecx"%(pmc_addr["start"]+0x10),thread)
+        self.Instr_write("mov [0x%x], edx"%(pmc_addr["start"]+0x14),thread)
+        self.Instr_write("mov dword ptr [0x%x], 0x0"%(pmc_addr["start"]),thread)
+        self.Instr_write("mov dword ptr [0x%x], 0x0"%(pmc_addr["start"]+0x8),thread)
