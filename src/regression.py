@@ -205,7 +205,7 @@ class Regression(Util):
                     result = self.Parse_pclmsi_log_sum("%s.sum"%(self.base_name))
                     if result == 2:
                         self.Error_exit("Device connect fail! Please check the device connection!")
-                    elif result == 1:
+                    else:
                         self.sleep_flag = 1
                         info("Sleep 60s!")
                         time.sleep(60)
@@ -229,8 +229,8 @@ class Regression(Util):
                             sleep_t.cancel()
                             del sleep_t
                             self.mail_num = 0
-                    else:
-                        pass
+#                    else:
+#                        pass
                 else:
                     self.Error_exit("sum file is not exist! Please check!")
                 continue
@@ -261,11 +261,11 @@ class Regression(Util):
         sender = "%s@ic.com"%(os.getenv("HOSTNAME"))#can't use zhaoxin.com
         receivers = 'KenZhao@zhaoxin.com'
         msg = MIMEText('%s'%(content), 'plain', 'utf-8')
-        msg['From'] = _format_addr(u'CV-2 <%s>' % sender)
+        msg['From'] = _format_addr(u'PCLMSI <%s>' % sender)
         msg['To'] = _format_addr(u'KenZhao <%s>' % receivers)
         msg['Subject'] = Header(u'"PCLMSI FAIL NOTITION', 'utf-8').encode()
         smtpObj = smtplib.SMTP('localhost') 
-        smtpObj.sendmail(sender, [receivers,], msg.as_string())
+        smtpObj.sendmail(sender, [receivers,"zhxbab@163.com"], msg.as_string())
            
     def Send_info(self,content):
         self.Send_mail(content)
