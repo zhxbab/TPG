@@ -4,7 +4,7 @@ __author__ = 'Ken Zhao'
 ########################################################
 # test_regression is used to test regression function
 ########################################################
-import sys, os, re, logging
+import sys, os, re, logging, datetime
 sys.path.append("%s/../src"%(sys.path[0]))
 from logging import info, error, debug, warning, critical
 from regression import Regression
@@ -12,6 +12,7 @@ from regression import Regression
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(filename)10s[line:%(lineno)6d] %(levelname)8s: %(message)s",
                         datefmt="%a, %d %b %Y %H:%M:%S", stream=sys.stdout)
+    #print(datetime.date.today())
     vector = Regression(0)
     vector.Reset_remove_flag()
     vector.Handle_vecor("%s/test_fail_reset.ic.gz"%(os.path.abspath(".")),20)

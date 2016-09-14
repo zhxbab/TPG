@@ -5,7 +5,7 @@ __author__ = 'Ken Zhao'
 ########################################################
 # regression module is used for regression
 ########################################################
-import sys, os, re, random, subprocess,json, logging, time, smtplib, threading, signal
+import sys, os, re, random, subprocess,json, logging, time, smtplib, threading, signal, datetime
 sys.path.append("/%s/../../src"%(sys.path[0]))
 from logging import info, error, debug, warning, critical
 from util import Util
@@ -67,18 +67,25 @@ class Regression(Util):
                 os.system("rm -f %s*"%(self.c_code_base_name))
     
     def Copy_ic_log(self,file,file_log):
+        new_fail_dir = self.fail_dir
+        if os.path.exists("%s/%s"%(self.fail_dir,datetime.date.today())):
+            info("%s/%s has existed"%(self.fail_dir,datetime.date.today()))
+        else:
+            info("mkdir  %s/%s"%(self.fail_dir,datetime.date.today()))
+            os.system("mkdir  %s/%s"%(self.fail_dir,datetime.date.today()))
+            new_fail_dir = "%s/%s"%(self.fail_dir,datetime.date.today())              
         if os.path.exists(file):
-            info(self.fail_dir)
-            info("cp  %s %s"%(file,self.fail_dir))
-            os.system("cp  %s %s"%(file,self.fail_dir))
-            info("cp  %s %s"%(file_log,self.fail_dir))
-            os.system("cp  %s %s"%(file_log,self.fail_dir))
+            info(new_fail_dir)
+            info("cp  %s %s"%(file,new_fail_dir))
+            os.system("cp  %s %s"%(file,new_fail_dir))
+            info("cp  %s %s"%(file_log,new_fail_dir))
+            os.system("cp  %s %s"%(file_log,new_fail_dir))
         else:
             error("Copy vector %s don't exist"%(file))
             
         if self.c_code_base_name != None:
-            info("cp  %s.* %s"%(self.c_code_base_name,self.fail_dir))
-            os.system("cp  %s* %s"%(self.c_code_base_name,self.fail_dir))
+            info("cp  %s.* %s"%(self.c_code_base_name,new_fail_dir))
+            os.system("cp  %s* %s"%(self.c_code_base_name,new_fail_dir))
         
     def Parse_pclmsi_log_jtrk(self,log_file):
         result = 0
@@ -178,8 +185,8 @@ class Regression(Util):
     def Tune_clk(self):
         result = 0
         for clc in self.clk_list:
-            info("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc))
-            os.system("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc))
+            info("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc*2))
+            os.system("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc*2))
             runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc)
             runpclmsi_p_ret = self.Do_runpclmsi(runpclmsi_cmd,self.runpclmsi_time)
             if runpclmsi_p_ret == 0x0:
