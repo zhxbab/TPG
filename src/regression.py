@@ -73,7 +73,7 @@ class Regression(Util):
         else:
             info("mkdir  %s/%s"%(self.fail_dir,datetime.date.today()))
             os.system("mkdir  %s/%s"%(self.fail_dir,datetime.date.today()))
-            new_fail_dir = "%s/%s"%(self.fail_dir,datetime.date.today())              
+        new_fail_dir = "%s/%s"%(self.fail_dir,datetime.date.today())              
         if os.path.exists(file):
             info(new_fail_dir)
             info("cp  %s %s"%(file,new_fail_dir))
