@@ -14,6 +14,6 @@ if __name__ == "__main__":
                         datefmt="%a, %d %b %Y %H:%M:%S", stream=sys.stdout)
     vector = Regression(0)
     vector.Reset_remove_flag()
-    vector.Handle_vecor("/media/Data_Linux/tools/tpg/bjcvreg/test_fail_reset.ic.gz")
+    vector.Handle_vecor("%s/test_fail_reset.ic.gz"%(os.path.abspath(".")),20)
     #vector.Parse_pclmsi_log_sum("test.sum")
     #tests.Gen_pclmsi_file_list()
