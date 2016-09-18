@@ -75,6 +75,12 @@ class Regression(Util):
             os.system("mkdir  %s/%s"%(self.fail_dir,datetime.date.today()))
         new_fail_dir = "%s/%s"%(self.fail_dir,datetime.date.today())              
         if os.path.exists(file):
+            fail_asm_file = file.split(".")[0]+".asm"
+            if os.path.exists(fail_asm_file):
+                info("cp  %s %s"%(fail_asm_file,new_fail_dir))
+                os.system("cp  %s %s"%(fail_asm_file,new_fail_dir))
+            else:
+                warning("Copy asm file %s don't exist"%(file))                
             info(new_fail_dir)
             info("cp  %s %s"%(file,new_fail_dir))
             os.system("cp  %s %s"%(file,new_fail_dir))
