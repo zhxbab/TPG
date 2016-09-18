@@ -42,7 +42,7 @@ class Regression_cases(Test_generator):
         info(self.avp_dir)
         dir_file_list = os.listdir(self.avp_dir)
         for file in dir_file_list:
-            m = re.search("\.ic",file)
+            m = re.search("\.ic\.gz",file)
             if m:
                 self.file_list.append(file)
                 if self.args_option.skip_fail:      
