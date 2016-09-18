@@ -80,7 +80,7 @@ class Regression(Util):
                 info("cp  %s %s"%(fail_asm_file,new_fail_dir))
                 os.system("cp  %s %s"%(fail_asm_file,new_fail_dir))
             else:
-                warning("Copy asm file %s don't exist"%(file))                
+                warning("Copy asm file %s don't exist"%(fail_asm_file))                
             info(new_fail_dir)
             info("cp  %s %s"%(file,new_fail_dir))
             os.system("cp  %s %s"%(file,new_fail_dir))
