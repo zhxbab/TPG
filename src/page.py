@@ -177,7 +177,7 @@ class Page(Util):
                     if i == 0x3:
                         self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
                     elif i == 0x1:
-                        self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+                        self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
                     else:
                         self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
         else:
@@ -225,7 +225,7 @@ class Page(Util):
                                     addr = (new_j*0x200000+i*0x40000000)/0x1000
                                     self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))                                    
                             else:
-                                self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+                                self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
                     
             else:
                 #csmith_page_num = 2 , 3
@@ -341,7 +341,7 @@ class Page(Util):
                 if i == 0x3:
                     self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
                 elif i == 0x1:
-                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x187"%(i,j,addr))
+                    self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
                 else:
                     self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))  
 
@@ -537,7 +537,7 @@ class Page(Util):
             if i%0x4 == 0x0:
                 self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x00000087"%(i))
             elif i%04 == 0x1:
-                self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x40000187"%(i))
+                self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x40000087"%(i))
             elif i%04 == 0x2:
                 self.Text_write("PAE64_PDPT\t0\t%d\t0x0\t0x80000087"%(i))
             else:

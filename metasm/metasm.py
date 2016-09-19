@@ -48,15 +48,12 @@ class Metasm(Test_generator):
         if self.args_option.mode == 0:
             self.mode = "long_mode"
             self.page_mode = "2MB"
-            self.metasm_mode_name = "LONG"
         elif self.args_option.mode == 1:
             self.mode = "protect_mode"
             self.page_mode = "4MB"
-            self.metasm_mode_name = "PROT32"
         elif self.args_option.mode == 2:
             self.mode = "compatibility_mode"
             self.page_mode = "2MB"
-            self.metasm_mode_name = "COMPAT32"
         else:
             Util.Error_exit("Invalid Mode!")
             
@@ -90,7 +87,7 @@ class Metasm(Test_generator):
         elif mode == "protect_mode":
             index = 1
         else:
-            index = 2  
+            index = 2
         info("?>SET MODE(%s)"%(self.metasm_mode_name[index]))
         metasm_functions.parse("?>SET MODE(%s)"%(self.metasm_mode_name[index]))
         

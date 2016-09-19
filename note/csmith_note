@@ -8,3 +8,8 @@ add "#define NOT_PRINT_CHECKSUM 1" in /usr/local/inclue/csmith-2.2.0/platform_ge
 7. If Vmx code run in Intel platform, there are so many mismatch in vmcs region. The reason is that the pattern of vmcs in intel is different from us. In fact, we don't need to know the accurate pattern of vmcs, we only need to know the vmcs id. 
 8. In vmcs, ES access right is segment descripotor bit32-63, and the base and limit in it are forced to 0.
 9. Vmx on address + 0x10, Intel don't use it. But CNR use it when VMLAUNCH and VMXOFF. 
+10. Global page in cnsim
+If there are two core with the same pcid, they point to the same page, but with different page structures. If any core indicate the page is global, cnsim think it global too. So the ohter core's pde accessed bit will not be set.
+Global page in silicon
+But in silicon, because the LRU, the global page may be replacement, so the other core need to do page table walk. This occur mismatch between cnsim and silicon.
+So don't use global page in regression system
