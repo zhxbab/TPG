@@ -145,7 +145,7 @@ class Regression(Util):
                         vector = m.group(1)
                         not_finish = 1
                         
-                    m = re.search(r'RATIO = (\d+)',line)
+                    m = re.search(r'RATIO = (\S+) ',line)
                     if m:
                         ratio = m.group(1)
                         

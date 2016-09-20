@@ -38,7 +38,7 @@ class Regression_cases(Test_generator):
         
     def Regression_vector(self):
         time = 300
-        self.regression.Reset_remove_flag()
+        self.regression.Set_remove_flag()
         info(self.avp_dir)
         dir_file_list = os.listdir(self.avp_dir)
         for file in dir_file_list:
