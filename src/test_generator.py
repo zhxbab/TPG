@@ -327,8 +327,10 @@ class Test_generator(Args,Util):
         else:
             if force_disable_multi_page == 1:
                 self.multi_page = 0
-            else:
+            elif self.c_gen == 1 and threads > 1:
                 self.multi_page = 1
+            else:
+                self.multi_page = 0
                 
     def Check_fail_dir(self):
         if os.getenv("LOCATION_CVREG_VECTOR") == None:
