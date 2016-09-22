@@ -58,10 +58,11 @@ class Metasm(Test_generator):
             Util.Error_exit("Invalid Mode!")
             
         self.threads = self.args_option.thread_nums
-        if self.threads>1:
-            self.multi_page=1
-        else:
-            self.multi_page=0            
+#        if self.threads>1:
+#            self.multi_page=1
+#        else:
+#            self.multi_page=0
+        self.multi_page=0       
         self.intel = self.args_option.intel
         self.c_gen = 0
         if self.args_option.very_short == True:

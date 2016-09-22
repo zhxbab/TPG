@@ -100,7 +100,7 @@ class Test_generator(Args,Util):
             self.Text_write("org 0x%x"%(self.hlt_code["start"]))
             self.Tag_write(self.hlt_code["name"])
             self.Text_write("hlt")
-        elif 0 < thread_num < 4:
+        elif 0 < thread_num < 8:
             self.Text_write("jmp $%s"%(self.hlt_code["name"]))
         else:
             self.Error_exit("Invalid thread num!")
