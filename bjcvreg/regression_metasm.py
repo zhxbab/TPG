@@ -21,6 +21,7 @@ class Regression_metasm(Metasm):
     def Parse_input(self,args):
         args_parser = OptionParser(usage="Regression_csmith *args, **kwargs", version="%Regression_csmith 0.1") #2016-04-25 version 0.1
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
+        args_parser.add_option("--dual", dest="dual", help="For dual die", action="store_true", default = False)
         args_parser.add_option("-n","--nums", dest="nums", help="The vector nums."\
                           , type = "int", default = 10000)
         args_parser.add_option("-d","--device", dest="device", help="Set device num. But if run with balancer, the device num will be changed by balancer.", type="int", default = None)
@@ -39,7 +40,8 @@ class Regression_metasm(Metasm):
         self.elf_file = None
         self.disable_avx = 0
         self.disable_pcid = 0
-        self.intel = 0          
+        self.intel = 0 
+        self.dual = self.args_option.dual      
         
     def Regression_vector(self):
         time = 300
@@ -55,9 +57,12 @@ class Regression_metasm(Metasm):
 
 ##############################################MAIN##########################################
 if __name__ == "__main__":
-    threads = [1,4][random.randint(0,1)]
     mode = ["long_mode","protect_mode","compatibility_mode"][random.randint(0,2)]
     tests = Regression_metasm(sys.argv[1:])
+    if tests.dual:
+        threads = [1,8][random.randint(0,1)]
+    else:
+        threads = [1,4][random.randint(0,1)]             
     tests.Fix_threads(threads)
     tests.Set_mode(mode,threads)    
     tests.Create_dir()

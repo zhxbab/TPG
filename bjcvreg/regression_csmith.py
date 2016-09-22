@@ -24,6 +24,7 @@ class Regression_csmith(Csmith):
 #        args_parser.add_option("--seed", dest="seed", help="Set the seed. [default: %default]\nFor the default value, tpg will generate random seed instead."\
 #                          , type = "int", default = 0x0)
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
+        args_parser.add_option("--dual", dest="dual", help="For dual die", action="store_true", default = False)
         args_parser.add_option("-n","--nums", dest="nums", help="The vector nums."\
                           , type = "int", default = 10000)
         #args_parser.add_option("--intel", dest="intel", help="Support intel platform, APIC ID is 0,2,4,6", action="store_true", default = False)
@@ -52,7 +53,8 @@ class Regression_csmith(Csmith):
             self.c_plus = True
         else:
             self.c_plus = False            
-        
+        self.dual = self.args_option.dual 
+                
     def Regression_vector(self):
         time = 300
         self.c_code_base_name = os.path.join(self.avp_dir_path,self.c_parser.base_name)
@@ -63,8 +65,11 @@ class Regression_csmith(Csmith):
         
 ##############################################MAIN##########################################
 if __name__ == "__main__":
-    threads = [1,4][random.randint(0,1)]
     mode = ["long_mode","protect_mode","compatibility_mode"][random.randint(0,2)]
+    if tests.dual:
+        threads = [1,8][random.randint(0,1)]
+    else:
+        threads = [1,4][random.randint(0,1)] 
     tests = Regression_csmith(sys.argv[1:])
     tests.Set_mode(mode,threads,0)
     tests.Fix_threads(threads)
