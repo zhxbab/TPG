@@ -29,7 +29,8 @@ class Template_tpg(Test_generator):
         args_parser.add_option("--very_short", dest="very_short", help="Change -short to -very-short", action="store_true", default = False)
         args_parser.add_option("--disable_avx", dest="disable_avx", help="disable AVX for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)
-        args_parser.add_option("--multi_page", dest="multi_page", help="enable_multi_page", action="store_true", default = False)       
+        args_parser.add_option("--multi_page", dest="multi_page", help="enable_multi_page", action="store_true", default = False)
+        args_parser.add_option("--pae", dest="pae", help="enable pae in 32bit mode", action="store_true", default = False)    
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         
         if self.args_option.seed:
@@ -46,7 +47,7 @@ class Template_tpg(Test_generator):
             elif self.args_option.page_mode == 2:
                 self.page_mode = "1GB"
             else:
-                Util.Error_exit("Invalid Page mode for long mode!")
+                self.Error_exit("Invalid Page mode for long mode!")
         elif self.args_option.mode == 1:
             self.mode = "protect_mode"
             if self.args_option.page_mode == 0:
@@ -54,7 +55,7 @@ class Template_tpg(Test_generator):
             elif self.args_option.page_mode == 1:
                 self.page_mode = "4MB"
             else:
-                Util.Error_exit("Invalid Page mode for protect mode!")
+                self.Error_exit("Invalid Page mode for protect mode!")
         elif self.args_option.mode == 2:
             self.mode = "compatibility_mode"
             if self.args_option.page_mode == 0:
@@ -64,9 +65,9 @@ class Template_tpg(Test_generator):
             elif self.args_option.page_mode == 2:
                 self.page_mode = "1GB"
             else:
-                Util.Error_exit("Invalid Page mode for compatibility mode!")
+                self.Error_exit("Invalid Page mode for compatibility mode!")
         else:
-            Util.Error_exit("Invalid Mode!")
+            self.Error_exit("Invalid Mode!")
             
         self.threads = self.args_option.thread_nums
         self.intel = self.args_option.intel
@@ -80,3 +81,7 @@ class Template_tpg(Test_generator):
         self.disable_avx = self.args_option.disable_avx
         self.disable_pcid = self.args_option.disable_pcid
         self.multi_page = self.args_option.multi_page
+        if self.page_mode != "4KB_32bit":
+            self.pae = self.args_option.pae
+        else:
+            self.Error_exit("Don't use pae in 4KB 32bit")   

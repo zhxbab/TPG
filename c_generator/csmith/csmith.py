@@ -11,6 +11,7 @@ from logging import info, error, debug, warning, critical
 from test_generator import Test_generator
 from optparse import OptionParser
 from c_parser import C_parser
+from util import Util
 #####################################################Sub Classes###########################
 class Csmith(Test_generator):
     def __init__(self,args):
@@ -38,7 +39,8 @@ class Csmith(Test_generator):
         args_parser.add_option("--disable_avx", dest="disable_avx", help="disable AVX for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--instr_only", dest="instr_only", help="Cnsim instr only", action="store_true", default = False)
-        args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)             
+        args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)
+        #args_parser.add_option("--pae", dest="pae", help="enable pae in 32bit mode", action="store_true", default = False)           
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -117,6 +119,11 @@ class Csmith(Test_generator):
         self.disable_avx = self.args_option.disable_avx
         self.disable_pcid = self.args_option.disable_pcid
         self.c_plus = self.args_option.c_plus
+        self.pae = False
+#        if self.page_mode != "4KB_32bit":
+#            self.pae = self.args_option.pae
+#        else:
+#            Util.Error_exit("Don't use pae in 4KB 32bit")
         
     def Force_compiler_and_optimize(self):
         if self.force_gcc == 1:

@@ -35,7 +35,7 @@ class Vmx_csmith(Test_generator):
         args_parser.add_option("--disable_avx", dest="disable_avx", help="disable AVX for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--instr_only", dest="instr_only", help="Cnsim instr only", action="store_true", default = False)
-        args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)  
+        args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -83,7 +83,7 @@ class Vmx_csmith(Test_generator):
         or self.args_option.Op == "Os" or self.args_option.Op == "O3" or self.args_option.Op == None:
             self.Op = self.args_option.Op
         else:
-            Util.Error_exit("Invalid optimize level!")
+            self.Error_exit("Invalid optimize level!")
             
         if self.args_option.ma == None:
             pass

@@ -13,3 +13,4 @@ If there are two core with the same pcid, they point to the same page, but with 
 Global page in silicon
 But in silicon, because the LRU, the global page may be replacement, so the other core need to do page table walk. This occur mismatch between cnsim and silicon.
 So don't use global page in regression system
+11.mwait must follow monitor, if there is some other instructions, maybe mwait is not able to work well. regardless us or intel

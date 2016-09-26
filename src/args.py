@@ -37,7 +37,8 @@ class Args:
         args_parser.add_option("--no_very_short", dest="very_short", help="Change -very-short to short", action="store_false", default = True)
         args_parser.add_option("--disable_avx", dest="disable_avx", help="disable AVX for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)
-        args_parser.add_option("--multi_page", dest="multi_page", help="enable_multi_page", action="store_true", default = False)         
+        args_parser.add_option("--multi_page", dest="multi_page", help="enable_multi_page", action="store_true", default = False)
+        args_parser.add_option("--pae", dest="pae", help="enable pae in 32bit mode", action="store_true", default = False) 
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         
         if self.args_option.seed:
@@ -88,7 +89,11 @@ class Args:
         self.disable_avx = self.args_option.disable_avx
         self.disable_pcid = self.args_option.disable_pcid
         self.multi_page = self.args_option.multi_page
-
+        if self.page_mode != "4KB_32bit":
+            self.pae = self.args_option.pae
+        else:
+            Util.Error_exit("Don't use pae in 4KB 32bit")
+        
     def Set_logging(self):
         if self.args_option._debug == True: plevel = logging.DEBUG #plevel is the print information level
         else: plevel = logging.INFO

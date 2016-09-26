@@ -42,6 +42,7 @@ class Regression_metasm(Metasm):
         self.disable_pcid = 0
         self.intel = 0 
         self.dual = self.args_option.dual      
+        self.multi_page = 0
         
     def Regression_vector(self):
         time = 300
@@ -62,7 +63,11 @@ if __name__ == "__main__":
     if tests.dual:
         threads = [1,8][random.randint(0,1)]
     else:
-        threads = [1,4][random.randint(0,1)]             
+        threads = [1,4][random.randint(0,1)]      
+    if mode == "protect_mode":
+        tests.pae = [True,False][random.randint(0,1)]
+    else:
+        tests.pae = False
     tests.Fix_threads(threads)
     tests.Set_mode(mode,threads)    
     tests.Create_dir()

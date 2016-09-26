@@ -74,10 +74,12 @@ class Test_generator(Args,Util):
         self.ptg.c_gen = self.c_gen
         self.ptg.intel = self.intel
         self.ptg.mode = self.mode
+        self.ptg.pae = self.pae
         if self.c_gen:
             self.c_parser.multi_page = self.multi_page
             #info("c plus is %d"%(self.c_parser.c_plus))
         self.ptg.multi_page = self.multi_page
+        self.mode_code.pae = self.pae
         [self.stack_segs,self.user_code_segs] = self.mode_code.Mode_code(self.mode,self.c_gen,self.disable_avx,self.disable_pcid)
 
     def Gen_cnsim_param(self):

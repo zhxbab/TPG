@@ -11,6 +11,7 @@ from logging import info, error, debug, warning, critical
 from test_generator import Test_generator
 from optparse import OptionParser
 import metasm_functions
+from util import Util
 #####################################################Sub Classes###########################
 class Metasm(Test_generator):
     def __init__(self,args):
@@ -39,7 +40,8 @@ class Metasm(Test_generator):
         args_parser.add_option("--very_short", dest="very_short", help="Change -short to -very-short", action="store_true", default = False)
         args_parser.add_option("--disable_avx", dest="disable_avx", help="disable AVX for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)
-        args_parser.add_option("--instr_only", dest="instr_only", help="Cnsim instr only", action="store_true", default = False)            
+        args_parser.add_option("--instr_only", dest="instr_only", help="Cnsim instr only", action="store_true", default = False)
+        args_parser.add_option("--pae", dest="pae", help="enable pae in 32bit mode", action="store_true", default = False)          
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if self.args_option.seed:
             self.seed = self.args_option.seed
@@ -58,10 +60,6 @@ class Metasm(Test_generator):
             Util.Error_exit("Invalid Mode!")
             
         self.threads = self.args_option.thread_nums
-#        if self.threads>1:
-#            self.multi_page=1
-#        else:
-#            self.multi_page=0
         self.multi_page=0       
         self.intel = self.args_option.intel
         self.c_gen = 0
@@ -77,6 +75,7 @@ class Metasm(Test_generator):
                 self.very_short_num = "%d"%(500000*self.threads)
         self.disable_avx = self.args_option.disable_avx
         self.disable_pcid = self.args_option.disable_pcid
+        self.pae = self.args_option.pae
         
     def Initial_metasm(self, times,  mode):
         if times == 0:

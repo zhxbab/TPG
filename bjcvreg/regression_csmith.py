@@ -54,7 +54,8 @@ class Regression_csmith(Csmith):
         else:
             self.c_plus = False            
         self.dual = self.args_option.dual 
-                
+        self.pae = False
+        
     def Regression_vector(self):
         time = 300
         self.c_code_base_name = os.path.join(self.avp_dir_path,self.c_parser.base_name)
@@ -66,11 +67,11 @@ class Regression_csmith(Csmith):
 ##############################################MAIN##########################################
 if __name__ == "__main__":
     mode = ["long_mode","protect_mode","compatibility_mode"][random.randint(0,2)]
+    tests = Regression_csmith(sys.argv[1:])
     if tests.dual:
         threads = [1,8][random.randint(0,1)]
     else:
         threads = [1,4][random.randint(0,1)] 
-    tests = Regression_csmith(sys.argv[1:])
     tests.Set_mode(mode,threads,0)
     tests.Fix_threads(threads)
     tests.Create_dir()

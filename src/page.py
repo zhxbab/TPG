@@ -20,6 +20,7 @@ class Page(Util):
         self.intel = 0
         self.vmx_client_mode = "long_mode"
         self.mode = "long_mode"
+        self.pae = False
         
     def Gen_page(self):
         self.Comment("######################gen page addr#######################")
@@ -74,7 +75,15 @@ class Page(Util):
         
     def Gen_page_4M(self):
         if self.multi_page == 0:
-            self.tlb_base = self.mpg.Apply_mem(0x4000,0x1000,start=0x100000,end=0x400000,name="tlb_base") # 8MB for page_table above 1MB
+            if self.pae == False:
+                self.tlb_base = self.mpg.Apply_mem(0x4000,0x1000,start=0x100000,end=0x400000,name="tlb_base") # 8MB for page_table above 1MB
+            else:
+                self.tlb_base = self.mpg.Apply_mem(0x32,0x1000,start=0x100000,end=0x400000,name="tlb_base") 
+                self.pae_pde_0 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pae_pde_0")
+                self.pae_pde_1 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pae_pde_1") 
+                self.pae_pde_2 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pae_pde_2") 
+                self.pae_pde_3 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="pae_pde_3")
+                self.pae_pde_size = 0x200000              
         else:
             self.tlb_base = []
             for i in range(0,self.threads):
@@ -95,11 +104,22 @@ class Page(Util):
             self.Instr_write("mov eax,$%s"%(self.tlb_base["name"]))
             self.Instr_write("mov cr3,eax")
             self.Text_write("PAGING $tlb_pointer")
-            for i in range(0,1024):
-                if i < 758:
-                    self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))         
-                else:
-                    self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))
+            if self.pae == False:
+                for i in range(0,1024):
+                    if i < 758:
+                        self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))         
+                    else:
+                        self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))
+            else:
+                self.pae_pde = [self.pae_pde_0,self.pae_pde_1,self.pae_pde_2,self.pae_pde_3]
+                for i in range(0,4):
+                    self.Text_write("PAE_PDPT\t%d\t0x0\t0x%05x001"%(i,self.pae_pde[i]["start"]/self.pae_pde[i]["size"]))
+                for j in range(0,4):                       
+                    for i in range(0,512):
+                        if j < 3:
+                            self.Text_write("PAE_PDE\t\t%d\t%d\t0x0\t0x%05x087"%(j,i,(i*0x200000+j*0x40000000)/0x1000))         
+                        else:
+                            self.Text_write("PAE_PDE\t\t%d\t%d\t0x0\t0x%05x19f"%(j,i,(i*0x200000+j*0x40000000)/0x1000))                
         else:
             n = 0
             if self.c_gen == 0:

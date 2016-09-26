@@ -18,6 +18,7 @@ class Mode(Util):
         self.intel = intel
         self.interrupt = interrupt
         self.c_parser = c_parser
+        self.pae = False;
         
     def Set_table_pointer(self,table_name):
         table_pointer = self.mpg.Apply_mem(0x10,16,start=0x0,end=0x10000,name="%s_pointer"%(table_name)) #0x10000 = 64KB, in real mode(B=0), the limit of segment is 0xFFFF
@@ -334,7 +335,10 @@ class Mode(Util):
         self.Text_write("use 32")
         self.Comment("##enable pse,fxsave(sse),simd,global page, disable pae")
         self.Instr_write("mov eax,cr4")
-        self.Instr_write("or eax,0x690")
+        if self.pae == False:
+            self.Instr_write("or eax,0x690")
+        else:
+            self.Instr_write("or eax,0x6B0")            
         self.Instr_write("mov cr4,eax")
         self.Comment("##set IA32_EFER eax to 0x0")
         self.Comment("#In Intel spec IA32_EFER bit 9 is reversed, if write this bit, it fails in pclmsi")
