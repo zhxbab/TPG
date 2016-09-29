@@ -25,6 +25,7 @@ class Regression_metasm(Metasm):
         args_parser.add_option("-n","--nums", dest="nums", help="The vector nums."\
                           , type = "int", default = 10000)
         args_parser.add_option("-d","--device", dest="device", help="Set device num. But if run with balancer, the device num will be changed by balancer.", type="int", default = None)
+        args_parser.add_option("--arch", dest="arch", help="Set architecture, for tune clk and feature list", type="str", default = "default_arch")
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         self.seed = str(time.time())
         self.seed = int(self.seed.replace(".","0"))
@@ -36,7 +37,8 @@ class Regression_metasm(Metasm):
         self.vector_nums = self.args_option.nums
         self.very_short_cmd = "-very-short"
         self.very_short_num = "50000000"
-        self.regression = Regression(self.device)
+        self.arch = self.args_option.arch
+        self.regression = Regression(self.device,self.arch)
         self.elf_file = None
         self.disable_avx = 0
         self.disable_pcid = 0

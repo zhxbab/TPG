@@ -23,6 +23,7 @@ class Regression_cases(Test_generator):
         args_parser.add_option("--skip_fail", dest="skip_fail", help="Skip check fail", action="store_true", default = False)
         args_parser.add_option("--dir", dest="avp_dir", help="Set the avp dir", type="str", default = None)        
         args_parser.add_option("-d","--device", dest="device", help="Set device num. But if run with balancer, the device num will be changed by balancer.", type="int", default = None)
+        args_parser.add_option("--arch", dest="arch", help="Set architecture, for tune clk and feature list", type="str", default = "default_arch")     
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.avp_dir == None:
             self.avp_dir = os.path.join(self.current_dir_path,self.args_option.avp_dir)
@@ -33,7 +34,8 @@ class Regression_cases(Test_generator):
             self.Error_exit("You must set a device num!")
         else:
             self.device = self.args_option.device
-        self.regression = Regression(self.device)
+        self.arch = self.args_option.arch
+        self.regression = Regression(self.device,self.arch)
          
         
     def Regression_vector(self):

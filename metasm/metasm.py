@@ -93,6 +93,7 @@ class Metasm(Test_generator):
         
     def Print_instructions(self,thread,instr_num):
         instructions_set = [self.instructions_set0,self.instructions_set1,self.instructions_set2,self.instructions_set3][random.randint(0,3)]
+        #instructions_set = self.instructions_set3
         metasm_code_start = self.metasm_code_start + thread*self.metasm_code_offset
         mem_select = "MEM(RANDOM(0x%x..0x%x:16))"%(metasm_code_start,metasm_code_start+self.metasm_code_offset)
         self.mpg.Apply_fix_mem("Metasm_code%d_code"%(thread),metasm_code_start,self.metasm_code_offset)
