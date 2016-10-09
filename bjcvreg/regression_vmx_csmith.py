@@ -63,11 +63,11 @@ class Regression_vmx_csmith(Vmx_csmith):
         self.reglog_name = "/tmp/%s"%(self.avp_dir_name)
         self.regression.freglog = open(self.reglog_name,"w")
         info("Log is %s"%(self.reglog_name))
-        self.regression.freglog.close()
         self.c_code_base_name = os.path.join(self.avp_dir_path,self.c_parser.base_name)
         self.regression.Set_remove_flag()
         self.regression.Handle_vecor(self.ic_file,time,self.c_code_base_name)
-            
+        self.regression.freglog.close()
+                    
     def Set_fail_dir(self):
         self.regression.fail_dir = self.fail_dir
 
