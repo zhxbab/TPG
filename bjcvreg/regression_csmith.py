@@ -60,10 +60,13 @@ class Regression_csmith(Csmith):
         
     def Regression_vector(self):
         time = 300
+        self.reglog_name = "/tmp/%s"%(self.avp_dir_name)
+        self.regression.freglog = open(self.reglog_name,"w")
+        info("Log is %s"%(self.reglog_name))
         self.c_code_base_name = os.path.join(self.avp_dir_path,self.c_parser.base_name)
         self.regression.Set_remove_flag()
         self.regression.Handle_vecor(self.ic_file,time,self.c_code_base_name)
-            
+        self.regression.freglog.close()
 
         
 ##############################################MAIN##########################################

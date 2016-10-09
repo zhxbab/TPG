@@ -8,7 +8,7 @@ __author__ = 'Ken Zhao'
 import sys, os, re, random, subprocess,json, logging, time, smtplib, threading, signal, datetime, random
 sys.path.append("/%s/../../src"%(sys.path[0]))
 from logging import info, error, debug, warning, critical
-from util import Util
+from util import Util,Info
 from operator import eq,ne
 from email import encoders
 from email.header import Header
@@ -58,7 +58,8 @@ class Regression(Util):
             self.feature_list = self.chx001_feature_list
         else:
             self.Error_exit("Invalid Architecture")
-                                    
+        self.freglog = None
+                              
     def Handle_vecor(self,ic_file,time,c_code_base_name=None,cases=None):
         self.runpclmsi_time = time
         self.c_code_base_name = c_code_base_name
@@ -81,37 +82,37 @@ class Regression(Util):
 
     def Remove_all(self):
         if self.remove_flag:
-            info("rm -f %s.*"%(self.base_name))
+            Info("rm -f %s.*"%(self.base_name),self.freglog)
             os.system("rm -f %s.*"%(self.base_name))
             if self.c_code_base_name != None:
-                info("rm -f %s*"%(self.c_code_base_name))
+                Info("rm -f %s*"%(self.c_code_base_name),self.freglog)
                 os.system("rm -f %s*"%(self.c_code_base_name))
-    
+                
     def Copy_ic_log(self,file,file_log):
         new_fail_dir = self.fail_dir
         if os.path.exists("%s/%s"%(self.fail_dir,datetime.date.today())):
-            info("%s/%s has existed"%(self.fail_dir,datetime.date.today()))
+            Info("%s/%s has existed"%(self.fail_dir,datetime.date.today()),self.freglog)
         else:
-            info("mkdir  %s/%s"%(self.fail_dir,datetime.date.today()))
+            Info("mkdir  %s/%s"%(self.fail_dir,datetime.date.today()),self.freglog)
             os.system("mkdir  %s/%s"%(self.fail_dir,datetime.date.today()))
         new_fail_dir = "%s/%s"%(self.fail_dir,datetime.date.today())              
         if os.path.exists(file):
             fail_asm_file = file.split(".")[0]+".asm"
             if os.path.exists(fail_asm_file):
-                info("cp  %s %s"%(fail_asm_file,new_fail_dir))
+                Info("cp  %s %s"%(fail_asm_file,new_fail_dir),self.freglog)
                 os.system("cp  %s %s"%(fail_asm_file,new_fail_dir))
             else:
                 warning("Copy asm file %s don't exist"%(fail_asm_file))                
-            info(new_fail_dir)
-            info("cp  %s %s"%(file,new_fail_dir))
+            Info(new_fail_dir,self.freglog)
+            Info("cp  %s %s"%(file,new_fail_dir),self.freglog)
             os.system("cp  %s %s"%(file,new_fail_dir))
-            info("cp  %s %s"%(file_log,new_fail_dir))
+            Info("cp  %s %s"%(file_log,new_fail_dir),self.freglog)
             os.system("cp  %s %s"%(file_log,new_fail_dir))
         else:
             error("Copy vector %s don't exist"%(file))
             
         if self.c_code_base_name != None:
-            info("cp  %s.* %s"%(self.c_code_base_name,new_fail_dir))
+            Info("cp  %s.* %s"%(self.c_code_base_name,new_fail_dir),self.freglog)
             os.system("cp  %s* %s"%(self.c_code_base_name,new_fail_dir))
         
     def Parse_pclmsi_log_jtrk(self,log_file):
@@ -131,7 +132,7 @@ class Regression(Util):
                         if not fail_vectors.has_key(line_decode["avp"]):
                             fail_vectors[line_decode["avp"]] = line
                             fail_vector = os.path.join(self.base_name_path,line_decode["avp"])
-                            info(fail_vector)
+                            Info(fail_vector,self.freglog)
                             fail_log = self.Record_fail_log(fail_vector,line)
                             self.Copy_ic_log(fail_vector,fail_log)
                 else:
@@ -188,14 +189,13 @@ class Regression(Util):
                         last_pass = pass_flag
                         last_fail = fail_flag
                         last_hang = hang_flag
-                        not_finish = 0
                 else:
                     if line_num == 1:
                         result = 2
                         return result
                     else:
                         if not_finish == 0:
-                            self.Send_info("Load avp fail, Please check!")  
+                            self.Send_info("load avp fail once, Please check!")  
                             return 3                          
                             #self.Error_exit("Load avp fail, Please check!")
                         else:
@@ -218,7 +218,7 @@ class Regression(Util):
     
     def Tune_clk_and_feature(self):
         for clc in self.clk_list:
-            info("runpclmsi -d %d -f %s --rerun=1000"%(self.device,self.temp_list))
+            Info("runpclmsi -d %d -f %s --rerun=1000"%(self.device,self.temp_list),self.freglog)
             os.system("runpclmsi -d %d -f %s --rerun=1000"%(self.device,self.temp_list))
             runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc)
             self.Run_Check(runpclmsi_cmd)
@@ -235,30 +235,30 @@ class Regression(Util):
         result = 0
         runpclmsi_p_ret = self.Do_runpclmsi(runpclmsi_cmd,self.runpclmsi_time)
         if runpclmsi_p_ret == 0x0:
-            info("PCLMSI SUCCESSFULLY")
+            Info("PCLMSI SUCCESSFULLY",self.freglog)
             if not self.skip_check_fail:
                 result = self.Parse_pclmsi_log_jtrk("%s.jtrk"%(self.base_name))
             if result:
-                info("Find Fail Sleep 5s!")
+                Info("Find Fail Sleep 5s!",self.freglog)
                 time.sleep(5)
                 return 
         else:
-            info("PCLMSI RESET or HANG")
+            Info("PCLMSI RESET or HANG",self.freglog)
             if os.path.exists("%s.sum"%(self.base_name)):
                 result = self.Parse_pclmsi_log_sum("%s.sum"%(self.base_name))
                 if result == 2:
                     self.Error_exit("Device connect fail! Please check the device connection!")
                 else:
                     self.sleep_flag = 1
-                    info("Sleep 60s!")
+                    Info("Sleep 60s!",self.freglog)
                     time.sleep(60)
                     test_result = self.Do_runpclmsi(self.runpclmsi_test_cmd,20)
                     if test_result == 0x0:
                         self.Send_info("HOST %s DEVICE %s Has RESET AUTOMATICALLY!"%(os.getenv("HOSTNAME"),self.device))
-                        info("HOST %s DEVICE %s Has RESET AUTOMATICALLY!"%(os.getenv("HOSTNAME"),self.device))
+                        Info("HOST %s DEVICE %s Has RESET AUTOMATICALLY!"%(os.getenv("HOSTNAME"),self.device,self.freglog))
                         return 
                     else:
-                        info("Send Mail and Sleep forever until reset!")
+                        Info("Send Mail and Sleep forever until reset!",self.freglog)
                         check_reset_time = 60*30#60*30 is good,20 is used for test
                         self.Send_info("HOST %s DEVICE %s HANG!"%(os.getenv("HOSTNAME"),self.device))
                         sleep_t = threading.Timer(check_reset_time,self.sleep_timer_function,())#60*30 is good,20 is used for test
@@ -289,7 +289,7 @@ class Regression(Util):
         
 
     def Send_mail_vectors(self,fail_vectors):
-        info("Send Mail")
+        Info("Send Mail",self.freglog)
         content = "fail vector:"
         for key in fail_vectors:
             content = content + "\t%s\t\n"%(fail_vectors[key]) 
@@ -328,10 +328,10 @@ class Regression(Util):
         if test_result == 0x0:
             self.sleep_flag = 0
             self.Send_info("HOST %s DEVICE %s Has RESET!"%(os.getenv("HOSTNAME"),self.device))
-            info("Reset successfully!")
+            Info("Reset successfully!",self.freglog)
         else:
             if self.mail_num < 3:
-                info("Send Mail for notice reset num %d"%(self.mail_num))
+                Info("Send Mail for notice reset num %d"%(self.mail_num),self.freglog)
                 self.Send_info("HOST %s DEVICE %s Need RESET!"%(os.getenv("HOSTNAME"),self.device))
             self.sleep_timer_start = 1
         return
@@ -339,10 +339,10 @@ class Regression(Util):
                 
     def Do_runpclmsi(self,cmd,time):
         self.stop_flag = 0
-        info(cmd)
+        Info(cmd,self.freglog)
         runpclmsi_p = subprocess.Popen(cmd,stdout=None, stderr=None, shell=True)
         runpclmsi_p_ret = runpclmsi_p.poll()
-        info("The test_runpclmsi subprocess pid is %d"%(runpclmsi_p.pid))
+        Info("The test_runpclmsi subprocess pid is %d"%(runpclmsi_p.pid),self.freglog)
         t = threading.Timer(time,self.timer_function,(runpclmsi_p,))
         t.start()
         while runpclmsi_p_ret == None and self.stop_flag == 0:

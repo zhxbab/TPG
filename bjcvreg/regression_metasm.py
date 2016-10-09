@@ -48,9 +48,13 @@ class Regression_metasm(Metasm):
         
     def Regression_vector(self):
         time = 300
+        self.reglog_name = "/tmp/%s"%(self.avp_dir_name)
+        self.regression.freglog = open(self.reglog_name,"w")
+        info("Log is %s"%(self.reglog_name))
         self.regression.Set_remove_flag()
         self.regression.Handle_vecor(self.ic_file,time)
-            
+        self.regression.freglog.close()
+        
     def Set_fail_dir(self):
         if os.getenv("LOCATION_CVREG_VECTOR") == None:
             error("Not env para LOCATION_CVREG_VECTOR")

@@ -40,6 +40,10 @@ class Regression_cases(Test_generator):
         
     def Regression_vector(self):
         time = 300
+        self.avp_dir_name = self.avp_dir.split("/")[-2]
+        self.reglog_name = "/tmp/%s"%(self.avp_dir_name)
+        self.regression.freglog = open(self.reglog_name,"w")
+        info("Log is %s"%(self.reglog_name))
         self.regression.Set_remove_flag()
         info(self.avp_dir)
         dir_file_list = os.listdir(self.avp_dir)

@@ -7,7 +7,12 @@ __author__ = 'Ken Zhao'
 ########################################################
 import sys, os, signal, re
 from logging import info, error, debug, warning, critical
-#from instruction import Instr 
+
+#from instruction import Instr
+def Info(cmd,file):
+    info(cmd)
+    file.write("%s\n"%(cmd))
+     
 class Util:
     def __init__(self):
         self.asm_file = ""
@@ -15,7 +20,6 @@ class Util:
     def Sigint_handler(self, signal, frame):
         critical("Ctrl+C pressed and Exit!!!")
         sys.exit(0)
-        
     @classmethod
     def Error_exit(cls,cmd):
         error(cmd)
