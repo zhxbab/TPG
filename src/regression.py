@@ -39,7 +39,8 @@ class Regression(Util):
         self.sleep_timer_start = 0
         self.runpclmsi_time = 20
         self.skip_check_fail = False
-        self.cnr001a1_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"}]
+        self.cnr001a1_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"},\
+                                     {"Name":"loop queue","Location":"0x1257[0]"}]
         self.cnr002_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"}]
         self.chx_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"}]
         if arch == "default_arch":
@@ -217,17 +218,14 @@ class Regression(Util):
     
     def Tune_clk_and_feature(self):
         for clc in self.clk_list:
-            info("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc*2))
-            os.system("runpclmsi -d %d -f %s --rerun=1000 -c %d"%(self.device,self.temp_list,clc*2))
+            info("runpclmsi -d %d -f %s --rerun=1000"%(self.device,self.temp_list))
+            os.system("runpclmsi -d %d -f %s --rerun=1000"%(self.device,self.temp_list))
+            runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc)
+            self.Run_Check(runpclmsi_cmd)
             if len(self.feature_list) == 0:
-                runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000"\
-                %(self.runpclmsi,self.device,self.temp_list,self.base_name,clc)
-                self.Run_Check(runpclmsi_cmd)
+                continue
             else:
                 for feature in self.feature_list:
-                    runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000"\
-                    %(self.runpclmsi,self.device,self.temp_list,self.base_name,clc)
-                    self.Run_Check(runpclmsi_cmd)
                     runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000 +flip_msr_bit:\"%s\""\
                     %(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,feature["Location"])
                     self.Run_Check(runpclmsi_cmd)
