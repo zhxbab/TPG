@@ -95,21 +95,25 @@ class Regression(Util):
         else:
             Info("mkdir  %s/%s"%(self.fail_dir,datetime.date.today()),self.freglog)
             os.system("mkdir  %s/%s"%(self.fail_dir,datetime.date.today()))
-        new_fail_dir = "%s/%s"%(self.fail_dir,datetime.date.today())              
-        if os.path.exists(file):
-            fail_asm_file = file.split(".")[0]+".asm"
-            if os.path.exists(fail_asm_file):
-                Info("cp  %s %s"%(fail_asm_file,new_fail_dir),self.freglog)
-                os.system("cp  %s %s"%(fail_asm_file,new_fail_dir))
-            else:
-                warning("Copy asm file %s don't exist"%(fail_asm_file))                
-            Info(new_fail_dir,self.freglog)
-            Info("cp  %s %s"%(file,new_fail_dir),self.freglog)
-            os.system("cp  %s %s"%(file,new_fail_dir))
+        new_fail_dir = "%s/%s"%(self.fail_dir,datetime.date.today())
+        if file ==  None:
             Info("cp  %s %s"%(file_log,new_fail_dir),self.freglog)
-            os.system("cp  %s %s"%(file_log,new_fail_dir))
-        else:
-            error("Copy vector %s don't exist"%(file))
+            os.system("cp  %s %s"%(file_log,new_fail_dir))            
+        else:            
+            if os.path.exists(file):
+                fail_asm_file = file.split(".")[0]+".asm"
+                if os.path.exists(fail_asm_file):
+                    Info("cp  %s %s"%(fail_asm_file,new_fail_dir),self.freglog)
+                    os.system("cp  %s %s"%(fail_asm_file,new_fail_dir))
+                else:
+                    warning("Copy asm file %s don't exist"%(fail_asm_file))                
+                Info(new_fail_dir,self.freglog)
+                Info("cp  %s %s"%(file,new_fail_dir),self.freglog)
+                os.system("cp  %s %s"%(file,new_fail_dir))
+                Info("cp  %s %s"%(file_log,new_fail_dir),self.freglog)
+                os.system("cp  %s %s"%(file_log,new_fail_dir))
+            else:
+                error("Copy vector %s don't exist"%(file))
             
         if self.c_code_base_name != None:
             Info("cp  %s.* %s"%(self.c_code_base_name,new_fail_dir),self.freglog)
@@ -195,7 +199,8 @@ class Regression(Util):
                         return result
                     else:
                         if not_finish == 0:
-                            self.Send_info("load avp fail once, Please check!")  
+                            self.Send_info("Fail before load avp, Please check! log_file name is"%(log_file))
+                            self.Copy_ic_log(None,log_file) 
                             return 3                          
                             #self.Error_exit("Load avp fail, Please check!")
                         else:
