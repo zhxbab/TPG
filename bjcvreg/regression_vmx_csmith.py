@@ -64,7 +64,7 @@ class Regression_vmx_csmith(Vmx_csmith):
         self.regression.freglog = open(self.reglog_name,"w")
         info("Log is %s"%(self.reglog_name))
         self.c_code_base_name = os.path.join(self.avp_dir_path,self.c_parser.base_name)
-        self.regression.Set_remove_flag()
+        self.regression.Reset_remove_flag()
         self.regression.Handle_vecor(self.ic_file,time,self.c_code_base_name)
         self.regression.freglog.close()
                     
