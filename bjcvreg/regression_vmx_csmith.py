@@ -114,4 +114,4 @@ if __name__ == "__main__":
         tests.c_parser.c_code_asm.close()
         tests.Gen_vector()
         tests.Regression_vector()
-    tests.Remove_dir()
+    #tests.Remove_dir()
