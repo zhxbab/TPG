@@ -164,7 +164,7 @@ class Page(Util):
                         if i < 758 and i != 32:
                             self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))
                         elif i==32:
-                            new_i = i + n*128
+                            new_i = i + n*64
                             self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,new_i*0x400000/0x1000)) 
                         else:
                             self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))

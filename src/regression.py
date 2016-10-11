@@ -115,9 +115,9 @@ class Regression(Util):
             else:
                 error("Copy vector %s don't exist"%(file))
             
-        if self.c_code_base_name != None:
-            Info("cp  %s.* %s"%(self.c_code_base_name,new_fail_dir),self.freglog)
-            os.system("cp  %s* %s"%(self.c_code_base_name,new_fail_dir))
+#        if self.c_code_base_name != None:
+#            Info("cp  %s.* %s"%(self.c_code_base_name,new_fail_dir),self.freglog)
+#            os.system("cp  %s* %s"%(self.c_code_base_name,new_fail_dir))
         
     def Parse_pclmsi_log_jtrk(self,log_file):
         result = 0
