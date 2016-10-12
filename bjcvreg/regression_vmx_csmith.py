@@ -113,5 +113,6 @@ if __name__ == "__main__":
         tests.Gen_hlt_code()
         tests.c_parser.c_code_asm.close()
         tests.Gen_vector()
-        tests.Regression_vector()
+        if os.path.exists(tests.ic_file):
+            tests.Regression_vector()
     #tests.Remove_dir()

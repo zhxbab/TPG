@@ -90,5 +90,6 @@ if __name__ == "__main__":
             tests.Print_instructions(j,10000)
             tests.Gen_hlt_code(j)
         tests.Gen_vector()
-        tests.Regression_vector()
+        if os.path.exists(tests.ic_file):
+            tests.Regression_vector()
     tests.Remove_dir()
