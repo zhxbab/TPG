@@ -208,8 +208,13 @@ class Vmx_csmith(Test_generator):
         self.Tag_write("skip_wrmsr_%d"%(thread))
         self.Comment("#### initialize_revision_id ####")
         self.Set_vmcs_id(self.vmx_mode_code.vmxon[thread]["start"],self.vmx_mode_code.vmxon_pointer[thread]["start"])
-        self.Instr_write("vmxon [0x%x]"%(self.vmx_mode_code.vmxon_pointer[thread]["start"]),0)
-        
+        self.Instr_write("vmxon [0x%x]"%(self.vmx_mode_code.vmxon_pointer[thread]["start"]),thread)
+        if self.intel:
+            self.simcmd.Add_sim_cmd("at RDMSR 0x480 set msr 0x480 to 0x12:0x00",0,0) #Intel is about 0x12, 0x10
+            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x14"%((self.vmx_mode_code.vmxon[thread]["start"])),0,0)
+            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x1000"%(self.vmx_mode_code.vmcs[thread]["start"]),0,1)
+        else:
+            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x20"%((self.vmx_mode_code.vmcs[thread]["start"]+0x3a0)),0,0)                
         
         
         
@@ -281,8 +286,9 @@ if __name__ == "__main__":
         for j in range(0,tests.threads):
             tests.Start_user_code(j)
             tests.Vmx_load_asm_code(j,i)
+            tests.simcmd.Simcmd_write(j)
         #tests.Instr_write("vmxon [$vmxon_ptr]",0)
-        tests.c_parser.c_code_asm.close()
         tests.Gen_hlt_code()
+        tests.c_parser.c_code_asm.close()
         tests.Gen_vector()
     tests.Gen_pclmsi_file_list()

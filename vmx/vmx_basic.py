@@ -108,6 +108,8 @@ class Vmx_basic(Test_generator):
             self.simcmd.Add_sim_cmd("at RDMSR 0x480 set msr 0x480 to 0x12:0x00",0,0) #Intel is about 0x12, 0x10
             self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x14"%((self.vmx_mode_code.vmxon[thread]["start"])),0,0)
             self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x1000"%(self.vmx_mode_code.vmcs[thread]["start"]),0,1)
+        else:
+            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x20"%((self.vmx_mode_code.vmcs[thread]["start"]+0x3a0)),0,0)
 #        ### test #####
 #        self.Instr_write("vmxoff",thread)
 #        self.Instr_write("hlt",thread)      
@@ -169,7 +171,7 @@ if __name__ == "__main__":
         tests.Gen_mode_code()
         for j in range(0,tests.threads):
             tests.Start_user_code(j)
-        tests.Gen_hlt_code(j)
-        tests.simcmd.Simcmd_write(j)
+            tests.Gen_hlt_code(j)
+            tests.simcmd.Simcmd_write(j)
         tests.Gen_vector()
     tests.Gen_pclmsi_file_list()
