@@ -337,7 +337,10 @@ class Page(Util):
         self.vmx_pde1 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_pde1")
         self.vmx_pde2 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_pde2")
         self.vmx_pde3 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_pde3") # allocate 4*4KB for PDE, PDPTE(0-3) use different PDE 
-                  
+        
+    def Gen_vmx_page_4M_addr(self):
+        self.vmx_tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_tlb_base") # allocate 4KB for PML4E, one entry include 512G.    
+        
     def Write_vmx_page_2M(self):
         vmx_pdes = [self.vmx_pde0,self.vmx_pde1,self.vmx_pde2,self.vmx_pde3]
         self.Vars_write(self.vmx_tlb_base["name"],self.vmx_tlb_base["start"])
@@ -364,7 +367,21 @@ class Page(Util):
                     self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))
                 else:
                     self.Text_write("PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x087"%(i,j,addr))  
+                    
+    def Write_vmx_page_4M(self):
+        self.Vars_write(self.vmx_tlb_base["name"],self.vmx_tlb_base["start"])
+        self.Text_write("$vmx_tlb_pointer = INIT_TLB $%s"%(self.vmx_tlb_base["name"]))
+        self.Text_write("PAGING $vmx_tlb_pointer")
+        for i in range(0,1024):
+            if i < 758:
+                self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))         
+            else:
+                self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))
+ 
 
+ 
+ 
+ 
            
     def Gen_ept_2M_addr(self):
         if self.multi_ept == 0:
@@ -460,20 +477,36 @@ class Page(Util):
                             if i == 0x3:
                                 self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x19F"%(i,j,addr))
                             elif i == 0x1 or i == 0x2:
-                                if j<128:
-                                    new_j = j + index*128
+                                if j<64:
+                                    new_j = j + index*64
                                     addr = (new_j*0x200000+i*0x40000000)/0x1000
                                     self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
-                                elif 128<=j<256:
-                                    new_j = j + (index-1)*128
+                                elif 64<=j<128:
+                                    new_j = j + (index-1)*64
                                     addr = (new_j*0x200000+i*0x40000000)/0x1000
                                     self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
-                                elif 256<=j<384:
-                                    new_j = j+ (index-2)*128
+                                elif 128<=j<192:
+                                    new_j = j+ (index-2)*64
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
+                                elif 192<=j<256:
+                                    new_j = j + (index-3)*64
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
+                                elif 256<=j<320:
+                                    new_j = j + (index-4)*64
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
+                                elif 320<=j<384:
+                                    new_j = j+ (index-5)*64
+                                    addr = (new_j*0x200000+i*0x40000000)/0x1000
+                                    self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
+                                elif 384<=j<448:
+                                    new_j = j+ (index-6)*64
                                     addr = (new_j*0x200000+i*0x40000000)/0x1000
                                     self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))
                                 else:
-                                    new_j = j+ (index-3)*128
+                                    new_j = j+ (index-7)*64
                                     addr = (new_j*0x200000+i*0x40000000)/0x1000
                                     self.Text_write("EPT_PAE64_PDE\t0\t%d\t%d\t0x0\t0x%05x0B7"%(i,j,addr))                                    
                             else:

@@ -99,6 +99,7 @@ class Vmx_mode(Mode):
                 if self.c_gen:
                     self.Text_write("@%s.guest_fs_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_c_gen_0))
                     self.Text_write("@%s.guest_fs_base = 0x%08x"%(vmcs_name,self.c_parser.c_code_mem_info[".tbss"]["start"]))
+                self.Text_write("@%s.entry_controls = 0x000053ff"%(vmcs_name))
                 
             elif self.vmx_client_mode == "compatibility_mode":
                 self.Text_write("@%s.guest_cs_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_cs32_0))
@@ -119,13 +120,38 @@ class Vmx_mode(Mode):
                     self.Text_write("@%s.guest_fs_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_ds32_0))    
                 self.Text_write("@%s.guest_gs_attr= 0xC093"%(vmcs_name))              
                 self.Text_write("@%s.guest_fs_attr= 0xC093"%(vmcs_name))
+                self.Text_write("@%s.entry_controls = 0x000053ff"%(vmcs_name))
+                
+            elif self.vmx_client_mode == "protect_mode":
+                self.Text_write("@%s.guest_cs_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_cs32_0))
+                self.Text_write("@%s.guest_cs_attr = 0xC09b"%(vmcs_name))
+                self.Text_write("@%s.guest_ss_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_ds32_0))
+                self.Text_write("@%s.guest_ss_attr= 0xC093"%(vmcs_name))
+                self.Text_write("@%s.guest_ds_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_ds32_0))
+                self.Text_write("@%s.guest_ds_attr= 0xC093"%(vmcs_name))
+                self.Text_write("@%s.guest_es_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_ds32_0))
+                self.Text_write("@%s.guest_es_attr= 0xC093"%(vmcs_name))
+                self.Text_write("@%s.guest_tr_sel = &SELECTOR($%s)"%(vmcs_name,self.selector_name_ds32_0)) #FIXME - must point to a tss selector
+                if self.c_gen:            
+                    self.Text_write("@%s.guest_gs_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_c_gen_0))
+                    self.Text_write("@%s.guest_fs_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_ds32_0))
+                    self.Text_write("@%s.guest_gs_base = 0x%08x"%(vmcs_name,self.c_parser.c_code_mem_info[".tbss"]["start"]))       
+                else:
+                    self.Text_write("@%s.guest_gs_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_ds32_0))
+                    self.Text_write("@%s.guest_fs_sel= &SELECTOR($%s)"%(vmcs_name,self.selector_name_ds32_0))    
+                self.Text_write("@%s.guest_gs_attr= 0xC093"%(vmcs_name))              
+                self.Text_write("@%s.guest_fs_attr= 0xC093"%(vmcs_name))
+                self.Text_write("@%s.entry_controls = 0x000051ff"%(vmcs_name))
+                self.Text_write("@%s.guest_cr4 = 0x00042690"%(vmcs_name))
             
-            self.Text_write("@%s.entry_controls = 0x000053ff"%(vmcs_name))
+
             self.Text_write("@%s.guest_rip = 0x%x"%(vmcs_name,self.vmx_guest_entry_0[index]["start"]))
             self.Text_write("@%s.guest_rsp = 0x%x"%(vmcs_name,self.stack_segs[index]["end"]-0x8))
             self.Text_write("@%s.guest_cr3 = 0x%x"%(vmcs_name,self.ptg.vmx_tlb_base["start"]))
             self.Text_write("@%s.guest_ia32_pat_full = 0x00070406"%(vmcs_name))
             self.Text_write("@%s.guest_ia32_pat_high = 0x00070406"%(vmcs_name))
+            self.Text_write("@%s.proc_vm_exec_controls2 = 0x22"%(vmcs_name))
+            self.Text_write("@%s.vpid = %d"%(vmcs_name,index+1))         
             #del vmcs_name
     def Exit_code_addr(self,thread):
         self.Text_write("org 0x%x"%(self.vmx_exit_addr[thread]["start"]))
@@ -185,11 +211,16 @@ class Vmx_mode(Mode):
         
     def Gen_vmx_page_addr(self):
         self.ptg.Gen_ept_2M_addr()
-        self.ptg.Gen_vmx_page_2M_addr()
-
+        if self.vmx_client_mode == "protect_mode":
+            self.ptg.Gen_vmx_page_4M_addr()
+        else:
+            self.ptg.Gen_vmx_page_2M_addr()            
 
     def Write_vmx_page(self):
-        self.ptg.Write_vmx_page_2M()
+        if self.vmx_client_mode == "protect_mode":        
+            self.ptg.Write_vmx_page_4M()
+        else:
+            self.ptg.Write_vmx_page_2M()            
         self.ptg.Write_ept_2M()
 
 

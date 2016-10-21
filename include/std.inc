@@ -281,9 +281,9 @@ struct  std::vmcs::data {
 ######### DEFINES ##############
 struct  std::vmcs::encoding {
   # 16 bit control field
-  uint32 vpid =     0x0;
-  uint32 posted_intr_notification_vector = 0x2;
-  uint32 eptp_index =   0x4;
+  uint16 vpid 			= 0x0;
+  uint16 posted_intr_notification_vector = 0x2;
+  uint16 eptp_index 		= 0x4;
 
   # 16 bit Guest-State fields
   uint32 guest_es_sel           = 0x800;

@@ -389,3 +389,63 @@ class Test_generator(Args,Util):
         self.Instr_write("mov [0x%x], edx"%(pmc_addr["start"]+0x14),thread)
         self.Instr_write("mov dword ptr [0x%x], 0x0"%(pmc_addr["start"]),thread)
         self.Instr_write("mov dword ptr [0x%x], 0x0"%(pmc_addr["start"]+0x8),thread)
+        
+    def Vmread_all(self,vmcs,thread):
+        self.Vmread_16bit_guest_state(vmcs,thread)
+        
+        
+    def Vmread_16bit_guest_state(self,vmcs,thread):
+        self.Text_write("use 64")
+        self.Instr_write("mov rbx,0x%x"%(vmcs),thread)        
+        self.Instr_write("push rax",thread)
+        self.Instr_write("mov rax, @std_vmcs_encoding.guest_es_sel");
+        self.Instr_write("vmread [rbx + disp32 &OFFSET(@std_vmcs_data.guest_es_sel)],rax")
+        self.Instr_write("pop rax",thread)
+        
+    def Change_vm_rip(self,vmcs,guest_rip,host_rip,thread):
+        self.Text_write("use 64")
+        self.Instr_write("mov rbx,0x%x"%(vmcs),thread)
+        self.Instr_write("mov rax,%s"%(guest_rip),thread)  
+        self.Instr_write("mov qword ptr [rbx + disp32 &OFFSET(@std_vmcs_data.guest_rip)], rax")
+        self.Instr_write("mov rax,%s"%(host_rip),thread)  
+        self.Instr_write("mov qword ptr [rbx + disp32 &OFFSET(@std_vmcs_data.host_rip)], rax")     
+        self.Instr_write("push rax",thread)
+        self.Instr_write("mov rax, @std_vmcs_encoding.guest_rip");
+        self.Instr_write("vmwrite rax,[rbx + disp32 &OFFSET(@std_vmcs_data.guest_rip)]")
+        self.Instr_write("mov rax, @std_vmcs_encoding.host_rip");
+        self.Instr_write("vmwrite rax,[rbx + disp32 &OFFSET(@std_vmcs_data.host_rip)]")
+        self.Instr_write("pop rax",thread)  
+        
+    def Reflush_cache(self,eptp_pointer, eptp, thread):
+        #ZXC only support type 2
+        self.Text_write("use 64")
+        self.Instr_write("mov rax,0x%x"%(eptp),thread)
+        self.Instr_write("mov [0x%x], rax"%(eptp_pointer),thread)
+        self.Instr_write("mov qword ptr [0x%x+8], 0x0"%(eptp_pointer),thread)        
+        self.Instr_write("mov rax,0x2",thread)
+        self.Instr_write("invept rax,[0x%x]"%(eptp_pointer),thread)
+
+    def Reflush_vpid(self,rax, vpid_pointer, linear_addr, vpid, thread):
+        #ZXC only support type 2
+        self.Text_write("use 64")
+        self.Instr_write("mov rax,0x%x"%(vpid_pointer),thread)
+        self.Instr_write("mov qword ptr [rax+8], 0x%x"%(linear_addr),thread)
+        self.Instr_write("mov word ptr [rax], 0x%x"%(vpid),thread)
+        self.Instr_write("mov word ptr [rax+2], 0x0",thread)
+        self.Instr_write("mov dword ptr [rax+4], 0x0",thread)
+        self.Instr_write("mov rax,0x%x"%(rax),thread)    
+        self.Instr_write("invvpid rax,[0x%x]"%(vpid_pointer),thread)
+
+         
+    def Set_std_vmcs_initialize_16bit_control_state(self,thread):
+        self.Text_write("use 64")
+        self.Instr_write("push rax",thread)
+        self.Instr_write("mov rax,@std_vmcs_encoding.vpid",thread);
+        self.Instr_write("vmwrite rax,[rbx + disp32 &OFFSET(@std_vmcs_data.vpid)]",thread)
+        self.Instr_write("pop rax",thread)
+        
+    def Vmfunc(self,thread):
+        self.Text_write("use 64")
+        #ZXC don't support vmfun
+        self.Instr_write("mov rax,0x0",thread)
+        self.Instr_write("mov rcx,0x0",thread)            

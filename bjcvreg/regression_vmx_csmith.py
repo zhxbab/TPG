@@ -88,7 +88,7 @@ class Regression_vmx_csmith(Vmx_csmith):
 ##############################################MAIN##########################################
 if __name__ == "__main__":
     host_mode = "long_mode"
-    vmx_client_mode = ["long_mode","compatibility_mode"][random.randint(0,1)]
+    vmx_client_mode = ["long_mode","compatibility_mode","protect_mode"][random.randint(0,1)]
     tests = Regression_vmx_csmith(sys.argv[1:])
     if tests.dual:
         threads = [1,8][random.randint(0,1)]

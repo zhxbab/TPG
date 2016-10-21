@@ -20,8 +20,8 @@ class Vmx_csmith(Test_generator):
                           , type = "int", default = 1)
         args_parser.add_option("-t","--threads", dest="thread_nums", help="The vector thread nums."\
                           , type = "int", default = 1)
-        args_parser.add_option("-m","--vmc_mode", dest="client_mode", help="The vmx client mode.\n0x0: long mode\n0x1: compatibility mode\n"\
-                          , type = "int", default = 0)
+        args_parser.add_option("-m","--vmc_mode", dest="client_mode", help="The vmx client mode.\n0x0: long mode\n0x2: compatibility mode\n\
+                           0x1: protect_mode", type = "int", default = 0)
         args_parser.add_option("--seed", dest="seed", help="Set the seed. [default: %default]\nFor the default value, tpg will generate random seed instead."\
                           , type = "int", default = 0x0)
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
@@ -67,8 +67,10 @@ class Vmx_csmith(Test_generator):
                 
         if self.args_option.client_mode == 0x0:
             self.vmx_client_mode = "long_mode"
-        elif self.args_option.client_mode == 0x1:
+        elif self.args_option.client_mode == 0x2:
             self.vmx_client_mode = "compatibility_mode"
+        elif self.args_option.client_mode == 0x1:
+            self.vmx_client_mode = "protect_mode"
         else:
             self.Error_exit("Invalid vmx client mode!")
         if self.args_option.gcc == True:

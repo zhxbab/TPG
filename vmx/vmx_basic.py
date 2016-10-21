@@ -24,7 +24,8 @@ class Vmx_basic(Test_generator):
                           , type = "int", default = 0x0)
         args_parser.add_option("--debug", dest="_debug", help="Enable the debug mode", action="store_true", default = False)
         args_parser.add_option("--intel", dest="intel", help="Support intel platform, APIC ID is 0,2,4,6", action="store_true", default = False)
-        args_parser.add_option("--no_very_short", dest="very_short", help="Change -very-short to short", action="store_true", default = False)   
+        args_parser.add_option("--no_very_short", dest="very_short", help="Change -very-short to short", action="store_true", default = False)
+        args_parser.add_option("-m", dest="client_mode", help="The client_mode. 0x0: long mode, 0x1: protect mode, 0x2: compatibility mode", type = "int", default = 0)
         (self.args_option, self.args_additions) = args_parser.parse_args(args)       
         if self.args_option.seed:
             self.seed = self.args_option.seed
@@ -45,11 +46,37 @@ class Vmx_basic(Test_generator):
         else:
             self.very_short_cmd = "-short"
             self.very_short_num = "100000"
-        self.vmx_client_mode = "long_mode"
+        if self.args_option.client_mode == 0:
+            self.vmx_client_mode = "long_mode"
+        elif self.args_option.client_mode == 1:
+            self.vmx_client_mode = "protect_mode"
+        elif self.args_option.client_mode == 2:
+            self.vmx_client_mode = "compatibility_mode"
+        else:
+            self.Error_exit("Invalid vm client mode!")
         self.disable_avx = False
         self.disable_pcid = False
         self.multi_page = 0 
         self.simcmd = Simcmd(self.threads)     
+        
+        
+    def Create_dir(self):
+        self.avp_dir_seed = random.randint(1,0xFFFF)
+        self.avp_dir_name = "%s_%sT_%s_vmx_%s_%d"%(self.realbin_name,self.threads,self.mode,self.vmx_client_mode,self.avp_dir_seed)
+        cmd = "mkdir %s/%s"%(self.realbin_path,self.avp_dir_name)
+        info("create dir cmd is %s"%(cmd))
+        os.system(cmd)
+        self.avp_dir_path = os.path.join(self.realbin_path,self.avp_dir_name)
+        self.cnsim_fail_dir = os.path.join(self.avp_dir_path,"cnsim_fail")
+        self.fail_dir =  os.path.join(self.avp_dir_path,"fail")
+        cmd = "mkdir %s"%(self.cnsim_fail_dir)
+        info("create dir cmd is %s"%(cmd))
+        os.system(cmd)
+        cmd = "mkdir %s"%(self.fail_dir)
+        info("create dir cmd is %s"%(cmd))
+        os.system(cmd)
+        self.Create_global_info()        
+        
         
     def Gen_mode_code(self):
         self.vmx_mode_code = Vmx_mode(self.hlt_code,self.mpg, self.instr_manager, self.ptg, self.threads, self.simcmd, self.intel, self.interrupt,self.c_parser)
@@ -66,7 +93,7 @@ class Vmx_basic(Test_generator):
         self.ptg.multi_ept = self.multi_ept
         [self.stack_segs,self.user_code_segs] = self.vmx_mode_code.Mode_code(self.mode,self.c_gen,self.vmx_client_mode,self.disable_avx,self.disable_pcid)
 
-    def Gen_hlt_code(self,thread_num):
+    def Gen_hlt_code(self):
         self.Text_write("org 0x%x"%(self.hlt_code["start"]))
         self.Tag_write(self.hlt_code["name"])
         self.Text_write("hlt")
@@ -130,9 +157,27 @@ class Vmx_basic(Test_generator):
             self.vmx_mode_code.Write_vmx_page()
         
     def Vmx_entry(self,thread):
+        self.Set_std_vmcs_initialize_16bit_control_state(thread)
         self.Instr_write("vmlaunch")
         
     def Vmx_exit(self,thread):
+        self.eptp_pointer = self.mpg.Apply_mem(0x10,16,start=0x1000000,end=0x8000000,name="eptp_pointer")
+        self.vpid_pointer = self.mpg.Apply_mem(0x10,16,start=0x1000000,end=0x8000000,name="vpid_pointer") 
+        vmcs = self.mpg.Apply_mem(0x2000,0x1000,start=0x1000000,end=0x8000000,name="vmcs_exit")
+        current_vmcs_pointer = self.mpg.Apply_mem(0x8,16,start=0x1000000,end=0x8000000,name="vmcs_exit_pointer")
+        self.Instr_write("vmptrst [0x%x]"%(current_vmcs_pointer["start"]))#store current vmcs addr
+        self.Vmread_all(vmcs["start"],thread)
+        self.Change_vm_rip(vmcs["start"],"$vmx_exit_%d"%(thread),"$host_vmx_exit_%d"%(thread),thread) 
+        if self.multi_ept:          
+            self.Reflush_cache(self.eptp_pointer["start"],self.vmx_mode_code.ptg.ept_tlb_base[thread]["start"],thread)
+        else:
+            self.Reflush_cache(self.eptp_pointer["start"],self.vmx_mode_code.ptg.ept_tlb_base["start"],thread)            
+        self.Reflush_vpid(0,self.vpid_pointer["start"],self.vmx_mode_code.vmcs[thread]["start"],thread+1,thread)
+        self.Reflush_vpid(1,self.vpid_pointer["start"],self.vmx_mode_code.vmcs[thread]["start"],thread+1,thread)
+        self.Reflush_vpid(2,self.vpid_pointer["start"],self.vmx_mode_code.vmcs[thread]["start"],thread+1,thread)
+        self.Reflush_vpid(3,self.vpid_pointer["start"],self.vmx_mode_code.vmcs[thread]["start"],thread+1,thread)
+        self.Instr_write("vmresume",thread)
+        self.Tag_write("host_vmx_exit_%d"%(thread))
         self.Instr_write("vmclear [0x%x]"%(self.vmx_mode_code.vmcs_pointer[thread]["start"]),thread)
         self.Instr_write("vmxoff",thread)
         
@@ -145,14 +190,21 @@ class Vmx_basic(Test_generator):
         
     def Set_guest_entry(self,thread):
         self.Text_write("org 0x%x"%(self.vmx_mode_code.vmx_guest_entry_0[thread]["start"]))
-        self.Text_write("use 64")
-        for i in range(0,1000):
-            self.Instr_write("mov r8,qword ptr [0x40000000]")
+        if self.vmx_client_mode == "long_mode":
+            self.Text_write("use 64")
+            for i in range(0,1000):
+                self.Instr_write("mov r8,qword ptr [0x40000000]")
         #self.Instr_write("mov rbx,0x%x"%(self.vmx_mode_code.vmcs_data["start"]))
         #self.Instr_write("mov [rbx + disp32 &OFFSET(@std_vmcs_data.host_cr3)],0x%x"%(self.vmx_mode_code.ptg.tlb_base["start"]));
         #self.Instr_write("mov rax, @std_vmcs_encoding.host_cr3")
         #self.Instr_write("vmwrite rax, [rbx + disp32 &OFFSET(@std_vmcs_data.host_cr3)]");
-        self.Instr_write("vmcall")
+        else:
+            self.Text_write("use 32")
+            for i in range(0,1000):
+                self.Instr_write("mov edx,dword ptr [0x40000000]")
+        self.Instr_write("vmcall",thread)
+        self.Tag_write("vmx_exit_%d"%(thread))
+        self.Instr_write("vmcall",thread)         
         #self.Instr_write("hlt")
     
     def Vmcs_extra_setting(self):
@@ -171,7 +223,7 @@ if __name__ == "__main__":
         tests.Gen_mode_code()
         for j in range(0,tests.threads):
             tests.Start_user_code(j)
-            tests.Gen_hlt_code(j)
             tests.simcmd.Simcmd_write(j)
+        tests.Gen_hlt_code()
         tests.Gen_vector()
     tests.Gen_pclmsi_file_list()
