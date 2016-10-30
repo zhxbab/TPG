@@ -265,7 +265,7 @@ class Regression(Util):
                     test_result = self.Do_runpclmsi(self.runpclmsi_test_cmd,20)
                     if test_result == 0x0:
                         self.Send_info("HOST %s DEVICE %s Has RESET AUTOMATICALLY!"%(os.getenv("HOSTNAME"),self.device))
-                        Info("HOST %s DEVICE %s Has RESET AUTOMATICALLY!"%(os.getenv("HOSTNAME"),self.device,self.freglog))
+                        Info("HOST %s DEVICE %s Has RESET AUTOMATICALLY!"%(os.getenv("HOSTNAME"),self.device),self.freglog)
                         return 
                     else:
                         Info("Send Mail and Sleep forever until reset!",self.freglog)
