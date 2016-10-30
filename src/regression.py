@@ -253,6 +253,12 @@ class Regression(Util):
                 time.sleep(5)
                 return 
         else:
+            test_result = self.Do_runpclmsi(self.runpclmsi_test_cmd,20)
+            if test_result == 0x0:
+                Info("Perhaps PCLMSI Link Unstable",self.freglog)
+                self.Send_info("HOST %s DEVICE %s Link Unstable!"%(os.getenv("HOSTNAME"),self.device))
+                self.result = result
+                return                 
             Info("PCLMSI RESET or HANG",self.freglog)
             if os.path.exists("%s.sum"%(self.base_name)):
                 result = self.Parse_pclmsi_log_sum("%s.sum"%(self.base_name))
