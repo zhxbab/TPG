@@ -42,20 +42,25 @@ class Regression(Util):
         self.cnr001a1_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"},\
                                      {"Name":"loop queue","Location":"0x1257[0]"}]
         self.cnr002_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"}]
-        self.chx_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"}]
+        self.chx001a0_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"},\
+                                     {"Name":"hif speculative read","Location":"0x160f[1]"}]
         if arch == "default_arch":
+            self.rerun_times = 1000
             self.clk_list = [6]
             self.feature_list = []
         elif arch == "cnr001a1":
+            self.rerun_times = 1000
             self.clk_list = [4,4.5,5,5.5,6]
             self.feature_list = self.cnr001a1_feature_list
         elif arch == "cnr002":
+            self.rerun_times = 1000
             self.clk_list = [4,4.5,5,5.5,6]
             self.feature_list = self.cnr002_feature_list            
-        elif arch == "chx001":
+        elif arch == "chx001a0":
             #self.clk_list = [8,9,10,11,12,13,14,15,16,17,18,19,20]
-            self.clk_list = [8,20]
-            self.feature_list = self.chx001_feature_list
+            self.rerun_times = 50000
+            self.clk_list = [8]
+            self.feature_list = self.chx001a0_feature_list
         else:
             self.Error_exit("Invalid Architecture")
         self.freglog = None
@@ -223,9 +228,9 @@ class Regression(Util):
     
     def Tune_clk_and_feature(self):
         for clc in self.clk_list:
-            Info("runpclmsi -d %d -f %s --rerun=1000"%(self.device,self.temp_list),self.freglog)
-            os.system("runpclmsi -d %d -f %s --rerun=1000"%(self.device,self.temp_list))
-            runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc)
+            Info("runpclmsi -d %d -f %s --rerun=%d"%(self.device,self.temp_list,self.rerun_times),self.freglog)
+            os.system("runpclmsi -d %d -f %s --rerun=%d"%(self.device,self.temp_list,self.rerun_times))
+            runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:%d"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,self.rerun_times)
             self.Run_Check(runpclmsi_cmd)
             if len(self.feature_list) == 0:
                 continue
