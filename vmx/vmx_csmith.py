@@ -36,6 +36,8 @@ class Vmx_csmith(Test_generator):
         args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--instr_only", dest="instr_only", help="Cnsim instr only", action="store_true", default = False)
         args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)
+        args_parser.add_option("-g","--generator", dest="generator", help="0x0: Use Csmith, 0x1: Use randprog"\
+                          , type = "int", default = 0)
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -95,6 +97,7 @@ class Vmx_csmith(Test_generator):
         self.disable_pcid = self.args_option.disable_pcid
         self.multi_page = 0
         self.c_plus = self.args_option.c_plus
+        self.generator = self.args_option.generator
                 
     def Force_compiler_and_optimize(self):
         if self.force_gcc == 1:
@@ -139,9 +142,8 @@ class Vmx_csmith(Test_generator):
         self.Create_global_info()
             
     def Gen_asm_code(self,thread, num):
-        self.c_parser = C_parser(self.bin_path,self.avp_dir_path,self.vmx_client_mode,self.instr_manager,self.mpg)
+        self.c_parser = C_parser(self.bin_path,self.avp_dir_path,self.vmx_client_mode,self.instr_manager,self.mpg,self.c_plus,self.generator)
         self.c_parser.asm_file = self.asm_file
-        self.c_parser.c_plus = self.c_plus  
         if self.elf_file != None:
             ret_gen_asm_code = self.c_parser.Get_fix_c_asm(self.elf_file)
         else:

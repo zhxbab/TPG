@@ -12,8 +12,9 @@ from logging import info, error, debug, warning, critical
 from operator import eq, ne
 from copy import deepcopy
 class C_parser(Util):
-    def __init__(self, bin_path, avp_dir_path, mode, instr_manager, mpg):
-        self.cmsith = "%s/csmith"%(bin_path)
+    def __init__(self, bin_path, avp_dir_path, mode, instr_manager, mpg, c_plus,generator=0x0):
+        self.csmith = "%s/csmith"%(bin_path)
+        self.randprog = "%s/randprog"%(bin_path)
         self.objdump = "%s/objdump"%(bin_path)
         self.readelf = "%s/readelf"%(bin_path)
         self.gcc = "%s/gcc"%(bin_path)
@@ -31,17 +32,30 @@ class C_parser(Util):
         self.c_code_mem_info ={}
         self.c_code_rel_info = []
         self.multi_page=0
-        self.c_plus = False
+        self.c_plus = c_plus
+        if generator == 0x0:
+            self.generator = self.csmith
+            if self.c_plus:
+                self.generator_extra_cmd = "--max-funcs 10 --lang-cpp -o" 
+            else:
+                self.generator_extra_cmd = "--max-funcs 10 -o" 
+            self.compiler_extra_cmd = ""
+        elif generator == 0x1:
+            self.generator = self.randprog
+            self.c_plus = False
+            #self.generator_extra_cmd = "--wrap-volatiles true --max-funcs 10 >"
+            self.generator_extra_cmd = ">"
+            self.compiler_extra_cmd = ""
+        else:
+            self.Error_exit("Invalid generator")
         
     def Gen_c_asm(self,thread,num,optimize=None):
         self.base_name = "c_code_%d"%(num)
         #info("c plus 99 is %d"%(self.c_plus))
         if not self.c_plus:
             c_file = "c_code_%d.c"%(num)
-            csmith_extra_cmd ="--max-funcs 10"
         else:
-            c_file = "c_code_%d.cpp"%(num)
-            csmith_extra_cmd ="--max-funcs 10 --lang-cpp"         
+            c_file = "c_code_%d.cpp"%(num)         
         elf_file = "c_code_%d.elf"%(num)
         disasm_file = "c_code_%d"%(num)
         #self.disasm_file = disasm_file
@@ -53,22 +67,20 @@ class C_parser(Util):
             self.optimize = optimize
         os.chdir(self.avp_dir_path)
         if self.mode == "protect_mode" or self.mode == "compatibility_mode":
-            extra_cmd = "-m32"
-        else:
-            extra_cmd = ""
-        info("%s %s -o %s"%(self.cmsith,csmith_extra_cmd,c_file))
-        if os.system("%s %s -o %s"%(self.cmsith,csmith_extra_cmd,c_file)):
-            self.Error_exit("Execute csmith error!")
+            self.compiler_extra_cmd = self.compiler_extra_cmd + " -m32"
+        info("%s %s %s"%(self.generator,self.generator_extra_cmd,c_file))
+        if os.system("%s %s %s"%(self.generator,self.generator_extra_cmd,c_file)):
+            self.Error_exit("Execute %s error!"%(self.generator))
         if not self.c_plus:
-            info("%s -w %s -%s -static -fPIC %s -o %s"%(self.c_compiler,extra_cmd,self.optimize,c_file,elf_file))
-            if os.system("%s -w %s -%s -static -fPIC %s -o %s"%(self.c_compiler,extra_cmd,self.optimize,c_file,elf_file)):
+            info("%s -w %s -%s -static -fPIC %s -o %s"%(self.c_compiler,self.compiler_extra_cmd,self.optimize,c_file,elf_file))
+            if os.system("%s -w %s -%s -static -fPIC %s -o %s"%(self.c_compiler,self.compiler_extra_cmd,self.optimize,c_file,elf_file)):
                 os.system("rm -f %s*"%(self.base_name))
                 os.chdir("../")
                 return 1
                 #self.Error_exit("Execute %s error!"%(self.c_compiler)) # use -static need glibc-static.x86-64 and i686
         else:
-            info("%s -w %s -%s -static -fPIC %s -o %s"%(self.cplus_compiler,extra_cmd,self.optimize,c_file,elf_file))
-            if os.system("%s -w %s -%s -static -fPIC %s -o %s"%(self.cplus_compiler,extra_cmd,self.optimize,c_file,elf_file)):
+            info("%s -w %s -%s -static -fPIC %s -o %s"%(self.cplus_compiler,self.compiler_extra_cmd,self.optimize,c_file,elf_file))
+            if os.system("%s -w %s -%s -static -fPIC %s -o %s"%(self.cplus_compiler,self.compiler_extra_cmd,self.optimize,c_file,elf_file)):
                 #self.Error_exit("Execute %s error!"%(self.cplus_compiler)) # use -static need glibc-static.x86-64 and i686
                 os.system("rm -f %s*"%(self.base_name))
                 os.chdir("../")

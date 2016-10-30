@@ -25,6 +25,8 @@ class Csmith(Test_generator):
                           , type = "int", default = 1)
         args_parser.add_option("-n","--nums", dest="nums", help="The vector nums."\
                           , type = "int", default = 1)
+        args_parser.add_option("-g","--generator", dest="generator", help="0x0: Use Csmith, 0x1: Use randprog"\
+                          , type = "int", default = 0)
         args_parser.add_option("-t","--threads", dest="thread_nums", help="The vector thread nums."\
                           , type = "int", default = 1)
         args_parser.add_option("--seed", dest="seed", help="Set the seed. [default: %default]\nFor the default value, tpg will generate random seed instead."\
@@ -120,6 +122,7 @@ class Csmith(Test_generator):
         self.disable_pcid = self.args_option.disable_pcid
         self.c_plus = self.args_option.c_plus
         self.pae = False
+        self.generator = self.args_option.generator
 #        if self.page_mode != "4KB_32bit":
 #            self.pae = self.args_option.pae
 #        else:
@@ -139,9 +142,8 @@ class Csmith(Test_generator):
             self.Error("Compiler is not used")
             
     def Gen_asm_code(self,thread, num):
-        self.c_parser = C_parser(self.bin_path,self.avp_dir_path,self.mode,self.instr_manager,self.mpg)
+        self.c_parser = C_parser(self.bin_path,self.avp_dir_path,self.mode,self.instr_manager,self.mpg, self.c_plus, self.generator)
         self.c_parser.asm_file = self.asm_file
-        self.c_parser.c_plus = self.c_plus    
         if self.elf_file != None:
             ret_gen_asm_code = self.c_parser.Get_fix_c_asm(self.elf_file)
         else:

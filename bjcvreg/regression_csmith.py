@@ -76,7 +76,9 @@ if __name__ == "__main__":
     if tests.dual:
         threads = [1,8][random.randint(0,1)]
     else:
-        threads = [1,4][random.randint(0,1)] 
+        threads = [1,4][random.randint(0,1)]
+    #tests.generator = [0,1][random.randint(0,1)]
+    tests.generator = 0
     tests.Set_mode(mode,threads,0)
     tests.Fix_threads(threads)
     tests.Create_dir()
