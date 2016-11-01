@@ -57,7 +57,7 @@ class Regression_vmx_csmith(Vmx_csmith):
         else:
             self.c_plus = False 
         self.dual = self.args_option.dual
-        self.generator = self.args_option.generator
+        self.generator = 0
                  
     def Regression_vector(self):
         time = 2000
