@@ -57,7 +57,8 @@ class Regression_vmx_csmith(Vmx_csmith):
         else:
             self.c_plus = False 
         self.dual = self.args_option.dual
-                            
+        self.generator = self.args_option.generator
+                 
     def Regression_vector(self):
         time = 2000
         self.reglog_name = "/tmp/%s"%(self.avp_dir_name)
