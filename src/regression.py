@@ -59,7 +59,7 @@ class Regression(Util):
         elif arch == "chx001a0":
             #self.clk_list = [8,9,10,11,12,13,14,15,16,17,18,19,20]
             self.rerun_times = 1000
-            self.clk_list = [8,8,8,8,8,8,8,8,8,8]
+            self.clk_list = [8,8,8,8,8]
             self.feature_list = self.chx001a0_feature_list
             #self.feature_list = []
         else:
