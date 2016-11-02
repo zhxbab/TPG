@@ -139,7 +139,7 @@ class Test_generator(Args,Util):
         ret = rasm_p.poll()
         while ret == None:
             ret = rasm_p.poll()
-        cnsim_cmd = "%s/cnsim %s %s"%(self.bin_path,self.cnsim_param,avp_file)             
+        cnsim_cmd = "%s/cnsim %s %s"%(self.bin_path,self.cnsim_param,avp_file)     
         info(cnsim_cmd)
         cnsim_p = subprocess.Popen(cnsim_cmd,stdout=None, stderr=None, shell=True)
         ret = cnsim_p.poll()
@@ -148,6 +148,7 @@ class Test_generator(Args,Util):
         if ret != 0x0:
             error("Gen vector fail, Please check!")
             self.fail_list.append(avp_file)
+            self.ic_file = avp_file.replace(".avp",".ic")
             if self.c_gen:
                 info("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
                 os.system("mv %s* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
