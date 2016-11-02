@@ -232,7 +232,8 @@ class Regression(Util):
             Info("runpclmsi -d %d -f %s --rerun=%d"%(self.device,self.temp_list,self.rerun_times),self.freglog)
             os.system("runpclmsi -d %d -f %s --rerun=%d"%(self.device,self.temp_list,self.rerun_times))
             runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:%d"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,self.rerun_times)
-            self.Run_Check(runpclmsi_cmd)
+            if self.Run_Check(runpclmsi_cmd):
+                break
             if len(self.feature_list) == 0:
                 continue
             else:
@@ -252,14 +253,14 @@ class Regression(Util):
             if result:
                 Info("Find Fail Sleep 5s!",self.freglog)
                 time.sleep(5)
-                return 
+                return result
         else:
             test_result = self.Do_runpclmsi(self.runpclmsi_test_cmd,20)
             if test_result == 0x0:
                 Info("Perhaps PCLMSI Link Unstable",self.freglog)
                 self.Send_info("HOST %s DEVICE %s Link Unstable!"%(os.getenv("HOSTNAME"),self.device))
                 self.result = result
-                return                 
+                return result           
             Info("PCLMSI RESET or HANG",self.freglog)
             if os.path.exists("%s.sum"%(self.base_name)):
                 result = self.Parse_pclmsi_log_sum("%s.sum"%(self.base_name))
