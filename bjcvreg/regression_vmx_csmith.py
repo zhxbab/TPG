@@ -117,4 +117,4 @@ if __name__ == "__main__":
         tests.Gen_vector()
         if os.path.exists(tests.ic_file):
             tests.Regression_vector()
-    #tests.Remove_dir()
+    tests.Remove_dir()
