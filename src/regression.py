@@ -255,6 +255,7 @@ class Regression(Util):
                 time.sleep(5)
                 return result
         else:
+            time.sleep(3)
             test_result = self.Do_runpclmsi(self.runpclmsi_test_cmd,20)
             if test_result == 0x0:
                 Info("Perhaps PCLMSI Link Unstable",self.freglog)
@@ -333,7 +334,7 @@ class Regression(Util):
     def timer_function(self,Popen):
         returncode = Popen.poll()
         if returncode == None:
-            warning("Stop runpclmsi subprocess %d!"%(Popen.pid))
+            warning("Timeout and Stop runpclmsi subprocess %d!"%(Popen.pid))
             self.stop_flag = 1
             Popen.kill()
         else:

@@ -40,7 +40,7 @@ class Regression_cases(Test_generator):
          
         
     def Regression_vector(self):
-        time = 300
+        time = 1200
         self.avp_dir_name = self.avp_dir.split("/")[-2]
         self.reglog_name = "/tmp/%s"%(self.avp_dir_name)
         self.regression.freglog = open(self.reglog_name,"w")
