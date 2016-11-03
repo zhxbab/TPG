@@ -22,10 +22,11 @@ def _format_addr(s):
                         addr.encode('utf-8') if isinstance(addr, unicode) else addr))     
 ############################################Classes################################
 class Regression(Util):
-    def __init__(self,device,arch):
+    def __init__(self,device,arch,case=0):
         signal.signal(signal.SIGINT,self.Sigint_handler)
         self.runpclmsi = os.getenv("LOCATION_RUN_PCLMSI")
         self.device = device
+        self.case = case
         self.test_list = "%s/bjcvreg/test.ic.gz"%(os.getenv("LOCATION_TPG"))
         self.runpclmsi_test_cmd = "%s +device:%d +load:%s +no_log:1 +ignore_all_checks:1"%(self.runpclmsi,self.device,self.test_list)
         self.fail_dir = os.getenv("LOCATION_CVREG_VECTOR")
@@ -65,6 +66,17 @@ class Regression(Util):
         else:
             self.Error_exit("Invalid Architecture")
         self.freglog = None
+        if self.case:
+            self.clk_list_choice = []
+            self.feature_list_choice = []
+            clk_index = random.randint(0,len(self.clk_list))
+            feature_index = random.randint(0,len(self.feature_list))
+            self.clk_list_choice = self.clk_list_choice.append(self.clk_list[clk_index])
+            self.feature_list_choice = self.feature_list_choice.append(self.feature_list[feature_index])
+        else:
+            self.clk_list_choice = self.clk_list
+            self.feature_list_choice = self.feature_list          
+        
                               
     def Handle_vecor(self,ic_file,time,c_code_base_name=None,cases=None):
         self.runpclmsi_time = time
@@ -228,16 +240,16 @@ class Regression(Util):
         return file_log
     
     def Tune_clk_and_feature(self):
-        for clc in self.clk_list:
+        for clc in self.clk_list_choice:
             Info("runpclmsi -d %d -f %s --rerun=%d"%(self.device,self.temp_list,self.rerun_times),self.freglog)
             os.system("runpclmsi -d %d -f %s --rerun=%d"%(self.device,self.temp_list,self.rerun_times))
             runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:%d"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,self.rerun_times)
             if self.Run_Check(runpclmsi_cmd):
                 break
-            if len(self.feature_list) == 0:
+            if len(self.feature_list_choice) == 0:
                 continue
             else:
-                for feature in self.feature_list:
+                for feature in self.feature_list_choice:
                     runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000 +flip_msr_bit:\"%s\""\
                     %(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,feature["Location"])
                     self.Run_Check(runpclmsi_cmd)
@@ -275,7 +287,7 @@ class Regression(Util):
                     if test_result == 0x0:
                         self.Send_info("HOST %s DEVICE %s Has RESET AUTOMATICALLY!"%(os.getenv("HOSTNAME"),self.device))
                         Info("HOST %s DEVICE %s Has RESET AUTOMATICALLY!"%(os.getenv("HOSTNAME"),self.device),self.freglog)
-                        return 
+                        return 1
                     else:
                         Info("Send Mail and Sleep forever until reset!",self.freglog)
                         check_reset_time = 60*30#60*30 is good,20 is used for test
@@ -292,10 +304,12 @@ class Regression(Util):
                         sleep_t.cancel()
                         del sleep_t
                         self.mail_num = 0
+                        return 1
             else:
                 self.Error_exit("sum file is not exist! Please check!")
         self.result = result
-        
+
+    
     def Check_result(self):
         self.Remove_all()
         

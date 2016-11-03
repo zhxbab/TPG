@@ -36,11 +36,11 @@ class Regression_cases(Test_generator):
         else:
             self.device = self.args_option.device
         self.arch = self.args_option.arch
-        self.regression = Regression(self.device,self.arch)
+        self.regression = Regression(self.device,self.arch,1)
          
         
     def Regression_vector(self):
-        time = 1200
+        time = 1500
         self.avp_dir_name = self.avp_dir.split("/")[-2]
         self.reglog_name = "/tmp/%s"%(self.avp_dir_name)
         self.regression.freglog = open(self.reglog_name,"w")
