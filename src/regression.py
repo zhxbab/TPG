@@ -22,7 +22,7 @@ def _format_addr(s):
                         addr.encode('utf-8') if isinstance(addr, unicode) else addr))     
 ############################################Classes################################
 class Regression(Util):
-    def __init__(self,device,arch,case=0):
+    def __init__(self,device,arch,bustool,case=0):
         signal.signal(signal.SIGINT,self.Sigint_handler)
         self.runpclmsi = os.getenv("LOCATION_RUN_PCLMSI")
         self.device = device
@@ -40,6 +40,10 @@ class Regression(Util):
         self.sleep_timer_start = 0
         self.runpclmsi_time = 20
         self.skip_check_fail = False
+        if bustool:
+            self.bustool_cmd = "+fsnoop:1"
+        else:
+            self.bustool_cmd = ""
         self.cnr001a1_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"},\
                                      {"Name":"loop queue","Location":"0x1257[0]"}]
         self.cnr002_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"}]
@@ -243,15 +247,15 @@ class Regression(Util):
         for clc in self.clk_list_choice:
             Info("runpclmsi -d %d -f %s --rerun=%d"%(self.device,self.temp_list,self.rerun_times),self.freglog)
             os.system("runpclmsi -d %d -f %s --rerun=%d"%(self.device,self.temp_list,self.rerun_times))
-            runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:%d"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,self.rerun_times)
+            runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:%d %s"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,self.rerun_times,self.bustool_cmd)
             if self.Run_Check(runpclmsi_cmd):
                 break
             if len(self.feature_list_choice) == 0:
                 continue
             else:
                 for feature in self.feature_list_choice:
-                    runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000 +flip_msr_bit:\"%s\""\
-                    %(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,feature["Location"])
+                    runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000 +flip_msr_bit:\"%s\" %s"\
+                    %(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,feature["Location"],self.bustool_cmd)
                     self.Run_Check(runpclmsi_cmd)
                 
                 
