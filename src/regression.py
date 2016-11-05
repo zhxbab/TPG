@@ -74,9 +74,10 @@ class Regression(Util):
             self.clk_list_choice = []
             self.feature_list_choice = []
             clk_index = random.randint(0,len(self.clk_list))
-            feature_index = random.randint(0,len(self.feature_list))
+            if len(self.feature_list):
+                feature_index = random.randint(0,len(self.feature_list))
+                self.feature_list_choice = self.feature_list_choice.append(self.feature_list[feature_index])
             self.clk_list_choice = self.clk_list_choice.append(self.clk_list[clk_index])
-            self.feature_list_choice = self.feature_list_choice.append(self.feature_list[feature_index])
         else:
             self.clk_list_choice = self.clk_list
             self.feature_list_choice = self.feature_list          
