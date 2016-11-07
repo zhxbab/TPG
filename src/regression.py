@@ -265,10 +265,10 @@ class Regression(Util):
         runpclmsi_p_ret = self.Do_runpclmsi(runpclmsi_cmd,self.runpclmsi_time)
         if runpclmsi_p_ret == 0x0:
             Info("PCLMSI SUCCESSFULLY",self.freglog)
-            time.sleep(2)
             if not self.skip_check_fail:
                 result = self.Parse_pclmsi_log_jtrk("%s.jtrk"%(self.base_name))
             if result:
+                time.sleep(5)
                 Info("Find Fail Sleep 5s!",self.freglog)
                 return result
         else:

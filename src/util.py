@@ -11,7 +11,8 @@ from logging import info, error, debug, warning, critical
 #from instruction import Instr
 def Info(cmd,file):
     info(cmd)
-    file.write("%s\n"%(cmd))
+    if file != None:
+        file.write("%s\n"%(cmd))
      
 class Util:
     def __init__(self):
