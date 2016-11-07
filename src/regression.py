@@ -40,8 +40,10 @@ class Regression(Util):
         self.sleep_timer_start = 0
         self.runpclmsi_time = 20
         self.skip_check_fail = False
+        self.rerun_times = 1000
         if bustool:
             self.bustool_cmd = "+fsnoop:1"
+            self.rerun_times = 200
         else:
             self.bustool_cmd = ""
         self.cnr001a1_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"},\
@@ -50,20 +52,16 @@ class Regression(Util):
         self.chx001a0_feature_list =[{"Name":"speculative table walk","Location":"0x1203[61]"},\
                                      {"Name":"hif speculative read","Location":"0x160f[1]"}]
         if arch == "default_arch":
-            self.rerun_times = 1000
             self.clk_list = [6]
             self.feature_list = []
         elif arch == "cnr001a1":
-            self.rerun_times = 1000
             self.clk_list = [4,4.5,5,5.5,6]
             self.feature_list = self.cnr001a1_feature_list
         elif arch == "cnr002":
-            self.rerun_times = 1000
             self.clk_list = [4,4.5,5,5.5,6]
             self.feature_list = self.cnr002_feature_list            
         elif arch == "chx001a0":
             #self.clk_list = [8,9,10,11,12,13,14,15,16,17,18,19,20]
-            self.rerun_times = 1000
             self.clk_list = [8,8,8,8,8]
             self.feature_list = self.chx001a0_feature_list
             #self.feature_list = []

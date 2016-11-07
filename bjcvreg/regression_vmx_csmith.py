@@ -62,7 +62,7 @@ class Regression_vmx_csmith(Vmx_csmith):
         self.generator = 0
                  
     def Regression_vector(self):
-        time = 2000
+        time = 300
         self.reglog_name = "/tmp/%s"%(self.avp_dir_name)
         self.regression.freglog = open(self.reglog_name,"w")
         info("Log is %s"%(self.reglog_name))
