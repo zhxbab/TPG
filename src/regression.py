@@ -73,11 +73,12 @@ class Regression(Util):
         if self.case:
             self.clk_list_choice = []
             self.feature_list_choice = []
-            clk_index = random.randint(0,len(self.clk_list)-1)
             if len(self.feature_list):
                 feature_index = random.randint(0,len(self.feature_list)-1)
                 self.feature_list_choice.append(self.feature_list[feature_index])
-            self.clk_list_choice.append(self.clk_list[clk_index])
+            for i in range(0,3):
+                clk_index = random.randint(0,len(self.clk_list)-1)
+                self.clk_list_choice.append(self.clk_list[clk_index])
         else:
             self.clk_list_choice = self.clk_list
             self.feature_list_choice = self.feature_list          
@@ -257,7 +258,8 @@ class Regression(Util):
                 for feature in self.feature_list_choice:
                     runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000 +flip_msr_bit:\"%s\" %s"\
                     %(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,feature["Location"],self.bustool_cmd)
-                    self.Run_Check(runpclmsi_cmd)
+                    if self.Run_Check(runpclmsi_cmd):
+                        break
                 
                 
     def Run_Check(self,runpclmsi_cmd):

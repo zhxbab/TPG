@@ -29,7 +29,8 @@ class Regression_csmith(Csmith):
                           , type = "int", default = 10000)
         #args_parser.add_option("--intel", dest="intel", help="Support intel platform, APIC ID is 0,2,4,6", action="store_true", default = False)
         args_parser.add_option("-d","--device", dest="device", help="Set device num. But if run with balancer, the device num will be changed by balancer.", type="int", default = None)
-        args_parser.add_option("--arch", dest="arch", help="Set architecture, for tune clk and feature list", type="str", default = "default_arch")    
+        args_parser.add_option("--arch", dest="arch", help="Set architecture, for tune clk and feature list", type="str", default = "default_arch") 
+        args_parser.add_option("--bustool", dest="bustool", help="For support bustool", action="store_true", default = False)    
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         self.force_clang = 0
         self.force_gcc = 0
@@ -45,7 +46,8 @@ class Regression_csmith(Csmith):
         self.very_short_cmd = "-very-short"
         self.very_short_num = "50000000"
         self.arch = self.args_option.arch
-        self.regression = Regression(self.device,self.arch)
+        self.bustool = self.args_option.bustool
+        self.regression = Regression(self.device,self.arch,self.bustool)
         self.elf_file = None
         self.disable_avx = 0
         self.disable_pcid = 0
@@ -57,6 +59,8 @@ class Regression_csmith(Csmith):
             self.c_plus = False            
         self.dual = self.args_option.dual 
         self.pae = False
+
+        
         
     def Regression_vector(self):
         time = 300
