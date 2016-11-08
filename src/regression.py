@@ -82,15 +82,15 @@ class Regression(Util):
             self.feature_list_choice = self.feature_list          
         
                               
-    def Handle_vecor(self,ic_file,time,c_code_base_name=None,cases=None):
+    def Handle_vecor(self,ic_file,time,c_code_base_name=None):
         self.runpclmsi_time = time
         self.c_code_base_name = c_code_base_name
         self.ic_file = ic_file
-        if cases:
+        if self.case:
             self.base_name = self.ic_file.replace(".ic.gz","") + "_%d"%(random.randint(1,0xFFFFF))
         else:
             self.base_name = self.ic_file.replace(".ic.gz","")
-        info(self.base_name)
+        #info(self.base_name)
         self.base_name_path = os.path.split(self.ic_file)[0]
         self.pclmsi_log_name = self.base_name.split("/")[-1]
         self.fail_log_name = "%s.%s"%(self.base_name,self.fail_log_base_name)
