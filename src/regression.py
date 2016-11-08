@@ -86,10 +86,11 @@ class Regression(Util):
         self.runpclmsi_time = time
         self.c_code_base_name = c_code_base_name
         self.ic_file = ic_file
-        if cases != None:
+        if cases:
             self.base_name = self.ic_file.replace(".ic.gz","") + "_%d"%(random.randint(1,0xFFFFF))
         else:
             self.base_name = self.ic_file.replace(".ic.gz","")
+        info(self.base_name)
         self.base_name_path = os.path.split(self.ic_file)[0]
         self.pclmsi_log_name = self.base_name.split("/")[-1]
         self.fail_log_name = "%s.%s"%(self.base_name,self.fail_log_base_name)
