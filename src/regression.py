@@ -152,6 +152,9 @@ class Regression(Util):
                 line = fl.readline()
                 if line:
                     line = line.strip()
+                    if line[-1] != "}":
+                        warning("Skip the line, because of no end")
+                        continue
                     line_decode = json.loads(line)
                     if eq(line_decode["status"], "FAIL"):
                         result = 1
