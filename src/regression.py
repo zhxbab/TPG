@@ -254,9 +254,6 @@ class Regression(Util):
             runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:%d %s"%(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,self.rerun_times,self.bustool_cmd)
             if self.Run_Check(runpclmsi_cmd):
                 break
-            #info(runpclmsi_cmd)
-            #sys.exit(0)
-            #self.Run_Check(runpclmsi_cmd)
             if len(self.feature_list_choice) == 0:
                 continue
             else:
@@ -264,8 +261,7 @@ class Regression(Util):
                     runpclmsi_cmd = "%s +device:%d +avpl:%s +log_name:%s +clkRatio:%s +check_run_time:1000 +flip_msr_bit:\"%s\" %s"\
                     %(self.runpclmsi,self.device,self.temp_list,self.base_name,clc,feature["Location"],self.bustool_cmd)
                     if self.Run_Check(runpclmsi_cmd):
-                        break
-             #       self.Run_Check(runpclmsi_cmd)                
+                        break               
                 
     def Run_Check(self,runpclmsi_cmd):
         result = 0
