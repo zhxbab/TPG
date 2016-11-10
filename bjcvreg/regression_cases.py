@@ -56,7 +56,7 @@ class Regression_cases(Test_generator):
                 self.file_list.append(file)
                 if self.args_option.skip_fail:      
                     self.regression.skip_check_fail = True
-                self.regression.Handle_vecor(file,time,None,1)            
+                self.regression.Handle_vecor(file,time,None)            
 
 ##############################################MAIN##########################################
 if __name__ == "__main__":
