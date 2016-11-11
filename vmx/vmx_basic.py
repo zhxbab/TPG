@@ -133,10 +133,10 @@ class Vmx_basic(Test_generator):
         self.Instr_write("vmxon [0x%x]"%(self.vmx_mode_code.vmxon_pointer[thread]["start"]),thread)
         if self.intel:
             self.simcmd.Add_sim_cmd("at RDMSR 0x480 set msr 0x480 to 0x12:0x00",0,0) #Intel is about 0x12, 0x10
-            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x14"%((self.vmx_mode_code.vmxon[thread]["start"])),0,0)
-            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x1000"%(self.vmx_mode_code.vmcs[thread]["start"]),0,1)
+            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x14"%((self.vmx_mode_code.vmxon[thread]["start"])),thread,0)
+            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x1000"%(self.vmx_mode_code.vmcs[thread]["start"]),thread,1)
         else:
-            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x20"%((self.vmx_mode_code.vmcs[thread]["start"]+0x3a0)),0,0)
+            self.simcmd.Add_sim_cmd("at halt set memory 0x%x mask range 0x20"%((self.vmx_mode_code.vmcs[thread]["start"]+0x3a0)),thread,0)
 #        ### test #####
 #        self.Instr_write("vmxoff",thread)
 #        self.Instr_write("hlt",thread)      
