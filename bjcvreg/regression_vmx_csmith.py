@@ -74,7 +74,7 @@ class Regression_vmx_csmith(Vmx_csmith):
     def Set_fail_dir(self):
         self.regression.fail_dir = self.fail_dir
 
-    def Set_mode(self,host_mode,vmx_client_mode,threads):
+    def Set_mode(self,host_mode,vmx_client_mode,vmx_client_pae,threads):
         if host_mode == "protect_mode":
             self.page_mode = "4MB"
         else:
@@ -82,6 +82,10 @@ class Regression_vmx_csmith(Vmx_csmith):
         self.mode = host_mode
         #info(self.mode)
         self.vmx_client_mode = vmx_client_mode
+        if self.vmx_client_mode == "protect_mode":
+            self.vmx_client_pae = vmx_client_pae
+        else:
+            self.vmx_client_pae = False
         if threads == 1:
             self.multi_ept = 0
         else:
@@ -92,12 +96,13 @@ class Regression_vmx_csmith(Vmx_csmith):
 if __name__ == "__main__":
     host_mode = "long_mode"
     vmx_client_mode = ["long_mode","compatibility_mode","protect_mode"][random.randint(0,1)]
+    vmx_client_pae = [False,True][random.randint(0,1)]
     tests = Regression_vmx_csmith(sys.argv[1:])
     if tests.dual:
         threads = [1,8][random.randint(0,1)]
     else:
         threads = [1,4][random.randint(0,1)] 
-    tests.Set_mode(host_mode,vmx_client_mode,threads)
+    tests.Set_mode(host_mode,vmx_client_mode,vmx_client_pae,threads)
     tests.Fix_threads(threads)
     tests.Create_dir()
     tests.Check_fail_dir()

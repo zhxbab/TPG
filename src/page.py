@@ -21,6 +21,7 @@ class Page(Util):
         self.vmx_client_mode = "long_mode"
         self.mode = "long_mode"
         self.pae = False
+        self.vmx_client_pae = False
         
     def Gen_page(self):
         self.Comment("######################gen page addr#######################")
@@ -339,7 +340,17 @@ class Page(Util):
         self.vmx_pde3 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_pde3") # allocate 4*4KB for PDE, PDPTE(0-3) use different PDE 
         
     def Gen_vmx_page_4M_addr(self):
-        self.vmx_tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_tlb_base") # allocate 4KB for PML4E, one entry include 512G.    
+        if self.vmx_client_pae == False:
+            self.vmx_tlb_base = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_tlb_base") # 8MB for page_table above 1MB
+        else:
+            self.vmx_tlb_base = self.mpg.Apply_mem(0x32,0x1000,start=0x100000,end=0x400000,name="vmx_tlb_base") 
+            self.vmx_pae_pde_0 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_pae_pde_0")
+            self.vmx_pae_pde_1 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_pae_pde_1") 
+            self.vmx_pae_pde_2 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_pae_pde_2") 
+            self.vmx_pae_pde_3 = self.mpg.Apply_mem(0x1000,0x1000,start=0x100000,end=0x400000,name="vmx_pae_pde_3")
+            self.vmx_pae_pde_size = 0x200000           
+                              
+
         
     def Write_vmx_page_2M(self):
         vmx_pdes = [self.vmx_pde0,self.vmx_pde1,self.vmx_pde2,self.vmx_pde3]
@@ -372,12 +383,25 @@ class Page(Util):
         self.Vars_write(self.vmx_tlb_base["name"],self.vmx_tlb_base["start"])
         self.Text_write("$vmx_tlb_pointer = INIT_TLB $%s"%(self.vmx_tlb_base["name"]))
         self.Text_write("PAGING $vmx_tlb_pointer")
-        for i in range(0,1024):
-            if i < 758:
-                self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))         
-            else:
-                self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))
+        if self.vmx_client_pae == False:
+            for i in range(0,1024):
+                if i < 758:
+                    self.Text_write("PAGE_PDE\t%d\t0x%05x087"%(i,i*0x400000/0x1000))         
+                else:
+                    self.Text_write("PAGE_PDE\t%d\t0x%05x19f"%(i,i*0x400000/0x1000))
+        else:
+            self.vmx_pae_pde = [self.vmx_pae_pde_0,self.vmx_pae_pde_1,self.vmx_pae_pde_2,self.vmx_pae_pde_3]
+            for i in range(0,4):
+                self.Text_write("PAE_PDPT\t%d\t0x0\t0x%05x001"%(i,self.vmx_pae_pde[i]["start"]/self.vmx_pae_pde[i]["size"]))
+            for j in range(0,4):                       
+                for i in range(0,512):
+                    if j < 3:
+                        self.Text_write("PAE_PDE\t\t%d\t%d\t0x0\t0x%05x087"%(j,i,(i*0x200000+j*0x40000000)/0x1000))         
+                    else:
+                        self.Text_write("PAE_PDE\t\t%d\t%d\t0x0\t0x%05x19f"%(j,i,(i*0x200000+j*0x40000000)/0x1000))  
  
+
+
 
  
  

@@ -38,6 +38,7 @@ class Vmx_csmith(Test_generator):
         args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)
         args_parser.add_option("-g","--generator", dest="generator", help="0x0: Use Csmith, 0x1: Use randprog"\
                           , type = "int", default = 0)
+        args_parser.add_option("--pae", dest="vmx_client_pae", help="enable pae mode when guest in 32bit", action="store_true", default = False) 
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -93,6 +94,10 @@ class Vmx_csmith(Test_generator):
             pass
         else:
             self.very_short_num = self.args_option.ma
+        if self.vmx_client_mode == "protect_mode":
+            self.vmx_client_pae = self.args_option.vmx_client_pae
+        else:
+            self.vmx_client_pae = False
         self.disable_avx = self.args_option.disable_avx
         self.disable_pcid = self.args_option.disable_pcid
         self.multi_page = 0
@@ -165,6 +170,7 @@ class Vmx_csmith(Test_generator):
         self.ptg.c_gen = self.c_gen
         self.ptg.intel = self.intel
         self.ptg.vmx_client_mode = self.vmx_client_mode
+        self.ptg.vmx_client_pae = self.vmx_client_pae
         if self.c_gen:
             self.c_parser.multi_page = self.multi_page
             self.c_parser.multi_ept = self.multi_ept

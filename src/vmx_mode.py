@@ -142,8 +142,14 @@ class Vmx_mode(Mode):
                 self.Text_write("@%s.guest_gs_attr= 0xC093"%(vmcs_name))              
                 self.Text_write("@%s.guest_fs_attr= 0xC093"%(vmcs_name))
                 self.Text_write("@%s.entry_controls = 0x000051ff"%(vmcs_name))
-                self.Text_write("@%s.guest_cr4 = 0x00042690"%(vmcs_name))
-            
+                if self.ptg.vmx_client_pae == False:
+                    self.Text_write("@%s.guest_cr4 = 0x00042690"%(vmcs_name))                    
+                else:
+                    self.Text_write("@%s.guest_cr4 = 0x000426B0"%(vmcs_name))
+                    self.Text_write("@%s.guest_ia32_pdpte0_full = 0x%05x001"%(vmcs_name,self.ptg.vmx_pae_pde_0["start"]/self.ptg.vmx_pae_pde_0["size"]))
+                    self.Text_write("@%s.guest_ia32_pdpte1_full = 0x%05x001"%(vmcs_name,self.ptg.vmx_pae_pde_1["start"]/self.ptg.vmx_pae_pde_0["size"])) 
+                    self.Text_write("@%s.guest_ia32_pdpte2_full = 0x%05x001"%(vmcs_name,self.ptg.vmx_pae_pde_2["start"]/self.ptg.vmx_pae_pde_0["size"])) 
+                    self.Text_write("@%s.guest_ia32_pdpte3_full = 0x%05x001"%(vmcs_name,self.ptg.vmx_pae_pde_3["start"]/self.ptg.vmx_pae_pde_0["size"]))         
 
             self.Text_write("@%s.guest_rip = 0x%x"%(vmcs_name,self.vmx_guest_entry_0[index]["start"]))
             self.Text_write("@%s.guest_rsp = 0x%x"%(vmcs_name,self.stack_segs[index]["end"]-0x8))

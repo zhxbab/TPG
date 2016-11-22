@@ -88,6 +88,14 @@ std_vmcs_initialize_64bit_guest_state_4:
    vmwrite rax, [rbx + disp32 &OFFSET(@std_vmcs_data.guest_ia32_debugctl_full)];
    mov rax, @std_vmcs_encoding.guest_ia32_pat_full;
    vmwrite rax, [rbx + disp32 &OFFSET(@std_vmcs_data.guest_ia32_pat_full)];
+   mov rax, @std_vmcs_encoding.guest_ia32_pdpte0_full;
+   vmwrite rax, [rbx + disp32 &OFFSET(@std_vmcs_data.guest_ia32_pdpte0_full)];
+   mov rax, @std_vmcs_encoding.guest_ia32_pdpte1_full;
+   vmwrite rax, [rbx + disp32 &OFFSET(@std_vmcs_data.guest_ia32_pdpte1_full)];
+   mov rax, @std_vmcs_encoding.guest_ia32_pdpte2_full;
+   vmwrite rax, [rbx + disp32 &OFFSET(@std_vmcs_data.guest_ia32_pdpte2_full)];
+   mov rax, @std_vmcs_encoding.guest_ia32_pdpte3_full;
+   vmwrite rax, [rbx + disp32 &OFFSET(@std_vmcs_data.guest_ia32_pdpte3_full)];
   ret;
 
 std_vmcs_initialize_64bit_host_state_4:
