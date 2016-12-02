@@ -53,7 +53,8 @@ class Regression(Util):
                                      {"Name":"hif speculative read","Location":"0x160f[1]"}]
         if arch == "default_arch":
             self.clk_list = [6]
-            self.feature_list = []
+            self.feature_list = []        
+            self.rerun_times = 5000
         elif arch == "cnr001a1":
             self.clk_list = [4,4.5,5,5.5,6]
             self.feature_list = self.cnr001a1_feature_list

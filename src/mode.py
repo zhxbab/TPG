@@ -53,7 +53,7 @@ class Mode(Util):
                     if i == 0:
                         for k in range(0,self.threads):
                             if k != 0:
-                                self.mpg.Apply_fix_mem("csmith_code_%d"%(k),0x8000000+128*k*0x400000,0x400000)                    
+                                self.mpg.Apply_fix_mem("csmith_code_%d"%(k),0x8000000+128*k*0x200000,0x400000)                    
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
                 self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x20000000,end=0x40000000,name="user_code_seg_T%d"%(i))
 #                self.Comment("##########Initial stack###########")
@@ -259,7 +259,7 @@ class Mode(Util):
         self.long_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x1000,end=0xA0000,name="long_mode_code_start")
         ########enter compatibility_mode######################
         self.Comment("##enable IA32e mode")
-        self.Msr_Rmw(0xc0000080,"s8")
+        self.Msr_Rmw(0xc0000080,"s8s0")
         self.Instr_write("mov eax,cr0")
         self.Instr_write("and eax,0x9fffffff")
         self.Instr_write("or eax,0x80000020")
