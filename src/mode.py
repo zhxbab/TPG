@@ -318,7 +318,7 @@ class Mode(Util):
         for i in self.apic_id_list_all:
             if i == 0x0:
                 if self.threads_flag == "random":
-                    self.instr_manager.Set_instr(77,0)
+                    self.instr_manager.Set_instr(69+(len(self.apic_id_list)-1)*4,0)
                 else:
                     self.instr_manager.Set_instr(69,0)                    
             else:
@@ -443,6 +443,9 @@ class Mode(Util):
            
         for i in self.apic_id_list_all:
             if i == 0x0:
-                self.instr_manager.Set_instr(63,0)
+                if self.threads_flag == "random":
+                    self.instr_manager.Set_instr(63+(len(self.apic_id_list)-1)*4,0)
+                else:
+                    self.instr_manager.Set_instr(63,0)                    
             else:
                 self.instr_manager.Set_instr(59,i)

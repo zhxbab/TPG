@@ -15,14 +15,15 @@ from metasm import Metasm
 class Ap_wakeup(Metasm): 
     def __init__(self,args):
         Metasm.__init__(self,args)
-        
+        #self.instructions_set1 = {"instr_set_name":"avx","metasm_set_name":"[AVX]","metasm_X86_name":"[AVX]"}
+        # finit change to fwait and finit, so the instruction num don't sync    
     def Gen_cnsim_param(self):
         if self.intel:
             intel_cnsim_cmd = "-apic-id-increment 2 "
         else:
             intel_cnsim_cmd = " "
         cnsim_param_pclmsi = " "
-        cnsim_param_normal = "-ma %s  -va -no-mask-page -trait-change %s -hlts 10 "%(self.very_short_num,self.very_short_cmd)
+        cnsim_param_normal = "-ma %s  -va -no-mask-page -trait-change %s -hlts 20 "%(self.very_short_num,self.very_short_cmd)
         cnsim_param_mem = "-mem 0xF4 "
         if self.total_threads != self.threads and self.threads_flag == "random":
             cnsim_param_thread = "-threads %d "%(self.total_threads)
@@ -75,7 +76,7 @@ class Ap_wakeup(Metasm):
 if __name__ == "__main__":
     tests = Ap_wakeup(sys.argv[1:])
     tests.Set_total_threads(8)
-    tests.Fix_threads(4)
+    tests.Fix_threads(8)
     tests.Create_dir()
     tests.Gen_del_file()
     for i in range(0,tests.args_option.nums):
@@ -112,10 +113,10 @@ if __name__ == "__main__":
                 tests.Instr_write("jnz $nop_loop_0",j) 
                 tests.Sync_thread(j)
                 for apic_id in tests.mode_code.apic_id_list:
-                    tests.Instr_write("mov eax,0xfee00310")
-                    tests.Instr_write("mov dword [eax],0x%08x"%(apic_id<<24))
-                    tests.Instr_write("mov eax,0xfee00300")
-                    tests.Instr_write("mov dword [eax],0x00500")
+                    tests.Instr_write("mov eax,0xfee00310",j)
+                    tests.Instr_write("mov dword [eax],0x%08x"%(apic_id<<24),j)
+                    tests.Instr_write("mov eax,0xfee00300",j)
+                    tests.Instr_write("mov dword [eax],0x00500",j)
                 tests.Instr_write("mov edx,3000",j)
                 tests.Tag_write("nop_loop_1")
                 tests.Instr_write("nop",j)
@@ -131,10 +132,10 @@ if __name__ == "__main__":
                 tests.Instr_write("dec edx",j)
                 tests.Instr_write("jnz $nop_loop_1",j)                                        
                 for apic_id in tests.mode_code.apic_id_list:
-                    tests.Instr_write("mov eax,0xfee00310")
-                    tests.Instr_write("mov dword [eax],0x%08x"%(apic_id<<24))
-                    tests.Instr_write("mov eax,0xfee00300")
-                    tests.Instr_write("mov dword [eax],0x006%02x"%(tests.apic_jmp_addr_loop["start"]/0x1000))
+                    tests.Instr_write("mov eax,0xfee00310",j)
+                    tests.Instr_write("mov dword [eax],0x%08x"%(apic_id<<24),j)
+                    tests.Instr_write("mov eax,0xfee00300",j)
+                    tests.Instr_write("mov dword [eax],0x006%02x"%(tests.apic_jmp_addr_loop["start"]/0x1000),j)
         ################## Thread 0 Code#################
             else:
                 pass
