@@ -63,8 +63,8 @@ class Util:
         self.Comment("#RDMSR 0x%x")
         self.Instr_write("mov ecx,0x%x"%(msr),thread)
         self.Instr_write("rdmsr",thread)
-        #self.Runlog("RDMSR 0x%x"%(msr))
-        
+        #self.Runlog("RDMSR 0x%x"%(msr))       
+
     def Msr_Write(self,msr,thread=0x0,**value):
         self.Comment("#WRMSR 0x%x"%(msr))
         self.Instr_write("mov ecx,0x%x"%(msr),thread)

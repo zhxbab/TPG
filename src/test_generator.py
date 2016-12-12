@@ -12,6 +12,7 @@ from args import Args
 from util import Util
 from mem import Mem
 from mode import Mode
+from osystem import Osystem
 from instruction import Instr
 from page import Page
 from simcmd import Simcmd
@@ -21,6 +22,11 @@ class Test_generator(Args,Util):
     def __init__(self,args):
         signal.signal(signal.SIGINT,self.Sigint_handler)
         Args.__init__(self,args)
+        self.total_threads = 8
+        self.threads_flag = "fix"
+        self.spin_lock_num = 0x0 
+        self.apic_id_list = []
+        self.apic_id_list_all = []
         
     def Create_dir(self):
         self.avp_dir_seed = random.randint(1,0xFFFF)
@@ -38,11 +44,30 @@ class Test_generator(Args,Util):
         info("create dir cmd is %s"%(cmd))
         os.system(cmd)
         self.Create_global_info()
-
+        
+    def Set_total_threads(self,total_thread):
+        self.total_threads = total_thread
+        
     def Fix_threads(self,threads):
         self.threads = threads
+        self.apic_id_list_all = self.threads
         if self.threads > 1 and self.c_gen==1:
             self.multi_page=1
+            
+    def Use_random_ap(self):
+        self.threads_flag = "random"
+        self.apic_id_list = []
+        if self.threads > 1:
+            if self.threads > self.total_threads:
+                self.Error_exit("current thread num %d is greater than total thread num %d"%(self.threads,self.total_threads))
+            else:
+                thread_list = range(1,self.total_threads)
+                for i in range(1,self.threads):
+                    index = random.randint(0,self.total_threads-1-i)
+                    self.apic_id_list.append(thread_list[index])
+                    del thread_list[index]
+            info("ap is %s"%(self.apic_id_list))
+        self.apic_id_list_all = [0]+self.apic_id_list 
             
     def Create_global_info(self):
         self.asm_list = []
@@ -53,19 +78,19 @@ class Test_generator(Args,Util):
         self.pclmsi_list_file = "%s/%s_pclmsi.list"%(self.avp_dir_path,self.avp_dir_name)
         self.mpg = Mem()
         self.c_parser = None
-        self.Gen_cnsim_param()
         #info(self.avp_dir_path)
     def Create_asm(self,index=0x0):
         self.asm_name = "%s_%s_%sT_%s_%d.asm"%(self.realbin_name,index,self.threads,self.mode,self.seed)
         self.asm_path = os.path.join(self.avp_dir_path,self.asm_name)
         self.asm_file = open(self.asm_path,"w")
         self.asm_list.append(self.asm_path)
+        self.osystem.asm_file = self.asm_file
         self.ptg.asm_file = self.asm_file
         self.mpg.asm_file = self.asm_file
         self.simcmd.asm_file = self.asm_file
         self.interrupt.asm_file = self.asm_file
         self.Text_write("include \"%s/std.inc\""%(self.inc_path))
-        self.hlt_code = self.mpg.Apply_mem(0x200,16,start=0x0,end=0xA0000,name="hlt_code")
+        self.hlt_code = self.mpg.Apply_mem(0x200,16,start=0x10000,end=0xA0000,name="hlt_code")#below 0x10000 has problem for mem 0xF4F4
 
         
     def Gen_mode_code(self):
@@ -75,11 +100,14 @@ class Test_generator(Args,Util):
         self.ptg.intel = self.intel
         self.ptg.mode = self.mode
         self.ptg.pae = self.pae
+        self.mode_code.osystem = self.osystem
         if self.c_gen:
             self.c_parser.multi_page = self.multi_page
             #info("c plus is %d"%(self.c_parser.c_plus))
         self.ptg.multi_page = self.multi_page
         self.mode_code.pae = self.pae
+        self.mode_code.threads_flag = self.threads_flag
+        self.mode_code.apic_id_list = self.apic_id_list
         [self.stack_segs,self.user_code_segs] = self.mode_code.Mode_code(self.mode,self.c_gen,self.disable_avx,self.disable_pcid)
 
     def Gen_cnsim_param(self):
@@ -90,13 +118,17 @@ class Test_generator(Args,Util):
         cnsim_param_pclmsi = " "
         cnsim_param_normal = "-ma %s  -va -no-mask-page -trait-change %s "%(self.very_short_num,self.very_short_cmd)
         cnsim_param_mem = "-mem 0xF4 "
-        cnsim_param_thread = "-threads %d "%(self.threads)
+        if self.total_threads != self.threads and self.threads_flag == "random":
+            cnsim_param_thread = "-threads %d "%(self.total_threads)
+        else:
+            cnsim_param_thread = "-threads %d "%(self.threads)            
         #-no-tbdm-warnings
         # remove no stack, -no-apic-intr -all-mem -addr-chk -memread-chk 
         self.cnsim_param = cnsim_param_pclmsi + cnsim_param_normal + cnsim_param_mem + cnsim_param_thread + intel_cnsim_cmd
         
         
     def Gen_hlt_code(self,thread_num):
+        #print("thread_num is %d"%(thread_num))
         if thread_num == 0:
             self.Text_write("jmp $%s"%(self.hlt_code["name"]))
             self.Text_write("org 0x%x"%(self.hlt_code["start"]))
@@ -106,7 +138,8 @@ class Test_generator(Args,Util):
             self.Text_write("jmp $%s"%(self.hlt_code["name"]))
         else:
             self.Error_exit("Invalid thread num!")
-
+        self.instr_manager.Add_instr(thread_num,2)
+        
     def Gen_sim_cmd(self,thread_num):
         self.simcmd.Simcmd_write(thread_num)
         
@@ -115,7 +148,8 @@ class Test_generator(Args,Util):
         
     def Reset_asm(self):
         self.mpg.Reset_mem()
-        self.instr_manager = Instr(self.threads)
+        self.instr_manager = Instr(self.total_threads)
+        self.osystem = Osystem(self.threads,self.instr_manager)
         self.ptg = Page(self.page_mode,self.tpg_path,self.mpg,self.instr_manager,self.threads)
         self.simcmd = Simcmd(self.threads)
         self.spin_lock_num = 0x0
@@ -129,6 +163,7 @@ class Test_generator(Args,Util):
         os.system("chmod 777 %s"%(self.del_file_name))
     
     def Gen_vector(self):
+        self.Gen_cnsim_param()
         self.asm_file.close()
         os.chdir(self.avp_dir_path)
         asm_file = os.path.join(self.avp_dir_path,self.asm_name)
@@ -207,40 +242,60 @@ class Test_generator(Args,Util):
 #-check-global-pages/(-no-check-global-              global pages must maintain consistant mapping
 #-inject-page-fault                     12345678     Inject page faults randomly by percentage
 #-mask-page/(-no-mask-page)                          mask page table access & dirty bits (CN bringup only)
-    def Spin_lock_create(self,thread):
-        spin_lock = self.mpg.Apply_mem(0x4,0x4,start=0x1000000,end=0xB0000000,name="spin_lock")
-        self.simcmd.Add_sim_cmd("at $y%d >= 1 set memory 0x%08x to 0x00000000"%(thread,spin_lock["start"]),thread)
-        #self.simcmd.Add_sim_cmd("at $y%d >= 1 set register RAX to 0x00000000:0x00000000"%(thread),thread)
-        spin_lock["num"] = self.spin_lock_num
-        spin_lock["ctrl_id"] = [0]*4
-        self.spin_lock_num += 1
-        return spin_lock
-    #//sim: at $y0 >= 1 set memory 0x09ac8008 to 0x00000000:0x00000000
-
-    def Sync_spin_lock(self,spin_lock,thread,unlock_thread=0x0):
-        self.simcmd.Add_sim_cmd("at $y%d >= %d disable intermediate checking"%(thread,self.instr_manager.Get_instr(thread)+1),thread)
-        self.Instr_write("inc dword [0x%08x]"%(spin_lock["start"]),thread)
-        self.Tag_write("spin_lock_T%d_%d"%(thread,spin_lock["num"]))
-        self.Instr_write("cmp dword [0x%08x],0x4"%(spin_lock["start"]),thread)
-        if unlock_thread == thread:
-            #self.simcmd.Add_sim_cmd("at $y%d >= %d set memory 0x%08x to 0x00000004"%(thread,self.instr_manager.Get_instr(thread),spin_lock["start"]),thread)
-            for i in range(0,self.threads):
-                if i != unlock_thread:
-                    spin_lock["ctrl_id"][i] = self.Sync_thread(i)
-                else:
-                    pass
-        else:
-            instr_num = self.instr_manager.Get_instr(thread)-self.simcmd.current_instr[thread]
-            self.simcmd.Change_ctrl_cmd(spin_lock["ctrl_id"][thread],instr_num)
-            self.simcmd.current_instr[thread] = self.instr_manager.Get_instr(thread)
-            self.instr_manager.Set_instr(self.instr_manager.Get_instr(thread)+2,thread) # +2 is for core 1, 2, 3 to sync instr num
-        self.Instr_write("jne $spin_lock_T%d_%d"%(thread,spin_lock["num"]),thread)
-        self.simcmd.Add_sim_cmd("at $y%d >= %d enable intermediate checking"%(thread,self.instr_manager.Get_instr(thread)+1),thread)
-    #def Spin_lock_ctrl(self,thread):
     
-    def Sync_threads(self):
-        for i in range(0,self.threads):
-            self.Sync_thread(i)
+    def Spin_lock_create(self,thread,flag=0):
+      spin_lock = self.mpg.Apply_mem(0x4,0x4,start=0x1000000,end=0xB0000000,name="spin_lock")
+      self.simcmd.Add_sim_cmd("at $y%d >= 1 set memory 0x%08x to 0x00000000"%(thread,spin_lock["start"]),thread)
+      if flag == 0:
+          self.simcmd.Add_tbdm_cmd("at instruction 1 set memory 0x%08x to 0x00000000"%(spin_lock["start"]),thread)
+      else:
+          self.simcmd.Add_tbdm_cmd("and set memory 0x%08x to 0x00000000"%(spin_lock["start"]),thread)
+      #self.simcmd.Add_sim_cmd("at $y%d >= 1 set register RAX to 0x00000000:0x00000000"%(thread),thread)
+      spin_lock["num"] = self.spin_lock_num
+      spin_lock["ctrl_id"] = [0]*8
+      self.spin_lock_num += 1
+      return spin_lock
+      #//sim: at $y0 >= 1 set memory 0x09ac8008 to 0x00000000:0x00000000
+    def Sync_spin_lock(self,spin_lock,thread,unlock_thread=0x0):
+      self.simcmd.Add_sim_cmd("at $y%d >= %d disable intermediate checking"%(thread,self.instr_manager.Get_instr(thread)+1),thread)
+      self.Text_write("db 0xF0")
+      self.Instr_write("inc dword [0x%08x]"%(spin_lock["start"]),thread)
+      self.Tag_write("spin_lock_T%d_%d"%(thread,spin_lock["num"]))
+      self.Instr_write("cmp dword [0x%08x],0x%x"%(spin_lock["start"],self.threads),thread)
+      if unlock_thread == thread:
+          #self.simcmd.Add_sim_cmd("at $y%d >= %d set memory 0x%08x to 0x00000004"%(thread,self.instr_manager.Get_instr(thread),spin_lock["start"]),thread)
+          for i in self.apic_id_list_all:
+              if i != unlock_thread:
+                  spin_lock["ctrl_id"][i] = self.Sync_thread(i)
+              else:
+                  pass
+      else:
+          instr_num = self.instr_manager.Get_instr(thread)-self.simcmd.current_instr[thread]
+          self.simcmd.Change_ctrl_cmd(spin_lock["ctrl_id"][thread],instr_num)
+          self.simcmd.current_instr[thread] = self.instr_manager.Get_instr(thread)
+          self.instr_manager.Set_instr(self.instr_manager.Get_instr(thread)+2,thread) # +2 is for core 1, 2, 3 to sync instr num
+      self.Instr_write("jne $spin_lock_T%d_%d"%(thread,spin_lock["num"]),thread)
+      self.simcmd.Add_sim_cmd("at $y%d >= %d enable intermediate checking"%(thread,self.instr_manager.Get_instr(thread)+1),thread)
+
+    def Check_instr_num_all(self,apic_id_list_all=None):
+        if apic_id_list_all == None:
+            for i in range(0,self.threads):
+                self.Check_instr_num(i)
+        else:
+            for i in apic_id_list_all:
+                self.Check_instr_num(i)
+                
+    def Check_instr_num(self,thread):
+        info("thread %d current instr num is %d"%(thread,self.instr_manager.Get_instr(thread)))    
+    
+    
+    def Sync_threads(self,apic_id_list_all=None):
+        if apic_id_list_all == None:
+            for i in range(0,self.threads):
+                self.Sync_thread(i)
+        else:
+            for i in apic_id_list_all:
+                self.Sync_thread(i)            
             
     def Sync_thread(self,thread):
         #if self.instr_manager.Get_instr(thread)-self.simcmd.current_instr[thread] > 0:

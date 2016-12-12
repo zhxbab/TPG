@@ -13,7 +13,8 @@ class Simcmd(Util):
         self.sim = [[],[],[],[],[],[],[],[]]
         self.ctrl = []
         self.ctrl_id = 0
-        self.current_instr = [0]*4
+        self.tbdm = [[],[],[],[],[],[],[],[]]
+        self.current_instr = [0]*8
         self.chain = [0,0,0,0,0,0,0,0]
     def Add_sim_cmd(self,cmd, thread, chain=0):
         if len(self.sim[thread]) == 0:
@@ -38,6 +39,10 @@ class Simcmd(Util):
         self.ctrl_id += 1
         return self.ctrl_id - 1
     
+    def Add_tbdm_cmd(self,cmd,thread):
+        tbdm_cmd = "//;$ %s"%(cmd)
+        self.tbdm[thread].append(tbdm_cmd)
+        
     def Change_ctrl_cmd(self,ctrl_id,instr_num):
         for i in self.ctrl:
             if i["ID"] == ctrl_id:
@@ -53,8 +58,13 @@ class Simcmd(Util):
             self.Comment("//sim: chain end")
         for t in self.rem[thread]:
             self.Comment("//rem: %s"%(i))
+            
+        self.Comment("//;$ assume thread %d"%(thread))
+        for tbdm_cmd in self.tbdm[thread]:
+            self.Comment(tbdm_cmd)
 
         
     def Ctrlcmd_write(self):
         for i in self.ctrl:
             self.Comment("//ctrl: thread %d exec %d"%(i["thread"],i["instr_num"]))
+            

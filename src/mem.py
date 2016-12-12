@@ -75,9 +75,16 @@ class Mem(Util):
         self.selected.append(selected_mem)
         self.Update_mem(selected_mem)
         self.check_selected_mem(selected_mem["name"])
-        return selected_mem
+        return selected_mem    
     
-    def Apply_fix_mem(self,name,start,size):
+    def Apply_fix_mem(self,name,start,size,flag="pa"):
+        if flag == "va":
+            va_start = start
+            start = self.pa2va(va_start)
+        elif flag == "pa":
+            start = start
+        else:
+            self.Error_exit("Invalid flag %s",flag)
         selected_mem = {"start":start,"size":size,"name":name}
         self.selected.append(selected_mem)
         self.Update_mem(selected_mem)
@@ -125,17 +132,39 @@ class Mem(Util):
         else:
             pass
         
-    def Find_mem(self,size,align,mem,**cond):
-        if "start" in cond.keys(): 
-            cond["start"] = cond["start"]
+    def Find_mem(self,size,align,mem,**para):
+        ### creat cond#######
+        cond = {}
+        if "start" in para.keys(): 
+            cond["start"] = para["start"]
         else: 
             cond["start"] = mem["start"]
-        if "end" in cond.keys(): 
-            cond["end"] = cond["end"]
+            
+        if "end" in para.keys(): 
+            cond["end"] = para["end"]
         else: 
             cond["end"] = mem["start"]+mem["size"]
-        if "name" not in cond.keys():
+            
+        if "name" not in para.keys():
             cond["name"] = "No_Name"
+        else:
+            cond["name"] = para["name"]
+            
+        if "flag" not in para.keys():
+            cond["flag"] = "pa"
+        else:
+            cond["flag"] = para["flag"]
+            
+        if cond["flag"] == "va":
+            va_start = cond["start"]
+            delta = cond["end"] - cond["start"]
+            cond["start"] = self.pa2va(va_start)
+            cond["end"] =  cond["start"] + delta
+        elif cond["flag"] == "pa":
+            pass
+        else:
+            self.Error_exit("Invalid flag %s",cond["flag"])
+            
         size = size
         cond["start"] = int(align*math.ceil(cond["start"]/align))
         tmp_mem_start = int(align*math.ceil(mem["start"]/align))  

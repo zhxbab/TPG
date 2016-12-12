@@ -19,10 +19,14 @@ class Mode(Util):
         self.interrupt = interrupt
         self.c_parser = c_parser
         self.pae = False;
+        self.osystem = None
+        self.threads_flag = "fix"
+        self.apic_id_list = []
+        
         
     def Set_table_pointer(self,table_name):
         table_pointer = self.mpg.Apply_mem(0x10,16,start=0x0,end=0x10000,name="%s_pointer"%(table_name)) #0x10000 = 64KB, in real mode(B=0), the limit of segment is 0xFFFF
-        self.Text_write("org 0x%x"%(table_pointer["start"]))
+        self.osystem.set_org(table_pointer["start"])
         self.Text_write("@%s = new std::table_pointer"%(table_pointer["name"]))
         self.Text_write("@%s.base = $%s"%(table_pointer["name"],table_name))
         self.Text_write("@%s.limit = 0xFFFF"%(table_pointer["name"]))
@@ -32,13 +36,17 @@ class Mode(Util):
     def Set_user_code_stack(self,c_gen):
         self.Comment("###########################Thread Info######################")
         stack_align = 0x100
-        self.stack_segs = []
-        self.user_code_segs = []
+        self.stack_segs = [{},]*8
+        self.user_code_segs = [{},]*8
         self.thread_info_pointer = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="thread_info_pointer")
         self.ptg.thread_info_pointer = self.thread_info_pointer
-        self.Text_write("org 0x%x"%(self.thread_info_pointer["start"]))
+        self.osystem.set_org(self.thread_info_pointer["start"])
         self.Text_write("@%s = new std::thread_info[%d]"%(self.thread_info_pointer["name"],8))#support 8 threads
-        for i in range(0,self.threads):
+        if self.threads_flag == "random":
+            self.apic_id_list_all = [0]+self.apic_id_list
+        else:
+            self.apic_id_list_all = range(0,self.threads)
+        for i in self.apic_id_list_all:
             if c_gen == 0x0:
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
                 self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x1000000,end=0x10000000,name="user_code_seg_T%d"%(i))
@@ -67,8 +75,8 @@ class Mode(Util):
                 self.stack_seg["end"] = self.stack_seg["start"]+self.stack_seg["size"]-stack_align+0x4
             # because need to execute call user_code, esp will -4,
             #so in there resever some space
-            self.stack_segs.append(self.stack_seg)
-            self.user_code_segs.append(self.user_code_seg)
+            self.stack_segs[i] = self.stack_seg
+            self.user_code_segs[i] = self.user_code_seg
             if self.intel:
                 intel_id = i * 2
                 self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],intel_id,self.stack_seg["end"]))
@@ -80,7 +88,7 @@ class Mode(Util):
     def Set_page_info(self):
         self.page_info_pointer = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="page_info_pointer")
         self.ptg.page_info_pointer = self.page_info_pointer
-        self.Text_write("org 0x%x"%(self.page_info_pointer["start"]))
+        self.Text_write(self.page_info_pointer["start"])
         self.Text_write("@%s = new std::page_info[%d]"%(self.page_info_pointer["name"],8))#support 8 threads
     
     def Mode_code(self,mode,c_gen,disable_avx,disable_pcid):
@@ -112,7 +120,7 @@ class Mode(Util):
     
     def Set_idt_table(self,idt_table_base):
         self.Comment("###########################IDT definition######################")       
-        self.Text_write("org 0x%x"%(idt_table_base["start"]))
+        self.Text_write(idt_table_base["start"])
         if self.mode == "protect_mode":
             idt_gate_type = "idt_gate_32"
             idt_selector = self.selector_name_cs32_0
@@ -127,7 +135,8 @@ class Mode(Util):
         
     def Set_gdt_table(self,gdt_table_base,c_gen):
         self.Comment("###########################GDT definition######################")
-        self.Text_write("org 0x%x"%(gdt_table_base["start"]))
+        self.osystem.set_org(gdt_table_base["start"])
+        #self.Text_write("org 0x%x"%(gdt_table_base["start"]))
         self.Text_write("@gdt = new std::descriptor[10]")
         self.selector_name_cs32_0 = "cs32"
         self.selector_value_cs32_0 = 0x1
@@ -189,7 +198,7 @@ class Mode(Util):
             
     def Long_mode_code(self):
         self.Comment("###########################Long mode code######################")
-        self.Text_write("org 0xFFFFFFF0")
+        self.osystem.set_org(0xFFFFFFF0)
         self.Text_write("use 16")
         real_mode_code_start = self.mpg.Apply_mem(0x100,16,start=0x1000,end=0x10000,name="real_mode_code_start")
         self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
@@ -197,26 +206,22 @@ class Mode(Util):
         if self.threads > 1:
             self.Comment("##########AP init address and code###############")
             self.apic_jmp_addr = self.mpg.Apply_mem(0x100,0x1000,start=0x1000,end=0xA0000,name="apic_jmp_addr") # used for apic jmp
-            self.Text_write("org 0x%x"%(self.apic_jmp_addr["start"]))
+            self.osystem.set_org(self.apic_jmp_addr["start"])
             self.Text_write("use 16")
             self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
         ########################################################################
         self.Comment("##real mode code")    
-        self.Text_write("org 0x%x"%(real_mode_code_start["start"]))
+        self.osystem.set_org(real_mode_code_start["start"])
         self.Instr_write("lgdt [&@%s]"%(self.gdt_table_base_pointer["name"]))
         self.Instr_write("lidt [&@%s]"%(self.idt_table_base_pointer["name"]))
         self.Comment("##enable 32bit mode")
         protect_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x1000,end=0xA0000,name="protect_mode_code_start")#0xA0000-0x100000 is for BIOS
-        self.Instr_write("mov edx,cr0")
-        self.Instr_write("or edx,0x1")
-        self.Instr_write("mov cr0,edx")
+        self.osystem.cr_rmw("cr0","s0","all")
         self.Instr_write("jmpf &SELECTOR($%s):0x%x"%(self.selector_name_cs32_0,protect_mode_code_start["start"]))
-        self.Text_write("org 0x%x"%(protect_mode_code_start["start"]))
+        self.osystem.set_org(protect_mode_code_start["start"])
         self.Text_write("use 32")
         self.Comment("##enable pae,fxsave(sse),simd,global page")
-        self.Instr_write("mov eax,cr4")
-        self.Instr_write("or eax,0x6A0")
-        self.Instr_write("mov cr4,eax")
+        self.osystem.cr_write("cr4",0x6A0,"all")  
         self.Comment("##set IA32_EFER eax to 0x0")
         self.Comment("#In Intel spec IA32_EFER bit 9 is reversed, if write this bit, it fails in pclmsi")
         self.Msr_Write(0xc0000080,eax=0x0)
@@ -226,6 +231,7 @@ class Mode(Util):
         self.Instr_write("mov ebx,&SELECTOR($%s)"%(self.selector_name_ds32_0))
         self.Instr_write("mov ds,bx")
         self.Instr_write("mov ss,bx")
+        #self.Instr_write("mov dword ptr [0x600184a0],0xF4F4F4F4")
         #################################For multi threads#####################################
         if self.threads > 1:
             self.Msr_Write(0x200,0,edx=0x0,eax=0xfee00000)
@@ -235,10 +241,18 @@ class Mode(Util):
             self.Instr_write("cmp eax,0x0")
             self.Instr_write("jne $SKIP_WAKEUP")
             self.Comment("#####Set ICR(0x300,0x310), and INIT AP")
-            self.Instr_write("mov eax,0xfee00310")
-            self.Instr_write("mov dword [eax],(0<<24)")
-            self.Instr_write("mov eax,0xfee00300")
-            self.Instr_write("mov dword [eax],0xc06%02x"%(self.apic_jmp_addr["start"]/0x1000))
+            if self.threads_flag == "random":
+                self.Comment("#####Random AP#####")
+                for i in self.apic_id_list:
+                    self.Instr_write("mov eax,0xfee00310")
+                    self.Instr_write("mov dword [eax],0x%08x"%(i<<24))
+                    self.Instr_write("mov eax,0xfee00300")
+                    self.Instr_write("mov dword [eax],0x006%02x"%(self.apic_jmp_addr["start"]/0x1000))
+            else:
+                self.Instr_write("mov eax,0xfee00310")
+                self.Instr_write("mov dword [eax],(0<<24)")
+                self.Instr_write("mov eax,0xfee00300")
+                self.Instr_write("mov dword [eax],0xc06%02x"%(self.apic_jmp_addr["start"]/0x1000))                
             self.Tag_write("SKIP_WAKEUP")
         #######################################################################################
         if self.disable_avx == False:
@@ -270,7 +284,7 @@ class Mode(Util):
             self.Instr_write("mov cr4,eax")
         ########enter long mode###############################
         self.Instr_write("jmpf &SELECTOR($%s):0x%x"%(self.selector_name_cs_0,self.long_mode_code_start["start"]))         
-        self.Text_write("org 0x%x"%(self.long_mode_code_start["start"]))
+        self.osystem.set_org(self.long_mode_code_start["start"])
         if self.mode == "long_mode":
             self.Text_write("use 64")
         else:
@@ -301,15 +315,18 @@ class Mode(Util):
 
 
         
-        for i in range(0,self.threads):
+        for i in self.apic_id_list_all:
             if i == 0x0:
-                self.instr_manager.Set_instr(69,0)
+                if self.threads_flag == "random":
+                    self.instr_manager.Set_instr(77,0)
+                else:
+                    self.instr_manager.Set_instr(69,0)                    
             else:
                 self.instr_manager.Set_instr(65,i)
         
     def Protect_mode_code(self):
         self.Comment("###########################Protect mode code######################")
-        self.Text_write("org 0xFFFFFFF0")
+        self.osystem.set_org(0xFFFFFFF0)
         self.Text_write("use 16")
         real_mode_code_start = self.mpg.Apply_mem(0x100,16,start=0x1000,end=0x10000,name="real_mode_code_start")
         self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
@@ -317,32 +334,38 @@ class Mode(Util):
         if self.threads > 1:
             self.Comment("##########AP init address and code###############")
             self.apic_jmp_addr = self.mpg.Apply_mem(0x100,0x1000,start=0x1000,end=0xA0000,name="apic_jmp_addr") # used for apic jmp
-            self.Text_write("org 0x%x"%(self.apic_jmp_addr["start"]))
+            self.osystem.set_org(self.apic_jmp_addr["start"])
             self.Text_write("use 16")
             self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
         ########################################################################
         self.Comment("##real mode code")    
-        self.Text_write("org 0x%x"%(real_mode_code_start["start"]))
+        self.osystem.set_org(real_mode_code_start["start"])
         self.Instr_write("lgdt [&@%s]"%(self.gdt_table_base_pointer["name"]))
         self.Instr_write("lidt [&@%s]"%(self.idt_table_base_pointer["name"]))
         self.Comment("##enable 32bit mode")
         protect_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x1000,end=0xA0000,name="protect_mode_code_start")#0xA0000-0x100000 is for BIOS
-        self.Instr_write("mov edx,cr0")
-        self.Instr_write("or edx,0x1")
-        self.Instr_write("mov cr0,edx")
+#        self.Instr_write("mov edx,cr0")
+#        self.Instr_write("or edx,0x1")
+#        self.Instr_write("mov cr0,edx")
+        self.osystem.cr_rmw("cr0","s0","all")
         self.Instr_write("jmpf &SELECTOR($%s):0x%x"%(self.selector_name_cs32_0,protect_mode_code_start["start"]))
-        self.Text_write("org 0x%x"%(protect_mode_code_start["start"]))
+        self.osystem.set_org(protect_mode_code_start["start"])
         self.Text_write("use 32")
         self.Comment("##enable pse,fxsave(sse),simd,global page, disable pae")
-        self.Instr_write("mov eax,cr4")
+#        self.Instr_write("mov eax,cr4")
+#        if self.pae == False:
+#            self.Instr_write("or eax,0x690")
+#        else:
+#            self.Instr_write("or eax,0x6B0")            
+#        self.Instr_write("mov cr4,eax")
         if self.pae == False:
-            self.Instr_write("or eax,0x690")
+            self.osystem.cr_write("cr4",0x690,"all")
         else:
-            self.Instr_write("or eax,0x6B0")            
-        self.Instr_write("mov cr4,eax")
+            self.osystem.cr_write("cr4",0x6B0,"all")           
         self.Comment("##set IA32_EFER eax to 0x0")
         self.Comment("#In Intel spec IA32_EFER bit 9 is reversed, if write this bit, it fails in pclmsi")
-        self.Msr_Write(0xc0000080,eax=0x0)
+        #self.Msr_Write(0xc0000080,eax=0x0)
+        self.osystem.Msr_Write("IA32_EFER",0,0,"all")
         self.Comment("#enable fpu")
         self.Instr_write("finit")
         self.Comment("#change to ds32")
@@ -359,10 +382,18 @@ class Mode(Util):
             self.Instr_write("cmp eax,0x0")
             self.Instr_write("jne $SKIP_WAKEUP")
             self.Comment("#####Set ICR(0x300,0x310), and INIT AP")
-            self.Instr_write("mov eax,0xfee00310")
-            self.Instr_write("mov dword [eax],(0<<24)")
-            self.Instr_write("mov eax,0xfee00300")
-            self.Instr_write("mov dword [eax],0xc06%02x"%(self.apic_jmp_addr["start"]/0x1000))
+            if self.threads_flag == "random":
+                self.Comment("#####Random AP#####")
+                for i in self.apic_id_list:
+                    self.Instr_write("mov eax,0xfee00310")
+                    self.Instr_write("mov dword [eax],0x%08x"%(i<<24))
+                    self.Instr_write("mov eax,0xfee00300")
+                    self.Instr_write("mov dword [eax],0x006%02x"%(self.apic_jmp_addr["start"]/0x1000))
+            else:
+                self.Instr_write("mov eax,0xfee00310")
+                self.Instr_write("mov dword [eax],(0<<24)")
+                self.Instr_write("mov eax,0xfee00300")
+                self.Instr_write("mov dword [eax],0xc06%02x"%(self.apic_jmp_addr["start"]/0x1000))  
             self.Tag_write("SKIP_WAKEUP")
         #######################################################################################
         if self.disable_avx == False:
@@ -388,7 +419,7 @@ class Mode(Util):
         self.Instr_write("mov cr0,eax")
         ########enter protect_mode###############################
         self.Instr_write("jmpf &SELECTOR($%s):0x%x"%(self.selector_name_cs_0,self.protect_mode_code_continue["start"]))         
-        self.Text_write("org 0x%x"%(self.protect_mode_code_continue["start"]))
+        self.osystem.set_org(self.protect_mode_code_continue["start"])
         self.Text_write("use 32")
         self.Instr_write("mov ebx,&SELECTOR($%s)"%(self.selector_name_ds_0))
         self.Instr_write("mov es,bx")
@@ -410,7 +441,7 @@ class Mode(Util):
         self.Instr_write("mov esp,[eax+&@%s+8]"%(self.thread_info_pointer["name"]))
         self.Instr_write("call [eax+&@%s]"%(self.thread_info_pointer["name"]))
            
-        for i in range(0,self.threads):
+        for i in self.apic_id_list_all:
             if i == 0x0:
                 self.instr_manager.Set_instr(63,0)
             else:
