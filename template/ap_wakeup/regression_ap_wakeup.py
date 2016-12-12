@@ -71,9 +71,9 @@ if __name__ == "__main__":
         tests.pae = [True,False][random.randint(0,1)]
     else:
         tests.pae = False
-    tests.Set_total_threads(4)
-    tests.Fix_threads(4)
-    tests.Set_mode(mode,4)  
+    tests.Set_total_threads(8)
+    tests.Fix_threads(8)
+    tests.Set_mode(mode,8)  
     tests.Create_dir()
     tests.Check_fail_dir()
     tests.Gen_del_file()
