@@ -111,10 +111,10 @@ if __name__ == "__main__":
                 tests.Instr_write("jnz $nop_loop_0",j) 
                 tests.Sync_thread(j)
                 for apic_id in tests.mode_code.apic_id_list:
-                    tests.Instr_write("mov eax,0xfee00310")
-                    tests.Instr_write("mov dword [eax],0x%08x"%(apic_id<<24))
-                    tests.Instr_write("mov eax,0xfee00300")
-                    tests.Instr_write("mov dword [eax],0x00500")
+                    tests.Instr_write("mov eax,0xfee00310",j)
+                    tests.Instr_write("mov dword [eax],0x%08x"%(apic_id<<24),j)
+                    tests.Instr_write("mov eax,0xfee00300",j)
+                    tests.Instr_write("mov dword [eax],0x00500",j)
                 tests.Instr_write("mov edx,3000",j)
                 tests.Tag_write("nop_loop_1")
                 tests.Instr_write("nop",j)
@@ -130,10 +130,10 @@ if __name__ == "__main__":
                 tests.Instr_write("dec edx",j)
                 tests.Instr_write("jnz $nop_loop_1",j)                                        
                 for apic_id in tests.mode_code.apic_id_list:
-                    tests.Instr_write("mov eax,0xfee00310")
-                    tests.Instr_write("mov dword [eax],0x%08x"%(apic_id<<24))
-                    tests.Instr_write("mov eax,0xfee00300")
-                    tests.Instr_write("mov dword [eax],0x006%02x"%(tests.apic_jmp_addr_loop["start"]/0x1000))
+                    tests.Instr_write("mov eax,0xfee00310",j)
+                    tests.Instr_write("mov dword [eax],0x%08x"%(apic_id<<24),j)
+                    tests.Instr_write("mov eax,0xfee00300",j)
+                    tests.Instr_write("mov dword [eax],0x006%02x"%(tests.apic_jmp_addr_loop["start"]/0x1000),j)
         ################## Thread 0 Code#################
             else:
                 pass
