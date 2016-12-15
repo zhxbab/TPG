@@ -120,7 +120,7 @@ class Mode(Util):
     
     def Set_idt_table(self,idt_table_base):
         self.Comment("###########################IDT definition######################")       
-        self.self.osystem.set_org(idt_table_base["start"])
+        self.osystem.set_org(idt_table_base["start"])
         if self.mode == "protect_mode":
             idt_gate_type = "idt_gate_32"
             idt_selector = self.selector_name_cs32_0
