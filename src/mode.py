@@ -88,7 +88,7 @@ class Mode(Util):
     def Set_page_info(self):
         self.page_info_pointer = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="page_info_pointer")
         self.ptg.page_info_pointer = self.page_info_pointer
-        self.Text_write(self.page_info_pointer["start"])
+        self.osystem.set_org(self.page_info_pointer["start"])
         self.Text_write("@%s = new std::page_info[%d]"%(self.page_info_pointer["name"],8))#support 8 threads
     
     def Mode_code(self,mode,c_gen,disable_avx,disable_pcid):
@@ -120,7 +120,7 @@ class Mode(Util):
     
     def Set_idt_table(self,idt_table_base):
         self.Comment("###########################IDT definition######################")       
-        self.Text_write(idt_table_base["start"])
+        self.self.osystem.set_org(idt_table_base["start"])
         if self.mode == "protect_mode":
             idt_gate_type = "idt_gate_32"
             idt_selector = self.selector_name_cs32_0

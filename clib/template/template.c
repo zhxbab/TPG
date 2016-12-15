@@ -1,10 +1,8 @@
-//#include <stdio.h>
-int a = 1;
+//#include "../include/stdio.h"
+#include "../include/string.h"
 void main(){
-	int b = 1;
-	int c;
-	const char * str = "Hello World!";
-	c = b++;
-//printf("Hello world");
+	const char *str = "Hello World!";
+	char  des[20];
+	strcpy(des,str);
 }
 

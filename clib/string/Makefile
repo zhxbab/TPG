@@ -1,4 +1,4 @@
-FILE = stdio
+FILE = string
 CC = gcc
 CFLAGS = -O0 -std=gnu99 -nostdlib -nostdinc -fno-builtin -fno-asynchronous-unwind-tables
 

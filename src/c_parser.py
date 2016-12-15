@@ -225,7 +225,7 @@ class C_parser(Util):
         self.Instr_write("mov eax,cr4",thread)
         self.Instr_write("or eax,0x104",thread)
         self.Instr_write("mov cr4,eax",thread)       
-        self.Instr_write("call $_init_%d"%(thread),thread)
+        #self.Instr_write("call $_init_%d"%(thread),thread)
         self.Instr_write("call $main_%d"%(thread),thread)
         self.Text_write("jmp $%s"%(hlt_code["name"]))
         if self.multi_page:
