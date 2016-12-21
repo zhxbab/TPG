@@ -1,0 +1,37 @@
+#!/bin/bash
+#                                                                        2012-01-26 AgF
+#Test instructions that are only defined in 32 bit mode
+# (c) Copyright 2012 by Agner Fog. GNU General Public License www.gnu.org/licenses
+
+# Detect CPU specific variables
+. vars.sh
+format=".elf"
+enter_dir="enter"
+if [ $support32bit -eq 0 ] ; then
+echo -e "\nError: 32-bit instructions cannot be compiled on this platform\n"  >> results1/32bitinstr.txt
+exit
+fi
+
+for instruct in aaa aas daa das aad aam_latency aam_throughput bound into lahf sahf lahf_sahf leave pushad popad salc salc_inc_al
+do
+mkdir $instruct
+for cts in $PMClist
+do
+#echo "${cts}"
+$ass -f elf32 -o b32.o -Dinstruct=$instruct -Drepeat1=1000 -Dcounters=$cts -P32bitinstr.inc TemplateB32.nasm
+if [ $? -ne 0 ] ; then exit ; fi
+g++ -m32 a32.o b32.o -o $instruct/${instruct}${format} -lpthread -static
+done
+done
+#mkdir ${enter_dir}
+for immvalue in {0..4}
+do
+mkdir ${enter_dir}${immvalue}
+for cts in $PMClist
+do 
+$ass -f elf32 -o b32.o -Dinstruct=enter -Dimmvalue=$immvalue -Dcounters=$cts -P32bitinstr.inc TemplateB32.nasm
+if [ $? -ne 0 ] ; then exit ; fi
+g++ -m32 a32.o b32.o -o${enter_dir}${immvalue}/${enter_dir}${immvalue}${format} -lpthread -static
+done
+done
+# Tested

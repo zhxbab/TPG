@@ -1,0 +1,967 @@
+Conversion instructions latency and throughput
+
+
+
+Throughput: mov r8h,r8
+
+
+Throughput: mov r8, r8h
+
+
+Latency: mov r8h, r8 / mov r8, r8h
+
+
+Throughput: mov r8h,r8h
+
+
+Latency: mov r8h,r8h
+
+
+Throughput: mov r8h, r8h
+
+
+Latency: mov r8h, r8h
+
+
+Latency: mov r8h, r8h / mov r8h, r8h
+
+
+Throughput: mov m8,r8
+
+
+Throughput: mov r8, m8
+
+
+Latency: mov m8, r8 / mov r8, m8
+
+
+Throughput: mov m8,r8h
+
+
+Throughput: mov r8h, m8
+
+
+Latency: mov m8, r8h / mov r8h, m8
+
+
+Throughput: mov r8h,m8
+
+
+Throughput: mov m8, r8h
+
+
+Latency: mov r8h, m8 / mov m8, r8h
+
+
+Throughput: mov m16,r16
+
+
+Throughput: mov r16, m16
+
+
+Latency: mov m16, r16 / mov r16, m16
+
+
+Throughput: mov m32,r32
+
+
+Throughput: mov r32, m32
+
+
+Latency: mov m32, r32 / mov r32, m32
+
+
+Throughput: mov m64,r64
+
+
+Throughput: mov r64, m64
+
+
+Latency: mov m64, r64 / mov r64, m64
+
+
+Throughput: movq m64,xmm
+
+
+Throughput: movq xmm, m64
+
+
+Latency: movq m64, xmm / movq xmm, m64
+
+
+Throughput: movdqa m128,xmm
+
+
+Throughput: movdqa xmm, m128
+
+
+Latency: movdqa m128, xmm / movdqa xmm, m128
+
+
+Throughput: movdqu m128,xmm
+
+
+Throughput: movdqu xmm, m128
+
+
+Latency: movdqu m128, xmm / movdqu xmm, m128
+
+
+Throughput: movaps m128,xmm
+
+
+Throughput: movaps xmm, m128
+
+
+Latency: movaps m128, xmm / movaps xmm, m128
+
+
+Throughput: movd mmx,r32
+
+
+Throughput: movd r32, mmx
+
+
+Latency: movd mmx, r32 / movd r32, mmx
+
+
+Throughput: movq mmx,r64
+
+
+Throughput: movq r64, mmx
+
+
+Latency: movq mmx, r64 / movq r64, mmx
+
+
+Throughput: movd xmm,r32
+
+
+Throughput: movd r32, xmm
+
+
+Latency: movd xmm, r32 / movd r32, xmm
+
+
+Throughput: movq xmm,r64
+
+
+Throughput: movq r64, xmm
+
+
+Latency: movq xmm, r64 / movq r64, xmm
+
+
+Throughput: movd xmm,m32
+
+
+Throughput: movd m32, xmm
+
+
+Latency: movd xmm, m32 / movd m32, xmm
+
+
+Throughput: movq xmm,m64
+
+
+Throughput: movq m64, xmm
+
+
+Latency: movq xmm, m64 / movq m64, xmm
+
+
+Throughput: movdq2q mmx,xmm
+
+
+Throughput: movq2dq xmm, mmx
+
+
+Latency: movdq2q mmx, xmm / movq2dq xmm, mmx
+
+
+Throughput: pmovmskb r32,xmm
+
+
+Throughput: movd xmm, r32
+
+
+Latency: pmovmskb r32, xmm / movd xmm, r32
+
+
+Throughput: pextrb r32,xmm,1
+
+
+Throughput: movd xmm, r32
+
+
+Latency: pextrb r32, xmm,1 / movd xmm, r32
+
+
+Throughput: pextrb m8,xmm,1
+
+
+Throughput: pextrw r32,mmx,1
+
+
+Throughput: movd mmx, r32
+
+
+Latency: pextrw r32, mmx,1 / movd mmx, r32
+
+
+Throughput: pextrw r32,xmm,1
+
+
+Throughput: movd xmm, r32
+
+
+Latency: pextrw r32, xmm,1 / movd xmm, r32
+
+
+Throughput: pextrw m16,xmm,1
+
+
+Throughput: pextrd r32,xmm,1
+
+
+Throughput: movd xmm, r32
+
+
+Latency: pextrd r32, xmm,1 / movd xmm, r32
+
+
+Throughput: pextrd m32,xmm,1
+
+
+Throughput: pextrq r64,xmm,1
+
+
+Throughput: movq xmm, r64
+
+
+Latency: pextrq r64, xmm,1 / movq xmm, r64
+
+
+Throughput: pextrq m64,xmm,1
+
+
+Throughput: pinsrb xmm,r32,1
+
+
+Throughput: movd r32, xmm
+
+
+Latency: pinsrb xmm, r32,1 / movd r32, xmm
+
+
+Throughput: pinsrb xmm,m8,1
+
+
+Throughput: pinsrw mmx,r32,1
+
+
+Throughput: movd r32, mmx
+
+
+Latency: pinsrw mmx, r32,1 / movd r32, mmx
+
+
+Throughput: pinsrw xmm,r32,1
+
+
+Throughput: movd r32, xmm
+
+
+Latency: pinsrw xmm, r32,1 / movd r32, xmm
+
+
+Throughput: pinsrw xmm,m16,1
+
+
+Throughput: pinsrd xmm,r32,1
+
+
+Throughput: movd r32, xmm
+
+
+Latency: pinsrd xmm, r32,1 / movd r32, xmm
+
+
+Throughput: pinsrd xmm,m32,1
+
+
+Throughput: pinsrq xmm,r64,1
+
+
+Throughput: movq r64, xmm
+
+
+Latency: pinsrq xmm, r64,1 / movq r64, xmm
+
+
+Throughput: pinsrq xmm,m64,1
+
+
+Throughput: movss xmm,xmm
+
+
+Latency: movss xmm,xmm
+
+
+Throughput: movss xmm, xmm
+
+
+Latency: movss xmm, xmm
+
+
+Latency: movss xmm, xmm / movss xmm, xmm
+
+
+Throughput: movss m32,xmm
+
+
+Throughput: movss xmm, m32
+
+
+Latency: movss m32, xmm / movss xmm, m32
+
+
+Throughput: movsd xmm,xmm
+
+
+Latency: movsd xmm,xmm
+
+
+Throughput: movsd xmm, xmm
+
+
+Latency: movsd xmm, xmm
+
+
+Latency: movsd xmm, xmm / movsd xmm, xmm
+
+
+Throughput: movsd m64,xmm
+
+
+Throughput: movsd xmm, m64
+
+
+Latency: movsd m64, xmm / movsd xmm, m64
+
+
+Throughput: movaps m128,xmm
+
+
+Throughput: movaps xmm, m128
+
+
+Latency: movaps m128, xmm / movaps xmm, m128
+
+
+Throughput: movups m128,xmm
+
+
+Throughput: movaps xmm, m128
+
+
+Latency: movups m128, xmm / movaps xmm, m128
+
+
+Throughput: movaps m128,xmm
+
+
+Throughput: movups xmm, m128
+
+
+Latency: movaps m128, xmm / movups xmm, m128
+
+
+Throughput: movapd m128,xmm
+
+
+Throughput: movapd xmm, m128
+
+
+Latency: movapd m128, xmm / movapd xmm, m128
+
+
+Throughput: movdqa m128,xmm
+
+
+Throughput: movdqa xmm, m128
+
+
+Latency: movdqa m128, xmm / movdqa xmm, m128
+
+
+Throughput: movdqu m128,xmm
+
+
+Throughput: movdqu xmm, m128
+
+
+Latency: movdqu m128, xmm / movdqu xmm, m128
+
+
+Throughput: lddqu xmm,m128
+
+
+Throughput: movdqa m128, xmm
+
+
+Latency: lddqu xmm, m128 / movdqa m128, xmm
+
+
+Throughput: movq m64,xmm
+
+
+Throughput: movq xmm, m64
+
+
+Latency: movq m64, xmm / movq xmm, m64
+
+
+Throughput: movq m64,mmx
+
+
+Throughput: movq mmx, m64
+
+
+Latency: movq m64, mmx / movq mmx, m64
+
+
+Throughput: movntps m128,xmm
+
+
+Throughput: movaps xmm, m128
+
+
+Latency: movntps m128, xmm / movaps xmm, m128
+
+
+Throughput: movntpd m128,xmm
+
+
+Throughput: movaps xmm, m128
+
+
+Latency: movntpd m128, xmm / movaps xmm, m128
+
+
+Throughput: movntq m64,mmx
+
+
+Throughput: movq mmx, m64
+
+
+Latency: movntq m64, mmx / movq mmx, m64
+
+
+Throughput: movntdq m128,xmm
+
+
+Throughput: movdqa xmm, m128
+
+
+Latency: movntdq m128, xmm / movdqa xmm, m128
+
+
+Throughput: movntdqa xmm,m
+
+
+Throughput: movdqa m, xmm
+
+
+Latency: movntdqa xmm, m / movdqa m, xmm
+
+
+Throughput: movnti m32,r32
+
+
+Throughput: mov r32, m32
+
+
+Latency: movnti m32, r32 / mov r32, m32
+
+
+Throughput: movnti m64,r64
+
+
+Throughput: mov r64, m64
+
+
+Latency: movnti m64, r64 / mov r64, m64
+
+
+Throughput: movlhps xmm,xmm
+
+
+Latency: movlhps xmm,xmm
+
+
+Throughput: movlhps xmm, xmm
+
+
+Latency: movlhps xmm, xmm
+
+
+Latency: movlhps xmm, xmm / movlhps xmm, xmm
+
+
+Throughput: movhps m64,xmm
+
+
+Throughput: movhps xmm, m64
+
+
+Latency: movhps m64, xmm / movhps xmm, m64
+
+
+Throughput: movlps m64,xmm
+
+
+Throughput: movlps xmm, m64
+
+
+Latency: movlps m64, xmm / movlps xmm, m64
+
+
+Throughput: movlpd m,xmm
+
+
+Throughput: movlpd xmm, m
+
+
+Latency: movlpd m, xmm / movlpd xmm, m
+
+
+Throughput: movmskps r32,xmm
+
+
+Throughput: movd xmm, r32
+
+
+Latency: movmskps r32, xmm / movd xmm, r32
+
+
+Throughput: movmskpd r32,xmm
+
+
+Throughput: movd xmm, r32
+
+
+Latency: movmskpd r32, xmm / movd xmm, r32
+
+
+Latency: movaps xmm, xmm / movaps xmm, xmm / POR xmm,xmm
+
+
+Latency: movaps xmm, xmm / movaps xmm, xmm / MAXPS xmm,xmm
+
+
+Latency: movdqa xmm, xmm / movdqa xmm, xmm / POR xmm,xmm
+
+
+Latency: movdqa xmm, xmm / movdqa xmm, xmm / MAXPS xmm,xmm
+
+
+Throughput: cvtpd2ps xmm,xmm
+
+
+Latency: cvtpd2ps xmm,xmm
+
+
+Throughput: cvtps2pd xmm, xmm
+
+
+Latency: cvtps2pd xmm, xmm
+
+
+Latency: cvtpd2ps xmm, xmm / cvtps2pd xmm, xmm
+
+
+Throughput: cvtpd2ps xmm,[m128]
+
+
+Throughput: cvtps2pd xmm,[m64]
+
+
+Throughput: cvtsd2ss xmm,xmm
+
+
+Latency: cvtsd2ss xmm,xmm
+
+
+Throughput: cvtss2sd xmm, xmm
+
+
+Latency: cvtss2sd xmm, xmm
+
+
+Latency: cvtsd2ss xmm, xmm / cvtss2sd xmm, xmm
+
+
+Throughput: cvtsd2ss xmm,m64
+
+
+Throughput: cvtss2sd xmm,m32
+
+
+Latency: cvtsd2ss xmm, xmm / cvtss2sd xmm, xmm / POR xmm,xmm
+
+
+Latency: cvtsd2ss xmm, xmm / cvtss2sd xmm, xmm / MAXPD xmm,xmm
+
+
+Throughput: cvtdq2ps xmm,xmm
+
+
+Latency: cvtdq2ps xmm,xmm
+
+
+Throughput: cvtps2dq xmm, xmm
+
+
+Latency: cvtps2dq xmm, xmm
+
+
+Latency: cvtdq2ps xmm, xmm / cvtps2dq xmm, xmm
+
+
+Throughput: cvtdq2ps xmm,[m]
+
+
+Throughput: cvtps2dq xmm,[m]
+
+
+Latency: cvtdq2ps xmm, xmm / cvtps2dq xmm, xmm / POR xmm,xmm
+
+
+Latency: cvtdq2ps xmm, xmm / cvtps2dq xmm, xmm / MAXPS xmm,xmm
+
+
+Throughput: cvtdq2pd xmm,xmm
+
+
+Latency: cvtdq2pd xmm,xmm
+
+
+Throughput: cvtpd2dq xmm, xmm
+
+
+Latency: cvtpd2dq xmm, xmm
+
+
+Latency: cvtdq2pd xmm, xmm / cvtpd2dq xmm, xmm
+
+
+Throughput: cvtdq2pd xmm,[m64]
+
+
+Throughput: cvtpd2dq xmm,[m128]
+
+
+Latency: cvtdq2pd xmm, xmm / cvtpd2dq xmm, xmm / POR xmm,xmm
+
+
+Latency: cvtdq2pd xmm, xmm / cvtpd2dq xmm, xmm / MAXPD xmm,xmm
+
+
+Throughput: cvtpi2ps xmm,mmx
+
+
+Throughput: cvtps2pi mmx, xmm
+
+
+Latency: cvtpi2ps xmm, mmx / cvtps2pi mmx, xmm
+
+
+Throughput: cvtpi2ps xmm,[m]
+
+
+Throughput: cvtps2pi mmx,[m]
+
+
+Latency: cvtpi2ps xmm, mmx / cvtps2pi mmx, xmm / POR mmx,mmx
+
+
+Latency: cvtps2pi mmx, xmm / cvtpi2ps xmm, mmx / POR xmm,xmm
+
+
+Latency: cvtps2pi mmx, xmm / cvtpi2ps xmm, mmx / MAXPS xmm,xmm
+
+
+Throughput: cvtpi2pd xmm,mmx
+
+
+Throughput: cvtpd2pi mmx, xmm
+
+
+Latency: cvtpi2pd xmm, mmx / cvtpd2pi mmx, xmm
+
+
+Throughput: cvtpi2pd xmm,[m]
+
+
+Throughput: cvtpd2pi mmx,[m]
+
+
+Latency: cvtpi2pd xmm, mmx / cvtpd2pi mmx, xmm / POR mmx,mmx
+
+
+Latency: cvtpd2pi mmx, xmm / cvtpi2pd xmm, mmx / POR xmm,xmm
+
+
+Latency: cvtpd2pi mmx, xmm / cvtpi2pd xmm, mmx / MAXPD xmm,xmm
+
+
+Throughput: cvtsi2ss xmm,r32
+
+
+Throughput: cvtss2si r32, xmm
+
+
+Latency: cvtsi2ss xmm, r32 / cvtss2si r32, xmm
+
+
+Throughput: cvtsi2ss xmm,r64
+
+
+Throughput: cvtss2si r64, xmm
+
+
+Latency: cvtsi2ss xmm, r64 / cvtss2si r64, xmm
+
+
+Throughput: cvtsi2ss xmm,[m32]
+
+
+Throughput: cvtss2si r32,[m32]
+
+
+Latency: cvtsi2ss xmm, r32 / cvtss2si r32, xmm / OR r32,r32
+
+
+Latency: cvtss2si r32, xmm / cvtsi2ss xmm, r32 / POR xmm,xmm
+
+
+Latency: cvtss2si r32, xmm / cvtsi2ss xmm, r32 / MAXPS xmm,xmm
+
+
+Throughput: cvtsi2sd xmm,r32
+
+
+Throughput: cvtsd2si r32, xmm
+
+
+Latency: cvtsi2sd xmm, r32 / cvtsd2si r32, xmm
+
+
+Throughput: cvtsi2sd xmm,[m32]
+
+
+Throughput: cvtsd2si r32,[m64]
+
+
+Latency: cvtsi2sd xmm, r32 / cvtsd2si r32, xmm / OR r32,r32
+
+
+Latency: cvtsd2si r32, xmm / cvtsi2sd xmm, r32 / POR xmm,xmm
+
+
+Latency: cvtsd2si r32, xmm / cvtsi2sd xmm, r32 / MAXPD xmm,xmm
+
+
+Throughput: cvtsi2sd xmm,r64
+
+
+Throughput: cvtsd2si r64, xmm
+
+
+Latency: cvtsi2sd xmm, r64 / cvtsd2si r64, xmm
+
+
+Throughput: cvtsi2sd xmm,[m64]
+
+
+Throughput: cvtsd2si r64,[m64]
+
+
+Latency: cvtsi2sd xmm, r64 / cvtsd2si r64, xmm / OR r64,r64
+
+
+Latency: cvtsd2si r64, xmm / cvtsi2sd xmm, r64 / POR xmm,xmm
+
+
+Latency: cvtsd2si r64, xmm / cvtsi2sd xmm, r64 / MAXPD xmm,xmm
+
+
+Throughput: vmovaps m256,ymm
+
+
+Throughput: vmovaps ymm, m256
+
+
+Latency: vmovaps m256, ymm / vmovaps ymm, m256
+
+
+Throughput: vmovapd ymm,m256
+
+
+Throughput: vmovapd m256, ymm
+
+
+Latency: vmovapd ymm, m256 / vmovapd m256, ymm
+
+
+Throughput: vmovupd m256,ymm
+
+
+Throughput: vmovupd ymm, m256
+
+
+Latency: vmovupd m256, ymm / vmovupd ymm, m256
+
+
+Throughput: vmovntps m,ymm
+
+
+Throughput: vmovaps ymm, m
+
+
+Latency: vmovntps m, ymm / vmovaps ymm, m
+
+
+Throughput: vmovntpd m256,ymm
+
+
+Throughput: vmovaps ymm, m256
+
+
+Latency: vmovntpd m256, ymm / vmovaps ymm, m256
+
+
+Throughput: vmovntdq m,ymm
+
+
+Throughput: vmovdqa ymm, m
+
+
+Latency: vmovntdq m, ymm / vmovdqa ymm, m
+
+
+Throughput: vcvtpd2ps xmm,ymm
+
+
+Throughput: vcvtps2pd ymm, xmm
+
+
+Latency: vcvtpd2ps xmm, ymm / vcvtps2pd ymm, xmm
+
+
+Throughput: vcvtpd2ps xmm,[m256]
+
+
+Throughput: vcvtps2pd ymm,[m128]
+
+
+Throughput: vcvtdq2ps ymm,ymm
+
+
+Latency: vcvtdq2ps ymm,ymm
+
+
+Throughput: vcvtps2dq ymm, ymm
+
+
+Latency: vcvtps2dq ymm, ymm
+
+
+Latency: vcvtdq2ps ymm, ymm / vcvtps2dq ymm, ymm
+
+
+Throughput: vcvtdq2ps ymm,[m256]
+
+
+Throughput: vcvtps2dq ymm,[m256]
+
+
+Throughput: vcvtdq2pd ymm,xmm
+
+
+Throughput: vcvtpd2dq xmm, ymm
+
+
+Latency: vcvtdq2pd ymm, xmm / vcvtpd2dq xmm, ymm
+
+
+Throughput: vcvtdq2pd ymm,[m128]
+
+
+Throughput: vcvtpd2dq xmm,[m256]
+
+
+Latency: vmovaps ymm, ymm / vmovaps ymm, ymm / VPOR ymm,ymm
+
+
+Latency: vmovaps ymm, ymm / vmovaps ymm, ymm / VMAXPS ymm,ymm
+
+
+Latency: vmovdqa ymm, ymm / vmovdqa ymm, ymm / VPOR ymm,ymm
+
+
+Latency: vmovdqa ymm, ymm / vmovdqa ymm, ymm / VMAXPS ymm,ymm
+
+
+Throughput: vmovntdqa ymm,m
+
+
+Throughput: vmovdqa m, ymm
+
+
+Latency: vmovntdqa ymm, m / vmovdqa m, ymm
+
+
+Throughput: vcvtps2ph xmm,xmm,0
+
+
+Latency: vcvtps2ph xmm,xmm,0
+
+
+Throughput: vcvtph2ps xmm, xmm
+
+
+Latency: vcvtph2ps xmm, xmm
+
+
+Latency: vcvtps2ph xmm, xmm,0 / vcvtph2ps xmm, xmm
+
+
+Latency: vcvtps2ph xmm, xmm / vcvtph2ps xmm, xmm / VPOR xmm,xmm
+
+
+Latency: vcvtps2ph xmm, xmm / vcvtph2ps xmm, xmm / VMAXPS xmm,xmm
+
+
+Throughput: vcvtps2ph xmm,ymm,0
+
+
+Throughput: vcvtph2ps ymm, xmm
+
+
+Latency: vcvtps2ph xmm, ymm,0 / vcvtph2ps ymm, xmm
+
+
+Throughput: vcvtps2ph m64,xmm,0
+
+
+Throughput: vcvtps2ph m128,ymm,0
+
+
+Throughput: vcvtph2ps xmm,m64
+
+
+Throughput: vcvtph2ps ymm,m128
+
+

@@ -1,0 +1,1564 @@
+     1                              <1> ; convers.inc                                                              2012-02-01 AgF
+     2                              <1> ;
+     3                              <1> ; Define universal test code to test latency and throughput for conversion instructions with
+     4                              <1> ; different register types for input and output
+     5                              <1> ; (c) Copyright 2012 by Agner Fog. GNU General Public License www.gnu.org/licenses
+     6                              <1> ;
+     7                              <1> ; Parameters:
+     8                              <1> ;
+     9                              <1> ; instruct1:   Instruction to convert from A to B
+    10                              <1> ;
+    11                              <1> ; instruct2:   Instruction to convert from B to A
+    12                              <1> ;
+    13                              <1> ; instruct3:   Possible extra chain instruction with A type registers for both input and output
+    14                              <1> ;
+    15                              <1> ; regtype1:    Register type for operand type A (r8, r16, r32, r64, mmx, xmm, ymm, m, m8, m16, m32, m64, m128, m256)
+    16                              <1> ;
+    17                              <1> ; regtype2:    Register type for operand type B (r8, r16, r32, r64, mmx, xmm, ymm, m, m8, m16, m32, m64, m128, m256)
+    18                              <1> ;
+    19                              <1> ; numimm:      Number of immediate operands for instruct1 (0 - 1). Default = 0
+    20                              <1> ;
+    21                              <1> ; numimm2:     Number of immediate operands for instruct2 (0 - 1). Default = 0
+    22                              <1> ;
+    23                              <1> ; immvalue:    Value of first immediate operand for instruct1. Default = 0. 'r' means extra third register operand
+    24                              <1> ;
+    25                              <1> ; immvalue2:   Value of first immediate operand for instruct2. Default = 0.
+    26                              <1> ;
+    27                              <1> ; numop1:      Number of register (or memory) operands for instruct1. Default = 2, max = 3
+    28                              <1> ;
+    29                              <1> ; tmode:       Test mode:
+    30                              <1> ;              T1:   measure throughput of instruct1 B, A
+    31                              <1> ;
+    32                              <1> ;              M1:   measure latency of instruct1 B, [m]
+    33                              <1> ;
+    34                              <1> ;              L1:   measure latency of instruct1 A, A if regtype1 and regtype2 are the same
+    35                              <1> ;
+    36                              <1> ;              L12:  measure latency of instruct1 B, A + instruct2 A, B
+    37                              <1> ;
+    38                              <1> ;              L123: measure latency of instruct1 B, A + instruct2 A, B + instruct3 A, A
+    39                              <1> ;
+    40                              <1> ;              LSX:  measure latency of movsx or movzx with memory operand
+    41                              <1> ;
+    42                              <1> ; -------------------------------------------------------------------------------------------------
+    43                              <1> 
+    44                              <1> %ifndef repeat2
+    45                              <1> %define repeat2 100
+    46                              <1> %endif
+    47                              <1> 
+    48                              <1> ; select register names of desired types:
+    49                              <1> 
+    50                              <1> %ifidni regtype1, r8
+    51                              <1>    %define RA1 al
+    52                              <1>    %define RA2 bl
+    53                              <1>    %define RA3 cl
+    54                              <1>    %define RA4 dl
+    55                              <1> %elifidni regtype1, r8h
+    56                              <1>    %define RA1 ah
+    57                              <1>    %define RA2 bh
+    58                              <1>    %define RA3 ch
+    59                              <1>    %define RA4 dh
+    60                              <1> %elifidni regtype1, r16
+    61                              <1>    %define RA1 ax
+    62                              <1>    %define RA2 bx
+    63                              <1>    %define RA3 cx
+    64                              <1>    %define RA4 dx
+    65                              <1> %elifidni regtype1, r32
+    66                              <1>    %define RA1 eax
+    67                              <1>    %define RA2 ebx
+    68                              <1>    %define RA3 ecx
+    69                              <1>    %define RA4 edx
+    70                              <1> %elifidni regtype1, r64
+    71                              <1>    %define RA1 rax
+    72                              <1>    %define RA2 rbx
+    73                              <1>    %define RA3 rcx
+    74                              <1>    %define RA4 rdx
+    75                              <1> %elifidni regtype1, mmx
+    76                              <1>    %define RA1 mm0
+    77                              <1>    %define RA2 mm1
+    78                              <1>    %define RA3 mm2
+    79                              <1>    %define RA4 mm3
+    80                              <1> %elifidni regtype1, xmm
+    81                              <1>    %define RA1 xmm0
+    82                              <1>    %define RA2 xmm1
+    83                              <1>    %define RA3 xmm2
+    84                              <1>    %define RA4 xmm3
+    85                              <1> %elifidni regtype1, ymm
+    86                              <1>    %define RA1 ymm0
+    87                              <1>    %define RA2 ymm1
+    88                              <1>    %define RA3 ymm2
+    89                              <1>    %define RA4 ymm3
+    90                              <1> %elifidni regtype1, m
+    91                              <1>    %define RA1 [psi]
+    92                              <1>    %define RA2 [rdi]
+    93                              <1>    %define RA3 [rsi]
+    94                              <1>    %define RA4 [rdi]
+    95                              <1> %elifidni regtype1, m8
+    96                              <1>    %define RA1 byte [psi]
+    97                              <1>    %define RA2 byte [rdi]
+    98                              <1>    %define RA3 byte [rsi]
+    99                              <1>    %define RA4 byte [rdi]
+   100                              <1> %elifidni regtype1, m16
+   101                              <1>    %define RA1 word [psi]
+   102                              <1>    %define RA2 word [rdi]
+   103                              <1>    %define RA3 word [rsi]
+   104                              <1>    %define RA4 word [rdi]
+   105                              <1> %elifidni regtype1, m32
+   106                              <1>    %define RA1 dword [psi]
+   107                              <1>    %define RA2 dword [rdi]
+   108                              <1>    %define RA3 dword [rsi]
+   109                              <1>    %define RA4 dword [rdi]
+   110                              <1> %elifidni regtype1, m64
+   111                              <1>    %define RA1 qword [psi]
+   112                              <1>    %define RA2 qword [rdi]
+   113                              <1>    %define RA3 qword [rsi]
+   114                              <1>    %define RA4 qword [rdi]
+   115                              <1> %elifidni regtype1, m128
+   116                              <1>    %define RA1 oword [psi]
+   117                              <1>    %define RA2 oword [rdi]
+   118                              <1>    %define RA3 oword [rsi]
+   119                              <1>    %define RA4 oword [rdi]
+   120                              <1> %elifidni regtype1, m256
+   121                              <1>    %define RA1 yword [psi]
+   122                              <1>    %define RA2 yword [rdi]
+   123                              <1>    %define RA3 yword [rsi]
+   124                              <1>    %define RA4 yword [rdi]
+   125                              <1> %else
+   126                              <1>    %error unknown regtype1
+   127                              <1> %endif
+   128                              <1> 
+   129                              <1> %ifndef regtype2
+   130                              <1>    %define regtype2 regtype1
+   131                              <1> %endif
+   132                              <1> 
+   133                              <1> %ifidni regtype2, r8
+   134                              <1>    %define RB1 al
+   135                              <1>    %define RB2 bl
+   136                              <1>    %define RB3 cl
+   137                              <1>    %define RB4 dl
+   138                              <1> %elifidni regtype2, r8h
+   139                              <1>    %define RB1 ah
+   140                              <1>    %define RB2 bh
+   141                              <1>    %define RB3 ch
+   142                              <1>    %define RB4 dh
+   143                              <1> %elifidni regtype2, r16
+   144                              <1>    %define RB1 ax
+   145                              <1>    %define RB2 bx
+   146                              <1>    %define RB3 cx
+   147                              <1>    %define RB4 dx
+   148                              <1> %elifidni regtype2, r32
+   149                              <1>    %define RB1 eax
+   150                              <1>    %define RB2 ebx
+   151                              <1>    %define RB3 ecx
+   152                              <1>    %define RB4 edx
+   153                              <1> %elifidni regtype2, r64
+   154                              <1>    %define RB1 rax
+   155                              <1>    %define RB2 rbx
+   156                              <1>    %define RB3 rcx
+   157                              <1>    %define RB4 rdx
+   158                              <1> %elifidni regtype2, mmx
+   159                              <1>    %define RB1 mm0
+   160                              <1>    %define RB2 mm1
+   161                              <1>    %define RB3 mm2
+   162                              <1>    %define RB4 mm3
+   163                              <1> %elifidni regtype2, xmm
+   164                              <1>    %define RB1 xmm0
+   165                              <1>    %define RB2 xmm1
+   166                              <1>    %define RB3 xmm2
+   167                              <1>    %define RB4 xmm3
+   168                              <1> %elifidni regtype2, ymm
+   169                              <1>    %define RB1 ymm0
+   170                              <1>    %define RB2 ymm1
+   171                              <1>    %define RB3 ymm2
+   172                              <1>    %define RB4 ymm3
+   173                              <1> %elifidni regtype2, m
+   174                              <1>    %define RB1 [psi]
+   175                              <1>    %define RB2 [rdi]
+   176                              <1>    %define RB3 [rsi]
+   177                              <1>    %define RB4 [rdi]
+   178                              <1> %elifidni regtype2, m8
+   179                              <1>    %define RB1 byte [psi]
+   180                              <1>    %define RB2 byte [rdi]
+   181                              <1>    %define RB3 byte [rsi]
+   182                              <1>    %define RB4 byte [rdi]
+   183                              <1> %elifidni regtype2, m16
+   184                              <1>    %define RB1 word [psi]
+   185                              <1>    %define RB2 word [rdi]
+   186                              <1>    %define RB3 word [rsi]
+   187                              <1>    %define RB4 word [rdi]
+   188                              <1> %elifidni regtype2, m32
+   189                              <1>    %define RB1 dword [psi]
+   190                              <1>    %define RB2 dword [rdi]
+   191                              <1>    %define RB3 dword [rsi]
+   192                              <1>    %define RB4 dword [rdi]
+   193                              <1> %elifidni regtype2, m64
+   194                              <1>    %define RB1 qword [psi]
+   195                              <1>    %define RB2 qword [rdi]
+   196                              <1>    %define RB3 qword [rsi]
+   197                              <1>    %define RB4 qword [rdi]
+   198                              <1> %elifidni regtype2, m128
+   199                              <1>    %define RB1 oword [psi]
+   200                              <1>    %define RB2 oword [rdi]
+   201                              <1>    %define RB3 oword [rsi]
+   202                              <1>    %define RB4 oword [rdi]
+   203                              <1> %elifidni regtype2, m256
+   204                              <1>    %define RB1 yword [psi]
+   205                              <1>    %define RB2 yword [rdi]
+   206                              <1>    %define RB3 yword [rsi]
+   207                              <1>    %define RB4 yword [rdi]
+   208                              <1> %else
+   209                              <1>    %error unknown regtype1
+   210                              <1> %endif
+   211                              <1> 
+   212                              <1> ; define immediate operands for instruction 2 (immoperands1 is in templateB64.nasm)
+   213                              <1> %ifndef numimm2
+   214                              <1>    %define numimm2  0  ; default number of immediate operands for instruction 2
+   215                              <1> %endif
+   216                              <1> %ifndef immvalue2
+   217                              <1>    %define immvalue2  0  ; default value of immediate operands for instruction 2
+   218                              <1> %endif
+   219                              <1> %if numimm2 == 0
+   220                              <1>    %define immoperands2
+   221                              <1> %elif numimm2 == 1
+   222                              <1>    %define immoperands2 , immvalue2
+   223                              <1> %endif
+   224                              <1> 
+   225                              <1> ; initialization of registers
+   226                              <1> %macro testinit2 0
+   227                              <1>    xor eax, eax
+   228                              <1> %endmacro
+   229                              <1> 
+   230                              <1> %ifndef numop1
+   231                              <1>    %define numop1 2
+   232                              <1> %endif
+   233                              <1> 
+   234                              <1> 
+   235                              <1> ; test code for each mode:
+   236                              <1> 
+   237                              <1> %if numop1 == 2
+   238                              <1> 
+   239                              <1> %ifidni tmode,T1        ; measure throughput of instruct1 B, A   
+   240                              <1> 
+   241                              <1>    %macro testcode 0
+   242                              <1>       instruct1 RB1, RA2 immoperands1
+   243                              <1>       instruct1 RB4, RA3 immoperands1
+   244                              <1>    %endmacro
+   245                              <1> 
+   246                              <1> %elifidni tmode,M1      ; measure throughput of instruct1 B, [mem]   
+   247                              <1> 
+   248                              <1>    %macro testcode 0
+   249                              <1>       instruct1 RB1, RA1 immoperands1
+   250                              <1>       instruct1 RB2, RA1 immoperands1
+   251                              <1>    %endmacro
+   252                              <1> 
+   253                              <1> %elifidni tmode,L1        ; measure latency of instruct1 A, A
+   254                              <1> 
+   255                              <1>    %macro testcode 0
+   256                              <1>       instruct1 RB1, RA2 immoperands1
+   257                              <1>       instruct1 RB2, RA1 immoperands1
+   258                              <1>    %endmacro
+   259                              <1> 
+   260                              <1> %elifidni tmode,L12        ; measure latency of instruct1 B, A + instruct2 A, B
+   261                              <1> 
+   262                              <1>    %macro testcode 0
+   263                              <1>       instruct1 RB2, RA1 immoperands1
+   264                              <1>       instruct2 RA1, RB2 immoperands2
+   265                              <1>    %endmacro
+   266                              <1> 
+   267                              <1> %elifidni tmode,L123        ; measure latency of instruct1 B, A + instruct2 A, B + instruct3 A, A
+   268                              <1> 
+   269                              <1>    %macro testcode 0
+   270                              <1>       instruct1 RB2, RA1 immoperands1
+   271                              <1>       instruct2 RA1, RB2 immoperands2
+   272                              <1>       instruct3 RA1, RA1
+   273                              <1>    %endmacro
+   274                              <1> 
+   275                              <1> %elifidni tmode,LSX         ; measure latency of movsx r,[m] + mov [m],r
+   276                              <1> 
+   277                              <1>    %macro testcode 0
+   278                              <1>       instruct1 RB1, RA1
+   279                              <1>       %ifidni regtype1,m8
+   280                              <1>          mov byte [rsi], al
+   281                              <1>       %elifidni regtype1,m16
+   282                              <1>          mov word [rsi], ax
+   283                              <1>       %elifidni regtype1,m32
+   284                              <1>          mov dword [rsi], eax
+   285                              <1>       %else
+   286                              <1>          %error unknown combination of operands
+   287                              <1>       %endif
+   288                              <1>    %endmacro
+   289                              <1> 
+   290                              <1> %else
+   291                              <1>    %error unknown tmode
+   292                              <1> %endif
+   293                              <1> 
+   294                              <1> %elif numop1 == 3
+   295                              <1> 
+   296                              <1> %ifidni tmode,T1        ; measure throughput of instruct1 B, A   
+   297                              <1> 
+   298                              <1>    %macro testcode 0
+   299                              <1>       instruct1 RB1, RA2, RA2 immoperands1
+   300                              <1>       instruct1 RB4, RA3, RA3 immoperands1
+   301                              <1>    %endmacro
+   302                              <1> 
+   303                              <1> %elifidni tmode,M1      ; measure throughput of instruct1 B, [mem]
+   304                              <1> 
+   305                              <1>    %macro testcode 0
+   306                              <1>       instruct1 RB1, RA2, [psi] immoperands1
+   307                              <1>       instruct1 RB3, RA4, [psi] immoperands1
+   308                              <1>    %endmacro
+   309                              <1> 
+   310                              <1> %elifidni tmode,L1        ; measure latency of instruct1 A, A
+   311                              <1> 
+   312                              <1>    %macro testcode 0
+   313                              <1>       instruct1 RB1, RA2, RA2 immoperands1
+   314                              <1>       instruct1 RB2, RA1, RA1 immoperands1
+   315                              <1>    %endmacro
+   316                              <1> 
+   317                              <1> %elifidni tmode,L12        ; measure latency of instruct1 B, A + instruct2 A, B
+   318                              <1> 
+   319                              <1>    %macro testcode 0
+   320                              <1>       instruct1 RB2, RA1, RA1 immoperands1
+   321                              <1>       instruct2 RA1, RB2      immoperands2
+   322                              <1>    %endmacro
+   323                              <1> 
+   324                              <1> %elifidni tmode,L123        ; measure latency of instruct1 B, A + instruct2 A, B + instruct3 A, A
+   325                              <1> 
+   326                              <1>    %macro testcode 0
+   327                              <1>       instruct1 RB2, RA1, RA1 immoperands1
+   328                              <1>       instruct2 RA1, RB2      immoperands2
+   329                              <1>       instruct3 RA1, RA1
+   330                              <1>    %endmacro
+   331                              <1> 
+   332                              <1> %endif
+   333                              <1> 
+   334                              <1> %else
+   335                              <1>    %error unknown numop1
+   336                              <1> %endif
+     1                                  ;----------------------------------------------------------------------------
+     2                                  ;                       TemplateB64.nasm                2013-09-30 Agner Fog
+     3                                  ;
+     4                                  ;                PMC Test program for multiple threads
+     5                                  ;                           YASM syntax
+     6                                  ;
+     7                                  ; This file is a replacement for the file PMCTestB64.nasm where relevant 
+     8                                  ; parts are coded as replaceable macros. This is useful for automated test
+     9                                  ; scripts where the macro definitions are inserted on the command line or
+    10                                  ; as included files.
+    11                                  ;
+    12                                  ; The following defines and macros can be defined on the command line or in include files:
+    13                                  ; 
+    14                                  ; instruct:      The name of a single instruction to test (define or macro). Default = nop
+    15                                  ;
+    16                                  ; instruct2:     Extra line of code following instruction. Default = nothing
+    17                                  ;
+    18                                  ; regsize:       Register size: 8, 16, 32, 64, 128, 256, (or 65 = mmx). Default = 32
+    19                                  ;
+    20                                  ; numop:         Number of register operands (0 - 3). Default = 0
+    21                                  ;
+    22                                  ; numimm:        Number of immediate operands (0 - 1). Default = 0
+    23                                  ;
+    24                                  ; immvalue:      Value of first immediate operand. Default = 0
+    25                                  ;
+    26                                  ; testcode:      A multi-line macro executing any piece of test code. (Replaces instruction and numop); 
+    27                                  ;
+    28                                  ; testdata:      Macro defining any static data needed for test. Default = 10000H bytes
+    29                                  ; 
+    30                                  ; testinit1:     Macro with initializations before all tests. Default sets rsi to point to testdata
+    31                                  ;
+    32                                  ; testinit2:     Macro with initializations before each test. Default = nothing
+    33                                  ;
+    34                                  ; testinit3:     Macro with initializations before macro loop. Default = nothing
+    35                                  ;
+    36                                  ; testinitc:     Macro to call in each test before reading counters
+    37                                  ;
+    38                                  ; testafter1:    Macro with any cleanup to do after macro loop. Default = nothing
+    39                                  ;
+    40                                  ; testafter2:    Macro with any cleanup to do after repeat1 loop. Default = nothing
+    41                                  ;
+    42                                  ; testafter3:    Macro with any cleanup to do after all tests. Default = nothing
+    43                                  ;
+    44                                  ; repeat0:       Number of repetitions of whole test. Default = 5
+    45                                  ;
+    46                                  ; repeat1:       Repeat count for loop around testcode. Default = no loop
+    47                                  ;
+    48                                  ; repeat2:       Repeat count for repeat macro around testcode. Default = 100
+    49                                  ;
+    50                                  ; nthreads:      Number of simultaneous threads (default = 1)
+    51                                  ; 
+    52                                  ; counters:      A comma-separated list of PMC counter numbers (referring to CounterDefinitions in PMCTestA.cpp)
+    53                                  ;                Default = include "countertypes.inc"
+    54                                  ; 
+    55                                  ; WINDOWS:       1 if Windows operating system. Default = 0
+    56                                  ;
+    57                                  ; USEAVX:        1 if AVX registers used. Default = 1
+    58                                  ;
+    59                                  ; WARMUPCOUNT:   Set to 10000000 to get CPU into max frequency by executing dummy instructions. Default = 0
+    60                                  ;
+    61                                  ; CACHELINESIZE: Size of data cache lines. Default = 64
+    62                                  ;
+    63                                  ; codealign:     Alignment of test code. Default = 16
+    64                                  ; 
+    65                                  ; See PMCTestB64.nasm and PMCTest.txt for general instructions.
+    66                                  ; 
+    67                                  ; (c) 2000-2013 GNU General Public License www.gnu.org/licenses
+    68                                  ; 
+    69                                  ;-----------------------------------------------------------------------------
+    70                                  
+    71                                  %include "countertypes.inc"   ; include file defining various parameters
+     1                              <1> ; This file is autogenerated. Edit vars.sh and init.sh instead
+     2                              <1> 
+     3                              <1> ; Operating system:
+     4                              <1> %define UNIX 1
+     5                              <1> 
+     6                              <1> ; CPU:
+     7                              <1> %define CPUbrand Intel
+     8                              <1> %define ifamily 6
+     9                              <1> %define imodel 60
+    10                              <1> 
+    11                              <1> ; Define whether AVX and YMM registers used
+    12                              <1> %define  USEAVX   1
+    13                              <1> 
+    14                              <1> ; PMC counters:
+    15                              <1> %ifndef counters
+    16                              <1> %define counters 9
+    17                              <1> %endif
+    18                              <1> 
+    72                                  
+    73                                  ; Define any undefined macros
+    74                                  
+    75                                  %ifndef repeat1
+    76                                     %define repeat1 1
+    77                                  %endif
+    78                                  
+    79                                  %ifndef repeat2
+    80                                     %define repeat2 100
+    81                                  %endif
+    82                                  
+    83                                  %ifndef instruct
+    84                                     %define instruct  nop  ; default instruction is NOP
+    85                                  %endif
+    86                                  
+    87                                  %ifndef instruct2
+    88                                     %define instruct2
+    89                                  %endif
+    90                                  
+    91                                  %ifndef regsize              ; default: define registers as 32 bit
+    92                                     %define regsize   32
+    93                                  %endif
+    94                                  
+    95                                  %ifndef codealign            ; default: align test code by 16
+    96                                     %define codealign 16
+    97                                  %endif
+    98                                  
+    99                                  %ifndef numop
+   100                                     %define numop  0    ; default number of register operands
+   101                                  %endif
+   102                                  
+   103                                  %ifndef immvalue
+   104                                     %define immvalue  0  ; value of immediate operands
+   105                                  %endif
+   106                                  
+   107                                  %ifndef numimm
+   108                                     %define numimm  0  ; default number of immediate operands
+   109                                  %endif
+   110                                  
+   111                                  %if numimm == 0
+   112                                     %define immoperands0 
+   113                                     %define immoperands1
+   114                                  %elif numimm == 1
+   115                                     %define immoperands0   immvalue
+   116                                     %define immoperands1 , immvalue
+   117                                  %elif numimm == 2
+   118                                     %define immoperands0   immvalue , immvalue
+   119                                     %define immoperands1 , immvalue , immvalue
+   120                                  %endif
+   121                                  
+   122                                  %ifnmacro testcode
+   123                                     %macro testcode 0   ; default: run instruction 100 times
+   124                                        %if numop == 0
+   125                                           instruct immoperands0
+   126                                        %elif numop == 1
+   127                                           instruct reg0 immoperands1
+   128                                        %elif numop == 2
+   129                                           instruct reg0, reg1 immoperands1
+   130                                        %elif numop == 3
+   131                                           instruct reg0, reg0, reg1 immoperands1
+   132                                        %else
+   133                                           %error "unknown numop"
+   134                                        %endif
+   135                                        instruct2
+   136                                     %endmacro
+   137                                  %endif
+   138                                  
+   139                                  ; Operating system: 0 = Linux, 1 = Windows
+   140                                  %ifndef WINDOWS
+   141                                  %define  WINDOWS  0
+   142                                  %endif
+   143                                  
+   144                                  ; Warmup code. Set to 10000000 to get CPU into max frequency
+   145                                  %ifndef 
+   146                                  %define WARMUPCOUNT  100000
+   147                                  %endif
+   148                                  
+   149                                  ; Define cache line size (to avoid threads sharing cache lines):
+   150                                  %ifndef CACHELINESIZE
+   151                                  %define CACHELINESIZE  64
+   152                                  %endif
+   153                                  
+   154                                  ; Define whether AVX and YMM registers used
+   155                                  %ifndef  USEAVX
+   156                                  %define  USEAVX   1
+   157                                  %endif
+   158                                  
+   159                                  ; Number of repetitions of test.
+   160                                  %ifdef   repeat0
+   161                                  %define  REPETITIONS  repeat0
+   162                                  %else
+   163                                  %define  REPETITIONS  1
+   164                                  %endif
+   165                                  
+   166                                  %ifndef nthreads
+   167                                     %define nthreads  1    ; default number of threads = 1
+   168                                  %endif
+   169                                  
+   170                                  %ifndef counters
+   171                                     % define counters 1,9,100,150
+   172                                  %endif
+   173                                  
+   174                                  %if regsize == 8             ; define registers of desired size
+   175                                     %define reg0  al
+   176                                     %define reg1  bl
+   177                                     %define reg2  cl
+   178                                     %define reg3  dl
+   179                                     %define reg4  dil
+   180                                     %define reg5  sil
+   181                                     %define reg6  bpl
+   182                                     %define reg7  r8b
+   183                                     %define reg8  r9b
+   184                                     %define reg9  r10b
+   185                                     %define reg10 r11b
+   186                                     %define sizeptr byte
+   187                                  %elif regsize == 9           ; high 8-bit registers
+   188                                     %define reg0  ah
+   189                                     %define reg1  bh
+   190                                     %define reg2  ch
+   191                                     %define reg3  dh
+   192                                     %define reg4  al
+   193                                     %define reg5  bl
+   194                                     %define reg6  cl
+   195                                     %define reg7  dl
+   196                                     %define sizeptr byte
+   197                                  %elif regsize == 16
+   198                                     %define reg0  ax
+   199                                     %define reg1  bx
+   200                                     %define reg2  cx
+   201                                     %define reg3  dx
+   202                                     %define reg4  di
+   203                                     %define reg5  si
+   204                                     %define reg6  bp
+   205                                     %define reg7  r8w
+   206                                     %define reg8  r9w
+   207                                     %define reg9  r10w
+   208                                     %define reg10 r11w
+   209                                     %define sizeptr word
+   210                                  %elif regsize == 32
+   211                                     %define reg0  eax
+   212                                     %define reg1  ebx
+   213                                     %define reg2  ecx
+   214                                     %define reg3  edx
+   215                                     %define reg4  edi
+   216                                     %define reg5  esi
+   217                                     %define reg6  ebp
+   218                                     %define reg7  r8d
+   219                                     %define reg8  r9d
+   220                                     %define reg9  r10d
+   221                                     %define reg10 r11d
+   222                                     %define sizeptr dword
+   223                                  %elif regsize == 64
+   224                                     %define reg0  rax
+   225                                     %define reg1  rbx
+   226                                     %define reg2  rcx
+   227                                     %define reg3  rdx
+   228                                     %define reg4  rdi
+   229                                     %define reg5  rsi
+   230                                     %define reg6  rbp
+   231                                     %define reg7  r8
+   232                                     %define reg8  r9
+   233                                     %define reg9  r10
+   234                                     %define reg10 r11
+   235                                     %define sizeptr qword
+   236                                  %elif regsize == 65    ; 64 bit mmx registers
+   237                                     %define reg0  mm0
+   238                                     %define reg1  mm1
+   239                                     %define reg2  mm2
+   240                                     %define reg3  mm3
+   241                                     %define reg4  mm4
+   242                                     %define reg5  mm5
+   243                                     %define reg6  mm6
+   244                                     %define reg7  mm7
+   245                                     %define sizeptr mmword   
+   246                                  %elif regsize == 128
+   247                                     %define reg0  xmm0
+   248                                     %define reg1  xmm1
+   249                                     %define reg2  xmm2
+   250                                     %define reg3  xmm3
+   251                                     %define reg4  xmm4
+   252                                     %define reg5  xmm5
+   253                                     %define reg6  xmm6
+   254                                     %define reg7  xmm7
+   255                                     %define reg8  xmm8
+   256                                     %define reg9  xmm9
+   257                                     %define reg10 xmm10
+   258                                     %define reg11 xmm11
+   259                                     %define reg12 xmm12
+   260                                     %define sizeptr oword   
+   261                                  %elif regsize == 256
+   262                                     %define reg0  ymm0
+   263                                     %define reg1  ymm1
+   264                                     %define reg2  ymm2
+   265                                     %define reg3  ymm3
+   266                                     %define reg4  ymm4
+   267                                     %define reg5  ymm5
+   268                                     %define reg6  ymm6
+   269                                     %define reg7  ymm7
+   270                                     %define reg8  ymm8
+   271                                     %define reg9  ymm9
+   272                                     %define reg10 ymm10
+   273                                     %define reg11 ymm11
+   274                                     %define reg12 ymm12
+   275                                     %define sizeptr yword   
+   276                                  %elif regsize == 0        ; unspecified size
+   277                                     %define sizeptr 
+   278                                  %else
+   279                                     %error unknown register size
+   280                                  %endif
+   281                                  
+   282                                  %define modesize 64  ; indicate 64 bit mode
+   283                                  
+   284                                  ;-----------------------------------------------------------------------------
+   285                                  
+   286                                  default rel
+   287                                  
+   288                                  global TestLoop
+   289                                  global CounterTypesDesired
+   290                                  global NumThreads
+   291                                  global MaxNumCounters
+   292                                  global UsePMC
+   293                                  global PThreadData
+   294                                  global ThreadDataSize
+   295                                  global ClockResultsOS
+   296                                  global PMCResultsOS
+   297                                  global ThreadData
+   298                                  global NumCounters
+   299                                  global Counters
+   300                                  global EventRegistersUsed
+   301                                  global UserData
+   302                                  global RatioOut
+   303                                  global TempOut
+   304                                  global RatioOutTitle
+   305                                  global TempOutTitle
+   306                                  
+   307                                  
+   308                                  SECTION .data   align = CACHELINESIZE
+   309                                  
+   310                                  
+   311                                  ;##############################################################################
+   312                                  ;#
+   313                                  ;#            List of desired counter types and other user definitions
+   314                                  ;#
+   315                                  ;##############################################################################
+   316                                  ; Here you can select which performance monitor counters you want for your test.
+   317                                  ; Select id numbers from the table CounterDefinitions[] in PMCTestA.cpp.
+   318                                  
+   319                                  %define USE_PERFORMANCE_COUNTERS   1        ; Tell if you are using performance counters
+   320                                  
+   321                                  ; Maximum number of PMC counters
+   322                                  %define MAXCOUNTERS   6              ; must match value in PMCTest.h
+   323                                  
+   324                                  ; Number of PMC counters
+   325                                  %define NUM_COUNTERS  1
+   326                                  
+   327                                  CounterTypesDesired:
+   328 00000000 09000000                    DD      counters                 ; macro with desired counter numbers
+   329 00000004 00000000<rept>          times (MAXCOUNTERS - ($-CounterTypesDesired)/4)  DD 0
+   330                                  
+   331                                  ; Number of threads
+   332                                  %define NUM_THREADS   nthreads
+   333                                  
+   334                                  ; Subtract overhead from clock counts (0 if not)
+   335                                  %define SUBTRACT_OVERHEAD  0
+   336                                  
+   337                                  ; Number of repetitions in loop to find overhead
+   338                                  %define OVERHEAD_REPETITIONS  1
+   339                                  
+   340                                  ; Define array sizes
+   341                                  %assign MAXREPEAT  REPETITIONS
+   342                                  
+   343                                  
+   344                                  ;##############################################################################
+   345                                  ;#
+   346                                  ;#                       global data
+   347                                  ;#
+   348                                  ;##############################################################################
+   349                                  
+   350                                  ; Per-thread data:
+   351 00000018 00<rept>                align   CACHELINESIZE, DB 0
+   352                                  ; Data for first thread
+   353                                  ThreadData:                                                ; beginning of thread data block
+   354 00000040 00000000<rept>          CountTemp:     times  (MAXCOUNTERS + 1)          DD   0    ; temporary storage of counts
+   355 0000005C FFFFFFFF<rept>          CountOverhead: times  (MAXCOUNTERS + 1)          DD  -1    ; temporary storage of count overhead
+   356 00000078 00000000                ClockResults:  times   REPETITIONS               DD   0    ; clock counts
+   357 0000007C 00000000<rept>          PMCResults:    times  (REPETITIONS*MAXCOUNTERS)  DD   0    ; PMC counts
+   358 00000094 00<rept>                align 8, DB 0
+   359 00000098 0000000000000000        RSPSave                                          DQ   0    ; save stack pointer
+   360 000000A0 00<rept>                ALIGN   CACHELINESIZE, DB 0                                ; Make sure threads don't use same cache lines
+   361                                  THREADDSIZE  equ     ($ - ThreadData)                      ; size of data block for each thread
+   362                                  
+   363                                  ; Define data blocks of same size for remaining threads
+   364                                  %if  NUM_THREADS > 1
+   365                                    times ((NUM_THREADS-1)*THREADDSIZE)            DB 0
+   366                                  %endif
+   367                                  
+   368                                  ; Global data
+   369 000000C0 [4000000000000000]      PThreadData     DQ    ThreadData                 ; Pointer to measured data for all threads
+   370 000000C8 00000000                NumCounters     DD    0                          ; Will be number of valid counters
+   371 000000CC 01000000                MaxNumCounters  DD    NUM_COUNTERS               ; Tell PMCTestA.CPP length of CounterTypesDesired
+   372 000000D0 01000000                UsePMC          DD    USE_PERFORMANCE_COUNTERS   ; Tell PMCTestA.CPP if RDPMC used. Driver needed
+   373 000000D4 01000000                NumThreads      DD    NUM_THREADS                ; Number of threads
+   374 000000D8 80000000                ThreadDataSize  DD    THREADDSIZE                ; Size of each thread data block
+   375 000000DC 38000000                ClockResultsOS  DD    ClockResults-ThreadData    ; Offset to ClockResults
+   376 000000E0 3C000000                PMCResultsOS    DD    PMCResults-ThreadData      ; Offset to PMCResults
+   377 000000E4 00000000<rept>          Counters:             times MAXCOUNTERS   DD 0   ; Counter register numbers used will be inserted here
+   378 000000FC 00000000<rept>          EventRegistersUsed    times MAXCOUNTERS   DD 0   ; Set by MTMonA.cpp
+   379                                  
+   380                                  %ifmacro extraoutput                            ; define optional extra output columns
+   381                                     extraoutput
+   382                                  %else
+   383 00000114 000000000000000000-        RatioOut      DD   0, 0, 0, 0                ; optional ratio output. Se PMCTest.h
+   383 0000011D 00000000000000     
+   384 00000124 00000000                   TempOut       DD   0                         ; optional arbitrary output. Se PMCTest.h
+   385 00000128 0000000000000000           RatioOutTitle DQ   0                         ; column heading
+   386 00000130 0000000000000000           TempOutTitle  DQ   0                         ; column heading
+   387                                  %endif  
+   388                                  
+   389                                  
+   390                                  ;##############################################################################
+   391                                  ;#
+   392                                  ;#                 User data
+   393                                  ;#
+   394                                  ;##############################################################################
+   395 00000138 00<rept>                ALIGN   CACHELINESIZE, DB 0
+   396                                  
+   397                                  ; Put any data definitions your test code needs here
+   398                                  
+   399                                  UserData:
+   400                                  %ifmacro testdata
+   401                                          testdata
+   402                                  %else
+   403 00000140 00<rept>                        times 10000H  DB 0
+   404                                  %endif
+   405                                  
+   406                                  ;##############################################################################
+   407                                  ;#
+   408                                  ;#                 Macro definitions used in test loop
+   409                                  ;#
+   410                                  ;##############################################################################
+   411                                  
+   412                                  %macro SERIALIZE 0             ; serialize CPU
+   413                                         xor     eax, eax
+   414                                         cpuid
+   415                                  %endmacro
+   416                                  
+   417                                  %macro CLEARXMMREG 1           ; clear one xmm register
+   418                                     pxor xmm%1, xmm%1
+   419                                  %endmacro 
+   420                                  
+   421                                  %macro CLEARALLXMMREG 0        ; set all xmm or ymm registers to 0
+   422                                     %if  USEAVX
+   423                                  ;      VZEROALL                 ; set all ymm registers to 0
+   424                                     %else
+   425                                        %assign i 0
+   426                                        %rep 16
+   427                                           CLEARXMMREG i         ; set all 16 xmm registers to 0
+   428                                           %assign i i+1
+   429                                        %endrep
+   430                                     %endif
+   431                                  %endmacro
+   432                                  
+   433                                  
+   434                                  ;##############################################################################
+   435                                  ;#
+   436                                  ;#                    Test Loop
+   437                                  ;#
+   438                                  ;##############################################################################
+   439                                  
+   440                                  SECTION .text   align = codealign
+   441                                  
+   442                                  ;extern "C" int TestLoop (int thread) {
+   443                                  ; This function runs the code to test REPETITIONS times
+   444                                  ; and reads the counters before and after each run:
+   445                                  
+   446                                  TestLoop:
+   447 00000000 53                              push    rbx
+   448 00000001 55                              push    rbp
+   449 00000002 4154                            push    r12
+   450 00000004 4155                            push    r13
+   451 00000006 4156                            push    r14
+   452 00000008 4157                            push    r15
+   453                                  %if     WINDOWS                    ; These registers must be saved in Windows, not in Linux
+   454                                          push    rsi
+   455                                          push    rdi
+   456                                          sub     rsp, 0A8H           ; Space for saving xmm6 - 15 and align
+   457                                          movaps  [rsp], xmm6
+   458                                          movaps  [rsp+10H], xmm7
+   459                                          movaps  [rsp+20H], xmm8
+   460                                          movaps  [rsp+30H], xmm9
+   461                                          movaps  [rsp+40H], xmm10
+   462                                          movaps  [rsp+50H], xmm11
+   463                                          movaps  [rsp+60H], xmm12
+   464                                          movaps  [rsp+70H], xmm13
+   465                                          movaps  [rsp+80H], xmm14
+   466                                          movaps  [rsp+90H], xmm15        
+   467                                          mov     r15d, ecx          ; Thread number
+   468                                  %else   ; Linux
+   469 0000000A 4189FF                          mov     r15d, edi          ; Thread number
+   470                                  %endif
+   471                                          
+   472                                  ; Register use:
+   473                                  ;   r13: pointer to thread data block
+   474                                  ;   r14: loop counter
+   475                                  ;   r15: thread number
+   476                                  ;   rax, rbx, rcx, rdx: scratch
+   477                                  ;   all other registers: available to user program
+   478                                  
+   479                                  
+   480                                  ;##############################################################################
+   481                                  ;#
+   482                                  ;#                 Warm up
+   483                                  ;#
+   484                                  ;##############################################################################
+   485                                  ; Get into max frequency state
+   486                                  
+   487                                  %if WARMUPCOUNT
+   488 0000000D B910270000                      mov ecx, WARMUPCOUNT / 10
+   489 00000012 B801000000                      mov eax, 1
+   490 00000017 90<rept>                        align 16
+   491                                  Warmuploop:
+   492                                          %rep 10
+   493                                          imul eax, ecx
+   494                                          %endrep
+   494 00000020 0FAFC1              <1>  imul eax, ecx
+   494 00000023 0FAFC1              <1>  imul eax, ecx
+   494 00000026 0FAFC1              <1>  imul eax, ecx
+   494 00000029 0FAFC1              <1>  imul eax, ecx
+   494 0000002C 0FAFC1              <1>  imul eax, ecx
+   494 0000002F 0FAFC1              <1>  imul eax, ecx
+   494 00000032 0FAFC1              <1>  imul eax, ecx
+   494 00000035 0FAFC1              <1>  imul eax, ecx
+   494 00000038 0FAFC1              <1>  imul eax, ecx
+   494 0000003B 0FAFC1              <1>  imul eax, ecx
+   495 0000003E FFC9                            dec ecx
+   496 00000040 75DE                            jnz Warmuploop
+   497                                  
+   498                                  %endif
+   499                                  
+   500                                  ;##############################################################################
+   501                                  ;#
+   502                                  ;#                 User Initializations 
+   503                                  ;#
+   504                                  ;##############################################################################
+   505                                  ; You may add any initializations your test code needs here.
+   506                                  ; Registers esi, edi, ebp and r8 - r12 will be unchanged from here to the 
+   507                                  ; Test code start.
+   508                                  ; 
+   509                                  
+   510 00000042 9BDBE3                          finit                 ; clear all FP registers
+   511                                          
+   512                                          CLEARALLXMMREG        ; clear all xmm or ymm registers
+   512                              <1>  %if USEAVX
+   512                              <1> 
+   512                              <1>  %else
+   512                              <1>  %assign i 0
+   512                              <1>  %rep 16
+   512                              <1>  CLEARXMMREG i
+   512                              <1>  %assign i i+1
+   512                              <1>  %endrep
+   512                              <1>  %endif
+   513                                  
+   514 00000045 4169C720200000                  imul eax, r15d, 2020h ; separate data for each thread
+   515 0000004C 488D35(40010000)                lea rsi, [UserData]
+   516 00000053 4801C6                          add rsi, rax
+   517 00000056 488DBE20010000                  lea rdi, [rsi+120h]
+   518 0000005D 31ED                            xor ebp, ebp
+   519                                          
+   520                                  %define psi rsi              ; esi in 32-bit mode, rsi in 64-bit mode
+   521                                  
+   522                                  %ifmacro testinit1
+   523                                          testinit1
+   524                                  %endif
+   525                                          
+   526                                  
+   527                                  ;##############################################################################
+   528                                  ;#
+   529                                  ;#                 End of user Initializations 
+   530                                  ;#
+   531                                  ;##############################################################################
+   532                                  
+   533 0000005F 4C8D2D(40000000)                lea     r13, [ThreadData]              ; address of first thread data block
+   534 00000066 4169C780000000                  imul    eax, r15d, THREADDSIZE         ; offset to thread data block
+   535 0000006D 4901C5                          add     r13, rax                       ; address of current thread data block
+   536 00000070 49896558                        mov     [r13+(RSPSave-ThreadData)],rsp ; save stack pointer
+   537                                  
+   538                                  %if  SUBTRACT_OVERHEAD
+   539                                  ; First test loop. Measure empty code
+   540                                          xor     r14d, r14d                     ; Loop counter
+   541                                  
+   542                                  TEST_LOOP_1:
+   543                                  
+   544                                          SERIALIZE
+   545                                        
+   546                                          ; Read counters
+   547                                  %assign i  0
+   548                                  %rep    NUM_COUNTERS
+   549                                          mov     ecx, [Counters + i*4]
+   550                                          rdpmc
+   551                                          mov     [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
+   552                                  %assign i  i+1
+   553                                  %endrep
+   554                                        
+   555                                  
+   556                                          SERIALIZE
+   557                                  
+   558                                          ; read time stamp counter
+   559                                          rdtsc
+   560                                          mov     [r13 + (CountTemp-ThreadData)], eax
+   561                                  
+   562                                          SERIALIZE
+   563                                  
+   564                                          ; Empty. Test code goes here in next loop
+   565                                  
+   566                                          SERIALIZE
+   567                                  
+   568                                          ; read time stamp counter
+   569                                          rdtsc
+   570                                          sub     [r13 + (CountTemp-ThreadData)], eax        ; CountTemp[0]
+   571                                  
+   572                                          SERIALIZE
+   573                                  
+   574                                          ; Read counters
+   575                                  %assign i  0
+   576                                  %rep    NUM_COUNTERS
+   577                                          mov     ecx, [Counters + i*4]
+   578                                          rdpmc
+   579                                          sub     [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
+   580                                  %assign i  i+1
+   581                                  %endrep
+   582                                  
+   583                                          SERIALIZE
+   584                                  
+   585                                          ; find minimum counts
+   586                                  %assign i  0
+   587                                  %rep    NUM_COUNTERS + 1
+   588                                          mov     eax, [r13+i*4+(CountTemp-ThreadData)]       ; -count
+   589                                          neg     eax
+   590                                          mov     ebx, [r13+i*4+(CountOverhead-ThreadData)]   ; previous count
+   591                                          cmp     eax, ebx
+   592                                          cmovb   ebx, eax
+   593                                          mov     [r13+i*4+(CountOverhead-ThreadData)], ebx   ; minimum count        
+   594                                  %assign i  i+1
+   595                                  %endrep
+   596                                          
+   597                                          ; end second test loop
+   598                                          inc     r14d
+   599                                          cmp     r14d, OVERHEAD_REPETITIONS
+   600                                          jb      TEST_LOOP_1
+   601                                  
+   602                                  %endif  ; SUBTRACT_OVERHEAD
+   603                                  
+   604                                          
+   605                                  ; Second test loop. Measure user code
+   606 00000074 4531F6                          xor     r14d, r14d                    ; Loop counter
+   607                                  
+   608                                  TEST_LOOP_2:
+   609                                  
+   610                                  %ifmacro testinitc
+   611                                          testinitc
+   612                                  %endif
+   613                                  
+   614                                          SERIALIZE
+   614 00000077 31C0                <1>  xor eax, eax
+   614 00000079 0FA2                <1>  cpuid
+   615                                        
+   616                                          ; Read counters
+   617                                  %assign i  0
+   618                                  %rep    NUM_COUNTERS
+   619                                          mov     ecx, [Counters + i*4]
+   620                                          rdpmc
+   621                                          mov     [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
+   622                                  %assign i  i+1
+   623                                  %endrep
+   623 0000007B 8B0D(E4000000)      <1>  mov ecx, [Counters + i*4]
+   623 00000081 0F33                <1>  rdpmc
+   623 00000083 41894504            <1>  mov [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
+   623                              <1> %assign i i+1
+   624                                  
+   625                                          SERIALIZE
+   625 00000087 31C0                <1>  xor eax, eax
+   625 00000089 0FA2                <1>  cpuid
+   626                                  
+   627                                          ; read time stamp counter
+   628                                  ;        rdtsc
+   629                                  ;        mov     [r13 + (CountTemp-ThreadData)], eax
+   630                                  
+   631                                  ;        SERIALIZE
+   632                                  
+   633                                  ;##############################################################################
+   634                                  ;#
+   635                                  ;#                 Test code start
+   636                                  ;#
+   637                                  ;##############################################################################
+   638                                  
+   639                                  ; Put the assembly code to test here
+   640                                  ; Don't modify r13, r14, r15!
+   641                                  
+   642                                  ; !!
+   643                                  
+   644                                  %ifmacro testinit2
+   645                                          testinit2
+   645 0000008B 31C0                <1>  xor eax, eax
+   646                                  %endif
+   647                                  
+   648                                  %if repeat1 > 1
+   649 0000008D 41BC64000000                    mov r12d, repeat1
+   650 00000093 90<rept>                        align codealign
+   651                                  repeat1loop:
+   652                                  %endif
+   653                                  
+   654                                  %ifmacro testinit3
+   655                                          testinit3
+   656                                  %endif
+   657                                  
+   658                                  %rep repeat2
+   659                                          ; test code inserted as macro
+   660                                          testcode
+   661                                  %endrep
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000C0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000C4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000C8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000CC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000D0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000D4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000D8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000DC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000E0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000E4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000E8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000EC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000F0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000F4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000000F8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000000FC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000100 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000104 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000108 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000010C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000110 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000114 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000118 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000011C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000120 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000124 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000128 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000012C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000130 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000134 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000138 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000013C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000140 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000144 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000148 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000014C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000150 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000154 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000158 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000015C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000160 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000164 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000168 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000016C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000170 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000174 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000178 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000017C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000180 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000184 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000188 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000018C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000190 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000194 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000198 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000019C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001C0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001C4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001C8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001CC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001D0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001D4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001D8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001DC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001E0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001E4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001E8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001EC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001F0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001F4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000001F8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000001FC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000200 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000204 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000208 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000020C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000210 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000214 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000218 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000021C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000220 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000224 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000228 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000022C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000230 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000234 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000238 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000023C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000240 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000244 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000248 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000024C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000250 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000254 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000258 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000025C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000260 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000264 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000268 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000026C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000270 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000274 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000278 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000027C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000280 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000284 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000288 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000028C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000290 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000294 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000298 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000029C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002C0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002C4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002C8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002CC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002D0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002D4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002D8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002DC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002E0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002E4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002E8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002EC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002F0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002F4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000002F8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000002FC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000300 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000304 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000308 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000030C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000310 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000314 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000318 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000031C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000320 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000324 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000328 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000032C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000330 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000334 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000338 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000033C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000340 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000344 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000348 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000034C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000350 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000354 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000358 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000035C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000360 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000364 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000368 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000036C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000370 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000374 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000378 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000037C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000380 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000384 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000388 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000038C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000390 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 00000394 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 00000398 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 0000039C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000003A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000003A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000003A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000003AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000003B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000003B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   661                              <1> 
+   661                              <1>  testcode
+   661 000003B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   661 000003BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                                  
+   663                                  %ifmacro testafter1
+   664                                          testafter1
+   665                                  %endif
+   666                                  
+   667                                  %if repeat1 > 1
+   668 000003C0 41FFCC                          dec r12d
+   669 000003C3 0F85D7FCFFFF                    jnz repeat1loop
+   670                                  %endif
+   671                                  
+   672                                  %ifmacro testafter2
+   673                                          testafter2
+   674                                  %endif
+   675                                  
+   676                                  ;##############################################################################
+   677                                  ;#
+   678                                  ;#                 Test code end
+   679                                  ;#
+   680                                  ;##############################################################################
+   681                                  
+   682                                          SERIALIZE
+   682 000003C9 31C0                <1>  xor eax, eax
+   682 000003CB 0FA2                <1>  cpuid
+   683                                  
+   684                                          ; read time stamp counter
+   685                                  ;        rdtsc
+   686                                  ;        sub     [r13 + (CountTemp-ThreadData)], eax        ; CountTemp[0]
+   687                                  
+   688                                  ;        SERIALIZE
+   689                                  
+   690                                          ; Read counters
+   691                                  %assign i  0
+   692                                  %rep    NUM_COUNTERS
+   693                                          mov     ecx, [Counters + i*4]
+   694                                          rdpmc
+   695                                          sub     [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax  ; CountTemp[i+1]
+   696                                  %assign i  i+1
+   697                                  %endrep
+   697 000003CD 8B0D(E4000000)      <1>  mov ecx, [Counters + i*4]
+   697 000003D3 0F33                <1>  rdpmc
+   697 000003D5 41294504            <1>  sub [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
+   697                              <1> %assign i i+1
+   698                                  
+   699                                          SERIALIZE
+   699 000003D9 31C0                <1>  xor eax, eax
+   699 000003DB 0FA2                <1>  cpuid
+   700                                  
+   701                                          ; subtract counts before from counts after
+   702                                  ;        mov     eax, [r13 + (CountTemp-ThreadData)]            ; -count
+   703                                   ;       neg     eax
+   704                                  %if     SUBTRACT_OVERHEAD
+   705                                          sub     eax, [r13+(CountOverhead-ThreadData)]   ; overhead clock count        
+   706                                  %endif  ; SUBTRACT_OVERHEAD        
+   707                                    ;      mov     [r13+r14*4+(ClockResults-ThreadData)], eax      ; save clock count
+   708                                          
+   709                                  %assign i  0
+   710                                  %rep    NUM_COUNTERS
+   711                                          mov     eax, [r13 + i*4 + 4 + (CountTemp-ThreadData)]
+   712                                          neg     eax
+   713                                  %if     SUBTRACT_OVERHEAD
+   714                                          sub     eax, [r13+i*4+4+(CountOverhead-ThreadData)]   ; overhead pmc count        
+   715                                  %endif  ; SUBTRACT_OVERHEAD        
+   716                                          mov     [r13+r14*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax      ; save count        
+   717                                  %assign i  i+1
+   718                                  %endrep
+   718 000003DD 418B4504            <1>  mov eax, [r13 + i*4 + 4 + (CountTemp-ThreadData)]
+   718 000003E1 F7D8                <1>  neg eax
+   718                              <1> %if SUBTRACT_OVERHEAD
+   718                              <1>  sub eax, [r13+i*4+4+(CountOverhead-ThreadData)]
+   718                              <1> %endif
+   718 000003E3 438944B53C          <1>  mov [r13+r14*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax
+   718                              <1> %assign i i+1
+   719                                          
+   720                                          ; end second test loop
+   721 000003E8 41FFC6                          inc     r14d
+   722 000003EB 4183FE01                        cmp     r14d, REPETITIONS
+   723 000003EF 0F8282FCFFFF                    jb      TEST_LOOP_2
+   724                                  
+   725                                          ; clean up
+   726                                  EXITALL1:
+   727                                  
+   728                                  %ifmacro testafter3
+   729                                          testafter3
+   730                                  %endif
+   731                                  
+   732 000003F5 498B6558                        mov     rsp, [r13+(RSPSave-ThreadData)]   ; restore stack pointer        
+   733 000003F9 9BDBE3                          finit
+   734 000003FC FC                              cld
+   735                                  %if  USEAVX
+   736                                          ;VZEROALL                       ; clear all ymm registers
+   737                                  %endif
+   738                                  
+   739                                  EXITALL2:
+   740                                          ; return REPETITIONS;
+   741 000003FD B801000000                      mov     eax, REPETITIONS
+   742                                          
+   743                                  %if     WINDOWS                        ; Restore registers saved in Windows
+   744                                          movaps  xmm6, [rsp]
+   745                                          movaps  xmm7, [rsp+10H]
+   746                                          movaps  xmm8, [rsp+20H]
+   747                                          movaps  xmm9, [rsp+30H]
+   748                                          movaps  xmm10, [rsp+40H]
+   749                                          movaps  xmm11, [rsp+50H]
+   750                                          movaps  xmm12, [rsp+60H]
+   751                                          movaps  xmm13, [rsp+70H]
+   752                                          movaps  xmm14, [rsp+80H]
+   753                                          movaps  xmm15, [rsp+90H]
+   754                                          add     rsp, 0A8H           ; Free space for saving xmm6 - 15
+   755                                          pop     rdi
+   756                                          pop     rsi
+   757                                  %endif
+   758 00000402 415F                            pop     r15
+   759 00000404 415E                            pop     r14
+   760 00000406 415D                            pop     r13
+   761 00000408 415C                            pop     r12
+   762 0000040A 5D                              pop     rbp
+   763 0000040B 5B                              pop     rbx
+   764 0000040C C3                              ret
+   765                                          
+   766                                  ; End of TestLoop

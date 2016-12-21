@@ -1,0 +1,53 @@
+#!/bin/bash
+# Test newer integer / general purpose register instructions
+# (c) Copyright 2013 by Agner Fog. GNU General Public License www.gnu.org/licenses
+
+# Detect CPU specific variables
+. vars.sh
+
+echo -e "Test newer integer / general purpose register instructions"  #> results1/new_int.txt
+
+
+# encryption instructions etc.
+
+if  [ `grep -c -i "sse4.2" cpuinfo.txt ` -gt 0 ] ; then
+echo -e "Encryption instructions etc."  #> results1/new_int.txt
+
+instruct=crc32
+for regsize in 64
+do
+echo -e "\n\nLatency: $instruct r32,r$regsize"  #>#> results1/new_int.txt
+$ass -f elf64 -o b64.o -Dinstruct=$instruct -Dregsize=$regsize -Dtmode=LL -Pmisc_vect.inc TemplateB64.nasm
+if [ $? -ne 0 ] ; then exit ; fi
+name=${instruct}_regsize_${regsize}_L_elf64
+mkdir ${name}
+g++ -m64 a64.o b64.o -o${name}/${name}.elf -lpthread -static
+if [ $? -ne 0 ] ; then exit ; fi
+#./x #>#> results1/new_int.txt
+
+echo -e "\n\nThroughput: $instruct r32,r$regsize"  #>#> results1/new_int.txt
+for cts in $PMClist
+do
+$ass -f elf64 -o b64.o -Dinstruct=$instruct -Dregsize=$regsize -Dtmode=LT -Dcounters=$cts -Pmisc_vect.inc TemplateB64.nasm
+if [ $? -ne 0 ] ; then exit ; fi
+name=${instruct}_regsize_${regsize}_T_elf64
+mkdir ${name}
+g++ -m64 a64.o b64.o -o${name}/${name}.elf -lpthread -static
+if [ $? -ne 0 ] ; then exit ; fi
+#./x #>#> results1/new_int.txt
+done
+
+echo -e "\n\nThroughput: $instruct r32,[m$regsize]"  #>#> results1/new_int.txt
+for cts in $PMClist
+do
+$ass -f elf64 -o b64.o -Dinstruct=$instruct -Dregsize=$regsize -Dtmode=LM -Dcounters=$cts -Pmisc_vect.inc TemplateB64.nasm
+if [ $? -ne 0 ] ; then exit ; fi
+name=${instruct}_regsize_${regsize}_M_elf64
+mkdir ${name}
+g++ -m64 a64.o b64.o -o${name}/${name}.elf -lpthread -static
+if [ $? -ne 0 ] ; then exit ; fi
+#./x #>#> results1/new_int.txt
+done
+done
+
+fi

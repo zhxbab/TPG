@@ -1,0 +1,932 @@
+     1                                  ;----------------------------------------------------------------------------
+     2                                  ;                        PMCTestB32.nasm              © 2013-08-20 Agner Fog
+     3                                  ;
+     4                                  ;                PMC Test program for multiple threads
+     5                                  ;                           NASM syntax
+     6                                  ; Linux version (for Windows, put underscore prefix on all global names)
+     7                                  ;
+     8                                  ; This program is intended for testing the performance of a little piece of 
+     9                                  ; code written in assembly language. 
+    10                                  ; The code to test is inserted at the place marked "Test code start".
+    11                                  ; All sections that can be modified by the user are marked with ###########. 
+    12                                  ; 
+    13                                  ; The code to test will be executed REPETITIONS times and the test results
+    14                                  ; will be output for each repetition. This program measures how many clock
+    15                                  ; cycles the code to test takes in each repetition. Furthermore, it is 
+    16                                  ; possible to set a number of Performance Monitor Counters (PMC) to count 
+    17                                  ; the number of micro-operations (uops), cache misses, branch mispredictions,
+    18                                  ; etc.
+    19                                  ; 
+    20                                  ; The setup of the Performance Monitor Counters is microprocessor-specific.
+    21                                  ; The specifications for PMC setup for each microprocessor family is defined
+    22                                  ; in the tables CounterDefinitions and CounterTypesDesired.
+    23                                  ; 
+    24                                  ; See PMCTest.txt for instructions.
+    25                                  ; 
+    26                                  ; (c) Copyright 2000 - 2013 by Agner Fog. GNU General Public License www.gnu.org/licenses
+    27                                  ;----------------------------------------------------------------------------
+    28                                  
+    29                                  ; Define whether AVX and YMM registers used
+    30                                  %ifndef  USEAVX
+    31                                  %define  USEAVX   1
+    32                                  %endif
+    33                                  
+    34                                  ; Define cache line size (to avoid threads sharing cache lines):
+    35                                  %define CACHELINESIZE  64
+    36                                  
+    37                                  ; Define warmup count to get into max frequency state
+    38                                  %define WARMUPCOUNT 10000000
+    39                                  
+    40                                  global TestLoop
+    41                                  global NumCounters
+    42                                  global MaxNumCounters
+    43                                  global EventRegistersUsed
+    44                                  global UsePMC
+    45                                  global Counters
+    46                                  global CounterTypesDesired
+    47                                  global PThreadData
+    48                                  global ClockResultsOS
+    49                                  global PMCResultsOS
+    50                                  global NumThreads
+    51                                  global ThreadDataSize
+    52                                  global RatioOut
+    53                                  global TempOut
+    54                                  global RatioOutTitle
+    55                                  global TempOutTitle
+    56                                  
+    57                                  
+    58                                  SECTION .data   align = CACHELINESIZE
+    59                                  
+    60                                  ;##############################################################################
+    61                                  ;#
+    62                                  ;#            List of desired counter types and other user definitions
+    63                                  ;#
+    64                                  ;##############################################################################
+    65                                   
+    66                                  ; Here you can select which performance monitor counters you want for your test.
+    67                                  ; Select id numbers from the table CounterDefinitions[] in PMCTestA.cpp.
+    68                                  
+    69                                  %define USE_PERFORMANCE_COUNTERS   1        ; Tell if you are using performance counters
+    70                                  
+    71                                  ; Maximum number of PMC counters
+    72                                  %define MAXCOUNTERS   6              ; must match value in PMCTest.h
+    73                                  
+    74                                  ; Number of PMC counters
+    75                                  %define NUM_COUNTERS  4              ; must match value in PMCTest.h
+    76                                  
+    77                                  CounterTypesDesired:
+    78 00000000 01000000                    DD      1        ; core cycles (Intel only)
+    79 00000004 09000000                    DD      9        ; instructions
+    80 00000008 64000000                    DD    100        ; uops
+    81 0000000C 37010000                    DD    311        ; data cache misses
+    82                                  
+    83 00000010 00000000<rept>          times (MAXCOUNTERS - ($-CounterTypesDesired)/4)  DD 0
+    84                                  
+    85                                  ; Number of repetitions of test.
+    86                                  %define REPETITIONS  8
+    87                                  
+    88                                  ; Number of threads
+    89                                  %define NUM_THREADS  3
+    90                                  
+    91                                  ; Subtract overhead from clock counts (0 if not)
+    92                                  %define SUBTRACT_OVERHEAD  1
+    93                                  
+    94                                  ; Number of repetitions in loop to find overhead
+    95                                  %define OVERHEAD_REPETITIONS  4
+    96                                  
+    97                                  ; Define array sizes
+    98                                  %assign MAXREPEAT  REPETITIONS
+    99                                  
+   100                                  ;------------------------------------------------------------------------------
+   101                                  ;
+   102                                  ;                  global data
+   103                                  ;
+   104                                  ;------------------------------------------------------------------------------
+   105                                  
+   106                                  ; Per-thread data:
+   107 00000018 00<rept>                align   CACHELINESIZE, DB 0
+   108                                  ; Data for first thread
+   109                                  ThreadData:                                                ; beginning of thread data block
+   110 00000040 00000000<rept>          CountTemp:     times  (MAXCOUNTERS + 1)          DD   0    ; temporary storage of counts
+   111 0000005C FFFFFFFF<rept>          CountOverhead: times  (MAXCOUNTERS + 1)          DD  -1    ; temporary storage of count overhead
+   112 00000078 00000000<rept>          ClockResults:  times   REPETITIONS               DD   0    ; clock counts
+   113 00000098 00000000<rept>          PMCResults:    times  (REPETITIONS*MAXCOUNTERS)  DD   0    ; PMC counts
+   114 00000158 00<rept>                ALIGN   CACHELINESIZE, DB 0                                ; Make sure threads don't use same cache lines
+   115                                  THREADDSIZE  equ     ($ - ThreadData)                      ; size of data block for each thread
+   116                                  
+   117                                  ; Define data blocks of same size for remaining threads
+   118                                  %if  NUM_THREADS > 1
+   119 00000180 00<rept>                  times ((NUM_THREADS-1)*THREADDSIZE)            DB 0
+   120                                  %endif
+   121                                  
+   122                                  ; Global data
+   123 00000400 [40000000]              PThreadData     DD    ThreadData                ; Pointer to measured data for all threads
+   124 00000404 00000000                NumCounters     DD    0                         ; Will be number of valid counters
+   125 00000408 04000000                MaxNumCounters  DD    NUM_COUNTERS              ; Tell PMCTestA.CPP length of CounterTypesDesired
+   126 0000040C 01000000                UsePMC          DD    USE_PERFORMANCE_COUNTERS  ; Tell PMCTestA.CPP if RDPMC used. Driver needed
+   127 00000410 03000000                NumThreads      DD    NUM_THREADS               ; Number of threads
+   128 00000414 40010000                ThreadDataSize  DD    THREADDSIZE               ; Size of each thread data block
+   129 00000418 38000000                ClockResultsOS  DD    ClockResults-ThreadData   ; Offset to ClockResults
+   130 0000041C 58000000                PMCResultsOS    DD    PMCResults-ThreadData     ; Offset to PMCResults
+   131 00000420 00000000<rept>          Counters              times MAXCOUNTERS   DD 0  ; Counter register numbers used will be inserted here
+   132 00000438 00000000<rept>          EventRegistersUsed    times MAXCOUNTERS   DD 0  ; Set by MTMonA.cpp
+   133 00000450 000000000000000000-     RatioOut        DD    0, 0, 0, 0                ; optional ratio output. Se PMCTest.h
+   133 00000459 00000000000000     
+   134 00000460 00000000                TempOut         DD    0                         ; optional arbitrary output. Se PMCTest.h
+   135 00000464 00000000                RatioOutTitle   DD    0                         ; optional column heading
+   136 00000468 00000000                TempOutTitle    DD    0                         ; optional column heading
+   137                                  
+   138                                  
+   139                                  %if NUM_THREADS == 1
+   140                                  ESP_SAVE         dd    0                         ; Save stack pointer if only one thread
+   141                                  %endif
+   142                                  
+   143                                  
+   144                                  ;##############################################################################
+   145                                  ;#
+   146                                  ;#                 User data
+   147                                  ;#
+   148                                  ;##############################################################################
+   149 0000046C 00<rept>                ALIGN   CACHELINESIZE, DB 0
+   150                                  
+   151                                  ; Put any data definitions your test code needs here
+   152                                  
+   153 00000480 00<rept>                UserData           times 10000H  DB 0
+   154                                  
+   155                                  
+   156                                  ;------------------------------------------------------------------------------
+   157                                  ;
+   158                                  ;                  Macro definitions
+   159                                  ;
+   160                                  ;------------------------------------------------------------------------------
+   161                                  
+   162                                  %macro SERIALIZE 0             ; serialize CPU
+   163                                         xor     eax, eax
+   164                                         cpuid
+   165                                  %endmacro
+   166                                  
+   167                                  %macro CLEARXMMREG 1           ; clear one xmm register
+   168                                     pxor xmm%1, xmm%1
+   169                                  %endmacro 
+   170                                  
+   171                                  %macro CLEARALLXMMREG 0        ; set all xmm or ymm registers to 0
+   172                                     %if  USEAVX
+   173                                        VZEROALL                 ; set all ymm registers to 0
+   174                                     %else
+   175                                        %assign i 0
+   176                                        %rep 8
+   177                                           CLEARXMMREG i         ; set all 8 xmm registers to 0
+   178                                           %assign i i+1
+   179                                        %endrep
+   180                                     %endif
+   181                                  %endmacro
+   182                                  
+   183                                  
+   184                                  ;------------------------------------------------------------------------------
+   185                                  ;
+   186                                  ;                  Test Loop
+   187                                  ;
+   188                                  ;------------------------------------------------------------------------------
+   189                                  SECTION .text   align = 16
+   190                                  
+   191                                  ;extern "C" ;extern "C" int TestLoop (int thread) {
+   192                                  ; This function runs the code to test REPETITIONS times
+   193                                  ; and reads the counters before and after each run:
+   194                                  
+   195                                  TestLoop:
+   196 00000000 53                              push    ebx
+   197 00000001 56                              push    esi
+   198 00000002 57                              push    edi
+   199 00000003 55                              push    ebp
+   200 00000004 8B442414                        mov     eax, [esp+16+4]            ; Thread number
+   201                                          
+   202                                  ; local variables:
+   203                                  ;   [esp]:   thread number
+   204                                  ;   [esp+4]: pointer to thread data block
+   205                                  ;   [esp+8]: loop counter
+   206                                  
+   207 00000008 6A00                            push    0
+   208 0000000A 6A00                            push    0
+   209 0000000C 50                              push    eax
+   210                                          
+   211                                  %if NUM_THREADS == 1
+   212                                          mov     [ESP_SAVE], esp            ; Save stack pointer if only one thread
+   213                                  %endif
+   214                                  
+   215                                          
+   216                                  ;##############################################################################
+   217                                  ;#
+   218                                  ;#                 Warm up
+   219                                  ;#
+   220                                  ;##############################################################################
+   221                                  ; Get into max frequency state
+   222                                  
+   223                                  %if WARMUPCOUNT
+   224                                  
+   225 0000000D B940420F00                      mov ecx, WARMUPCOUNT / 10
+   226 00000012 B801000000                      mov eax, 1
+   227 00000017 90<rept>                        align 16
+   228                                  Warmuploop:
+   229                                          %rep 10
+   230                                          imul eax, ecx
+   231                                          %endrep
+   231 00000020 0FAFC1              <1>  imul eax, ecx
+   231 00000023 0FAFC1              <1>  imul eax, ecx
+   231 00000026 0FAFC1              <1>  imul eax, ecx
+   231 00000029 0FAFC1              <1>  imul eax, ecx
+   231 0000002C 0FAFC1              <1>  imul eax, ecx
+   231 0000002F 0FAFC1              <1>  imul eax, ecx
+   231 00000032 0FAFC1              <1>  imul eax, ecx
+   231 00000035 0FAFC1              <1>  imul eax, ecx
+   231 00000038 0FAFC1              <1>  imul eax, ecx
+   231 0000003B 0FAFC1              <1>  imul eax, ecx
+   232 0000003E 49                              dec ecx
+   233 0000003F 75DF                            jnz Warmuploop
+   234                                  
+   235                                  %endif
+   236                                  
+   237                                  
+   238                                  ;##############################################################################
+   239                                  ;#
+   240                                  ;#                 User Initializations 
+   241                                  ;#
+   242                                  ;##############################################################################
+   243                                  ; You may add any initializations your test code needs here.
+   244                                  ; Registers esi, edi, ebp and r8 - r12 will be unchanged from here to the 
+   245                                  ; Test code start.
+   246                                  
+   247 00000041 9BDBE3                          finit                ; clear all FP registers
+   248                                          
+   249                                          CLEARALLXMMREG       ; clear all xmm or ymm registers
+   249                              <1>  %if USEAVX
+   249 00000044 C5FC77              <1>  VZEROALL
+   249                              <1>  %else
+   249                              <1>  %assign i 0
+   249                              <1>  %rep 8
+   249                              <1>  CLEARXMMREG i
+   249                              <1>  %assign i i+1
+   249                              <1>  %endrep
+   249                              <1>  %endif
+   250                                  
+   251 00000047 69042420200000                  imul eax, [esp], 2020h ; separate data for each thread
+   252 0000004E 8DB0[80040000]                  lea esi, [eax+UserData]
+   253 00000054 8DBE20010000                    lea edi, [esi+120h]
+   254 0000005A 31ED                            xor ebp, ebp
+   255                                        
+   256                                          
+   257                                  
+   258                                  ;##############################################################################
+   259                                  ;#
+   260                                  ;#                 End of user Initializations 
+   261                                  ;#
+   262                                  ;##############################################################################
+   263                                  
+   264 0000005C BB[40000000]                    mov     ebx, ThreadData               ; address of first thread data block
+   265 00000061 69042440010000                  imul    eax, [esp], THREADDSIZE       ; offset to thread data block
+   266                                  ;        DB      69H, 04H, 24H                 ; fix bug in ml.exe
+   267                                  ;        DD	    THREADDSIZE
+   268 00000068 01C3                            add     ebx, eax                      ; address of current thread data block
+   269 0000006A 895C2404                        mov     [esp+4], ebx                  ; save on stack
+   270                                  
+   271                                  %if  SUBTRACT_OVERHEAD
+   272                                  ; First test loop. Measure empty code
+   273 0000006E C744240800000000                mov     dword [esp+8], 0              ; Loop counter
+   274                                  
+   275                                  TEST_LOOP_1:
+   276                                  
+   277                                          SERIALIZE
+   277 00000076 31C0                <1>  xor eax, eax
+   277 00000078 0FA2                <1>  cpuid
+   278                                  
+   279 0000007A 8B5C2404                        mov     ebx, [esp+4]      
+   280                                          ; Read counters
+   281                                  %assign i  0
+   282                                  %rep    NUM_COUNTERS
+   283                                          mov     ecx, [Counters + i*4]
+   284                                          rdpmc
+   285                                          mov     [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   286                                  %assign i  i+1
+   287                                  %endrep
+   287 0000007E 8B0D[20040000]      <1>  mov ecx, [Counters + i*4]
+   287 00000084 0F33                <1>  rdpmc
+   287 00000086 894304              <1>  mov [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   287                              <1> %assign i i+1
+   287 00000089 8B0D[24040000]      <1>  mov ecx, [Counters + i*4]
+   287 0000008F 0F33                <1>  rdpmc
+   287 00000091 894308              <1>  mov [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   287                              <1> %assign i i+1
+   287 00000094 8B0D[28040000]      <1>  mov ecx, [Counters + i*4]
+   287 0000009A 0F33                <1>  rdpmc
+   287 0000009C 89430C              <1>  mov [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   287                              <1> %assign i i+1
+   287 0000009F 8B0D[2C040000]      <1>  mov ecx, [Counters + i*4]
+   287 000000A5 0F33                <1>  rdpmc
+   287 000000A7 894310              <1>  mov [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   287                              <1> %assign i i+1
+   288                                  
+   289                                          SERIALIZE
+   289 000000AA 31C0                <1>  xor eax, eax
+   289 000000AC 0FA2                <1>  cpuid
+   290                                  
+   291 000000AE 8B5C2404                        mov     ebx, [esp+4]      
+   292                                          ; read time stamp counter
+   293 000000B2 0F31                            rdtsc
+   294 000000B4 8903                            mov     [ebx + (CountTemp-ThreadData)], eax
+   295                                  
+   296                                          SERIALIZE
+   296 000000B6 31C0                <1>  xor eax, eax
+   296 000000B8 0FA2                <1>  cpuid
+   297                                  
+   298                                          ; Empty. Test code goes here in next loop
+   299                                  
+   300                                          SERIALIZE
+   300 000000BA 31C0                <1>  xor eax, eax
+   300 000000BC 0FA2                <1>  cpuid
+   301                                  
+   302 000000BE 8B5C2404                        mov     ebx, [esp+4]      
+   303                                          ; read time stamp counter
+   304 000000C2 0F31                            rdtsc
+   305 000000C4 2903                            sub     [ebx + (CountTemp-ThreadData)], eax        ; CountTemp[0]
+   306                                  
+   307                                          SERIALIZE
+   307 000000C6 31C0                <1>  xor eax, eax
+   307 000000C8 0FA2                <1>  cpuid
+   308                                  
+   309 000000CA 8B5C2404                        mov     ebx, [esp+4]      
+   310                                          ; Read counters
+   311                                  %assign i  0
+   312                                  %rep    NUM_COUNTERS
+   313                                          mov     ecx, [Counters + i*4]
+   314                                          rdpmc
+   315                                          sub     [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax  ; CountTemp[i+1]
+   316                                  %assign i  i+1
+   317                                  %endrep
+   317 000000CE 8B0D[20040000]      <1>  mov ecx, [Counters + i*4]
+   317 000000D4 0F33                <1>  rdpmc
+   317 000000D6 294304              <1>  sub [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   317                              <1> %assign i i+1
+   317 000000D9 8B0D[24040000]      <1>  mov ecx, [Counters + i*4]
+   317 000000DF 0F33                <1>  rdpmc
+   317 000000E1 294308              <1>  sub [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   317                              <1> %assign i i+1
+   317 000000E4 8B0D[28040000]      <1>  mov ecx, [Counters + i*4]
+   317 000000EA 0F33                <1>  rdpmc
+   317 000000EC 29430C              <1>  sub [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   317                              <1> %assign i i+1
+   317 000000EF 8B0D[2C040000]      <1>  mov ecx, [Counters + i*4]
+   317 000000F5 0F33                <1>  rdpmc
+   317 000000F7 294310              <1>  sub [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   317                              <1> %assign i i+1
+   318                                  
+   319                                          SERIALIZE
+   319 000000FA 31C0                <1>  xor eax, eax
+   319 000000FC 0FA2                <1>  cpuid
+   320                                  
+   321 000000FE 8B5C2404                        mov     ebx, [esp+4]      
+   322                                          ; find minimum counts
+   323                                  %assign i  0
+   324                                  %rep    NUM_COUNTERS + 1
+   325                                          mov     eax, [ebx+i*4+(CountTemp-ThreadData)]      ; -count
+   326                                          neg     eax
+   327                                          mov     edx, [ebx+i*4+(CountOverhead-ThreadData)]  ; previous count
+   328                                          cmp     eax, edx
+   329                                          cmovb   edx, eax
+   330                                          mov     [ebx+i*4+(CountOverhead-ThreadData)], edx  ; minimum count        
+   331                                  %assign i  i+1
+   332                                  %endrep
+   332 00000102 8B03                <1>  mov eax, [ebx+i*4+(CountTemp-ThreadData)]
+   332 00000104 F7D8                <1>  neg eax
+   332 00000106 8B531C              <1>  mov edx, [ebx+i*4+(CountOverhead-ThreadData)]
+   332 00000109 39D0                <1>  cmp eax, edx
+   332 0000010B 0F42D0              <1>  cmovb edx, eax
+   332 0000010E 89531C              <1>  mov [ebx+i*4+(CountOverhead-ThreadData)], edx
+   332                              <1> %assign i i+1
+   332 00000111 8B4304              <1>  mov eax, [ebx+i*4+(CountTemp-ThreadData)]
+   332 00000114 F7D8                <1>  neg eax
+   332 00000116 8B5320              <1>  mov edx, [ebx+i*4+(CountOverhead-ThreadData)]
+   332 00000119 39D0                <1>  cmp eax, edx
+   332 0000011B 0F42D0              <1>  cmovb edx, eax
+   332 0000011E 895320              <1>  mov [ebx+i*4+(CountOverhead-ThreadData)], edx
+   332                              <1> %assign i i+1
+   332 00000121 8B4308              <1>  mov eax, [ebx+i*4+(CountTemp-ThreadData)]
+   332 00000124 F7D8                <1>  neg eax
+   332 00000126 8B5324              <1>  mov edx, [ebx+i*4+(CountOverhead-ThreadData)]
+   332 00000129 39D0                <1>  cmp eax, edx
+   332 0000012B 0F42D0              <1>  cmovb edx, eax
+   332 0000012E 895324              <1>  mov [ebx+i*4+(CountOverhead-ThreadData)], edx
+   332                              <1> %assign i i+1
+   332 00000131 8B430C              <1>  mov eax, [ebx+i*4+(CountTemp-ThreadData)]
+   332 00000134 F7D8                <1>  neg eax
+   332 00000136 8B5328              <1>  mov edx, [ebx+i*4+(CountOverhead-ThreadData)]
+   332 00000139 39D0                <1>  cmp eax, edx
+   332 0000013B 0F42D0              <1>  cmovb edx, eax
+   332 0000013E 895328              <1>  mov [ebx+i*4+(CountOverhead-ThreadData)], edx
+   332                              <1> %assign i i+1
+   332 00000141 8B4310              <1>  mov eax, [ebx+i*4+(CountTemp-ThreadData)]
+   332 00000144 F7D8                <1>  neg eax
+   332 00000146 8B532C              <1>  mov edx, [ebx+i*4+(CountOverhead-ThreadData)]
+   332 00000149 39D0                <1>  cmp eax, edx
+   332 0000014B 0F42D0              <1>  cmovb edx, eax
+   332 0000014E 89532C              <1>  mov [ebx+i*4+(CountOverhead-ThreadData)], edx
+   332                              <1> %assign i i+1
+   333                                          
+   334                                          ; end second test loop
+   335 00000151 FF442408                        inc     dword [esp+8]
+   336 00000155 837C240804                      cmp     dword [esp+8], OVERHEAD_REPETITIONS
+   337 0000015A 0F8216FFFFFF                    jb      TEST_LOOP_1
+   338                                  
+   339                                  %endif   ; SUBTRACT_OVERHEAD
+   340                                  
+   341                                          
+   342                                  ; Second test loop. Measure user code
+   343 00000160 C744240800000000                mov     dword [esp+8], 0          ; Loop counter
+   344                                  
+   345                                  TEST_LOOP_2:
+   346                                  
+   347                                          SERIALIZE
+   347 00000168 31C0                <1>  xor eax, eax
+   347 0000016A 0FA2                <1>  cpuid
+   348                                        
+   349 0000016C 8B5C2404                        mov     ebx, [esp+4]      
+   350                                          ; Read counters
+   351                                  %assign i  0
+   352                                  %rep    NUM_COUNTERS
+   353                                          mov     ecx, [Counters + i*4]
+   354                                          rdpmc
+   355                                          mov     [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   356                                  %assign i  i+1
+   357                                  %endrep
+   357 00000170 8B0D[20040000]      <1>  mov ecx, [Counters + i*4]
+   357 00000176 0F33                <1>  rdpmc
+   357 00000178 894304              <1>  mov [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   357                              <1> %assign i i+1
+   357 0000017B 8B0D[24040000]      <1>  mov ecx, [Counters + i*4]
+   357 00000181 0F33                <1>  rdpmc
+   357 00000183 894308              <1>  mov [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   357                              <1> %assign i i+1
+   357 00000186 8B0D[28040000]      <1>  mov ecx, [Counters + i*4]
+   357 0000018C 0F33                <1>  rdpmc
+   357 0000018E 89430C              <1>  mov [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   357                              <1> %assign i i+1
+   357 00000191 8B0D[2C040000]      <1>  mov ecx, [Counters + i*4]
+   357 00000197 0F33                <1>  rdpmc
+   357 00000199 894310              <1>  mov [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   357                              <1> %assign i i+1
+   358                                  
+   359                                          SERIALIZE
+   359 0000019C 31C0                <1>  xor eax, eax
+   359 0000019E 0FA2                <1>  cpuid
+   360                                  
+   361 000001A0 8B5C2404                        mov     ebx, [esp+4]      
+   362                                          ; read time stamp counter
+   363 000001A4 0F31                            rdtsc
+   364 000001A6 8903                            mov     [ebx + (CountTemp-ThreadData)], eax
+   365                                  
+   366                                          SERIALIZE
+   366 000001A8 31C0                <1>  xor eax, eax
+   366 000001AA 0FA2                <1>  cpuid
+   367                                  
+   368                                  ;##############################################################################
+   369                                  ;#
+   370                                  ;#                 Test code start
+   371                                  ;#
+   372                                  ;##############################################################################
+   373                                  
+   374                                  ; Put the assembly code to test here
+   375                                  
+   376                                  ; ½½
+   377                                  
+   378                                  
+   379                                  %REP 100        ; example: 100 shift instructions
+   380                                  
+   381                                          shr eax, 5
+   382                                  
+   383                                  %ENDREP
+   383                              <1> 
+   383 000001AC C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001AF C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001B2 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001B5 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001B8 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001BB C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001BE C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001C1 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001C4 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001C7 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001CA C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001CD C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001D0 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001D3 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001D6 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001D9 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001DC C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001DF C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001E2 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001E5 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001E8 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001EB C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001EE C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001F1 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001F4 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001F7 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001FA C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000001FD C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000200 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000203 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000206 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000209 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000020C C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000020F C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000212 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000215 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000218 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000021B C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000021E C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000221 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000224 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000227 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000022A C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000022D C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000230 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000233 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000236 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000239 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000023C C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000023F C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000242 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000245 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000248 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000024B C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000024E C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000251 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000254 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000257 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000025A C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000025D C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000260 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000263 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000266 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000269 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000026C C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000026F C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000272 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000275 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000278 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000027B C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000027E C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000281 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000284 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000287 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000028A C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000028D C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000290 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000293 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000296 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 00000299 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000029C C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 0000029F C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002A2 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002A5 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002A8 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002AB C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002AE C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002B1 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002B4 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002B7 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002BA C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002BD C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002C0 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002C3 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002C6 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002C9 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002CC C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002CF C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002D2 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   383                              <1> 
+   383 000002D5 C1E805              <1>  shr eax, 5
+   383                              <1> 
+   384                                  
+   385                                  
+   386                                  ;##############################################################################
+   387                                  ;#
+   388                                  ;#                 Test code end
+   389                                  ;#
+   390                                  ;##############################################################################
+   391                                  
+   392                                          SERIALIZE
+   392 000002D8 31C0                <1>  xor eax, eax
+   392 000002DA 0FA2                <1>  cpuid
+   393                                  
+   394 000002DC 8B5C2404                        mov     ebx, [esp+4]      
+   395                                          ; read time stamp counter
+   396 000002E0 0F31                            rdtsc
+   397 000002E2 2903                            sub     [ebx + (CountTemp-ThreadData)], eax        ; CountTemp[0]
+   398                                  
+   399                                          SERIALIZE
+   399 000002E4 31C0                <1>  xor eax, eax
+   399 000002E6 0FA2                <1>  cpuid
+   400                                  
+   401 000002E8 8B5C2404                        mov     ebx, [esp+4]      
+   402                                          ; Read counters
+   403                                  %assign i  0
+   404                                  %rep    NUM_COUNTERS
+   405                                          mov     ecx, [Counters + i*4]
+   406                                          rdpmc
+   407                                          sub     [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax  ; CountTemp[i+1]
+   408                                  %assign i  i+1
+   409                                  %endrep        
+   409 000002EC 8B0D[20040000]      <1>  mov ecx, [Counters + i*4]
+   409 000002F2 0F33                <1>  rdpmc
+   409 000002F4 294304              <1>  sub [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   409                              <1> %assign i i+1
+   409 000002F7 8B0D[24040000]      <1>  mov ecx, [Counters + i*4]
+   409 000002FD 0F33                <1>  rdpmc
+   409 000002FF 294308              <1>  sub [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   409                              <1> %assign i i+1
+   409 00000302 8B0D[28040000]      <1>  mov ecx, [Counters + i*4]
+   409 00000308 0F33                <1>  rdpmc
+   409 0000030A 29430C              <1>  sub [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   409                              <1> %assign i i+1
+   409 0000030D 8B0D[2C040000]      <1>  mov ecx, [Counters + i*4]
+   409 00000313 0F33                <1>  rdpmc
+   409 00000315 294310              <1>  sub [ebx + i*4 + 4 + (CountTemp-ThreadData)], eax
+   409                              <1> %assign i i+1
+   410                                  
+   411                                          SERIALIZE
+   411 00000318 31C0                <1>  xor eax, eax
+   411 0000031A 0FA2                <1>  cpuid
+   412                                  
+   413 0000031C 8B5C2404                        mov     ebx, [esp+4]
+   414 00000320 8B4C2408                        mov     ecx, [esp+8]
+   415                                          ; subtract counts before from counts after
+   416 00000324 8B03                            mov     eax, [ebx + (CountTemp-ThreadData)]            ; -count
+   417 00000326 F7D8                            neg     eax
+   418                                  %if     SUBTRACT_OVERHEAD
+   419 00000328 2B431C                          sub     eax, [ebx+(CountOverhead-ThreadData)]   ; overhead clock count        
+   420                                  %endif  ; SUBTRACT_OVERHEAD        
+   421 0000032B 89448B38                        mov     [ebx+ecx*4+(ClockResults-ThreadData)], eax      ; save clock count
+   422                                          
+   423                                  %assign i  0
+   424                                  %rep    NUM_COUNTERS
+   425                                          mov     eax, [ebx + i*4 + 4 + (CountTemp-ThreadData)]
+   426                                          neg     eax
+   427                                  %if     SUBTRACT_OVERHEAD
+   428                                          sub     eax, [ebx+i*4+4+(CountOverhead-ThreadData)]   ; overhead pmc count        
+   429                                  %endif  ; SUBTRACT_OVERHEAD        
+   430                                          mov     [ebx+ecx*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax      ; save count        
+   431                                  %assign i  i+1
+   432                                  %endrep        
+   432 0000032F 8B4304              <1>  mov eax, [ebx + i*4 + 4 + (CountTemp-ThreadData)]
+   432 00000332 F7D8                <1>  neg eax
+   432                              <1> %if SUBTRACT_OVERHEAD
+   432 00000334 2B4320              <1>  sub eax, [ebx+i*4+4+(CountOverhead-ThreadData)]
+   432                              <1> %endif
+   432 00000337 89448B58            <1>  mov [ebx+ecx*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax
+   432                              <1> %assign i i+1
+   432 0000033B 8B4308              <1>  mov eax, [ebx + i*4 + 4 + (CountTemp-ThreadData)]
+   432 0000033E F7D8                <1>  neg eax
+   432                              <1> %if SUBTRACT_OVERHEAD
+   432 00000340 2B4324              <1>  sub eax, [ebx+i*4+4+(CountOverhead-ThreadData)]
+   432                              <1> %endif
+   432 00000343 89448B78            <1>  mov [ebx+ecx*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax
+   432                              <1> %assign i i+1
+   432 00000347 8B430C              <1>  mov eax, [ebx + i*4 + 4 + (CountTemp-ThreadData)]
+   432 0000034A F7D8                <1>  neg eax
+   432                              <1> %if SUBTRACT_OVERHEAD
+   432 0000034C 2B4328              <1>  sub eax, [ebx+i*4+4+(CountOverhead-ThreadData)]
+   432                              <1> %endif
+   432 0000034F 89848B98000000      <1>  mov [ebx+ecx*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax
+   432                              <1> %assign i i+1
+   432 00000356 8B4310              <1>  mov eax, [ebx + i*4 + 4 + (CountTemp-ThreadData)]
+   432 00000359 F7D8                <1>  neg eax
+   432                              <1> %if SUBTRACT_OVERHEAD
+   432 0000035B 2B432C              <1>  sub eax, [ebx+i*4+4+(CountOverhead-ThreadData)]
+   432                              <1> %endif
+   432 0000035E 89848BB8000000      <1>  mov [ebx+ecx*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax
+   432                              <1> %assign i i+1
+   433                                          
+   434                                          ; end second test loop
+   435 00000365 FF442408                        inc     dword [esp+8]
+   436 00000369 837C240808                      cmp     dword [esp+8], REPETITIONS
+   437 0000036E 0F82F4FDFFFF                    jb      TEST_LOOP_2
+   438                                  
+   439                                          ; clean up
+   440 00000374 9BDBE3                          finit
+   441 00000377 FC                              cld
+   442                                  %if USEAVX
+   443 00000378 C5FC77                          VZEROALL                       ; clear all ymm registers
+   444                                  %endif
+   445                                  
+   446 0000037B 1E                              push    ds
+   447 0000037C 07                              pop     es
+   448                                  %if NUM_THREADS == 1
+   449                                          mov     esp, [ESP_SAVE]        ; Restore stack pointer if only one thread
+   450                                  %endif
+   451                                  
+   452                                          ; return REPETITIONS;
+   453 0000037D B808000000                      mov     eax, REPETITIONS
+   454 00000382 83C40C                          add     esp, 12
+   455 00000385 5D                              pop     ebp
+   456 00000386 5F                              pop     edi
+   457 00000387 5E                              pop     esi
+   458 00000388 5B                              pop     ebx
+   459 00000389 C3                              ret
+   460                                          
+   461                                  ; End of TestLoop
