@@ -394,6 +394,7 @@ class Test_generator(Args,Util):
         if os.getenv("LOCATION_CVREG_VECTOR") == None:
             error("Not env para LOCATION_CVREG_VECTOR")
             sys.exit(0)
+            
     def Enable_apic(self,thread):
         self.Instr_write("mov ecx,0x1b",thread)
         self.Instr_write("rdmsr",thread)
@@ -403,6 +404,7 @@ class Test_generator(Args,Util):
         self.Instr_write("mov eax,[esi]",thread)
         self.Instr_write("bts eax,8",thread)
         self.Instr_write("mov ds:[esi],eax",thread)
+        
     def Set_PMC_vector(self,thread,vector):
         self.Instr_write("mov esi,0xfee00340",thread)
         self.Instr_write("mov [esi],0x000000%s"%(vector),thread)
