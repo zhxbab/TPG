@@ -59,11 +59,14 @@ class Regression_csmith(Csmith):
             self.c_plus = False            
         self.dual = self.args_option.dual 
         self.pae = False
-
+        sefl.wc_feature = False
         
         
     def Regression_vector(self):
-        time = 300
+        if self.wc_feature:
+            time = 900
+        else:
+            time = 300
         self.reglog_name = "/tmp/%s"%(self.avp_dir_name)
         self.regression.freglog = open(self.reglog_name,"w")
         info("Log is %s"%(self.reglog_name))
@@ -81,6 +84,9 @@ if __name__ == "__main__":
         threads = [1,8][random.randint(0,1)]
     else:
         threads = [1,4][random.randint(0,1)]
+    tests.wc_feature = [False,True][random.randint(0,1)]
+    if tests.wc_feature:
+        tests.regression.rerun_times = 100
     #tests.generator = [0,1][random.randint(0,1)]
     tests.generator = 0
     tests.Set_mode(mode,threads,0)

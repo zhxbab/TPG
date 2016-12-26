@@ -38,7 +38,7 @@ class Args:
         args_parser.add_option("--disable_avx", dest="disable_avx", help="disable AVX for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--multi_page", dest="multi_page", help="enable_multi_page", action="store_true", default = False)
-        args_parser.add_option("--pae", dest="pae", help="enable pae in 32bit mode", action="store_true", default = False) 
+        args_parser.add_option("--pae", dest="pae", help="enable pae in 32bit mode", action="store_true", default = False)
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         
         if self.args_option.seed:

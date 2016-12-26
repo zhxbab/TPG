@@ -42,6 +42,7 @@ class Csmith(Test_generator):
         args_parser.add_option("--disable_pcid", dest="disable_pcid", help="disable PCID for support old intel platform", action="store_true", default = False)
         args_parser.add_option("--instr_only", dest="instr_only", help="Cnsim instr only", action="store_true", default = False)
         args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)
+        args_parser.add_option("--wc", dest="wc_feature", help="Enable PAT WC", action="store_true", default = False)
         #args_parser.add_option("--pae", dest="pae", help="enable pae in 32bit mode", action="store_true", default = False)           
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
@@ -121,6 +122,7 @@ class Csmith(Test_generator):
         self.disable_avx = self.args_option.disable_avx
         self.disable_pcid = self.args_option.disable_pcid
         self.c_plus = self.args_option.c_plus
+        self.wc_feature = self.args_option.wc_feature
         self.pae = False
         self.generator = self.args_option.generator
 #        if self.page_mode != "4KB_32bit":
@@ -144,6 +146,7 @@ class Csmith(Test_generator):
     def Gen_asm_code(self,thread, num):
         self.c_parser = C_parser(self.bin_path,self.avp_dir_path,self.mode,self.instr_manager,self.mpg, self.c_plus, self.generator)
         self.c_parser.asm_file = self.asm_file
+        self.c_parser.wc_feature = self.wc_feature
         if self.elf_file != None:
             ret_gen_asm_code = self.c_parser.Get_fix_c_asm(self.elf_file)
         else:

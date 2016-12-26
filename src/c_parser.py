@@ -48,6 +48,7 @@ class C_parser(Util):
             self.compiler_extra_cmd = ""
         else:
             self.Error_exit("Invalid generator")
+        self.wc_feature = False
         
     def Gen_c_asm(self,thread,num,optimize=None):
         self.base_name = "c_code_%d"%(num)
@@ -229,7 +230,14 @@ class C_parser(Util):
             self.Instr_write("mov gs,eax",thread)
         self.Instr_write("mov eax,cr4",thread)# enable pmc 
         self.Instr_write("or eax,0x104",thread)
-        self.Instr_write("mov cr4,eax",thread)       
+        self.Instr_write("mov cr4,eax",thread)
+        if self.wc_feature == True:
+            self.Instr_write("mov ecx,0x277",thread)
+            self.Instr_write("rdmsr",thread)
+            self.Instr_write("btr eax, 0x1",thread)
+            self.Instr_write("btr eax, 0x2",thread)
+            self.Instr_write("bts eax, 0x0",thread)
+            self.Instr_write("wrmsr",thread)
         self.Update_relo(thread);
         #self.Instr_write("call $_init_%d"%(thread),thread)
         self.Instr_write("call $main_%d"%(thread),thread)
