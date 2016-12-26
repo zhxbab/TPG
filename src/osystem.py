@@ -8,6 +8,7 @@ __author__ = 'Ken Zhao'
 from operator import eq, ne
 from util import Util
 from logging import info, error, debug, warning, critical
+from copy import deepcopy
 import re, sys, os
 class Osystem(Util):
     def __init__(self,threads,instr_manager):
@@ -26,7 +27,11 @@ class Osystem(Util):
                              "fs":[0x0000]*self.threads,\
                              "gs":[0x0000]*self.threads,\
                              }
-        self.gdt = [{"value_h":0x0,"value_l":0x0},]*self.threads
+        self.gdtr = {"base":0x0,"limit":0xFFFF}
+        self.idtr = {"base":0x0,"limit":0xFFFF}
+        self.gdt = [{"name":"dummy","data":{"limit":0xFFFFF,"base":0x0,"type":0x0,"s":0x1,"dpl":0x0,"p":0x1,"avl":0x0,"l":0x0,"db":0x0,"g":0x1}},]
+        self.idt = [{"name":"dummy","data":{"offset":0xFFFFF,"selector":0x0,"ist":0x0,"type":0xE,"dpl":0x0,"p":0x1}},]
+        self.int_handler = {"base":0x0,"size":0x0}
         self.os_name = ["real_mode","protect_mode","ia32e_mode"]
         self.page_mode_name = ["no_page","en_page"]
         self.current_mode = 0
@@ -36,25 +41,84 @@ class Osystem(Util):
         self.pse = 0
         self.msr_table = {"IA32_EFER":{"index":0xc0000080,"value_l":[0x00000000]*self.threads,"value_h":[0x00000000]*self.threads},\
                           }
+        #self.page_file_name = None
         
     def reset_osystem(self):
         sefl.__init(self.threads)
         
-    def add_gdt_entry(self,index,**gdt_value):
-        pass
-#                  15..0  limit = 0xfffff;
-#  39..16 base  = 0x0;
-#  43..40 type = 0x0;
-#  44..44 s    = 0x1;
-#  46..45 dpl  = 0x0;
-#  47..47 p    = 0x1;
-#  51..48 limit(19..16);
-#  52 avl;
-#  53 l;
-#  54 db = 0;
-#  55 g = 1;
-#  63..56 base(31..24) = 0;
-  
+#    def init_page_file(self):
+#        self.set_org(org_add, thread)
+        
+    def update_gdtr(self,base):
+        self.gdtr["base"] = base
+        
+    def update_idtr(self,base):
+        self.idtr["base"] = base
+                
+    def update_gdt_entry(self,name,index,**gdt_value):
+        if index <= len(self.gdt)-1:
+                self.update_gdt_one_entry(name,index,**gdt_value)
+        else:
+            for i in range(0,(index-len(self.gdt)+1)):
+                self.gdt.append(deepcopy(self.gdt[0]))
+            self.update_gdt_one_entry(name,index,**gdt_value)
+                   
+    def update_gdt_one_entry(self,name,index,**gdt_value):
+        self.gdt[index]["name"] = name
+        if "limit" in gdt_value.keys():
+            self.gdt[index]["data"]["limit"] = gdt_value["limit"]
+        if "base" in gdt_value.keys():
+            self.gdt[index]["data"]["base"] = gdt_value["base"]
+        if "type" in gdt_value.keys():
+            self.gdt[index]["data"]["type"] = gdt_value["type"]
+        if "s" in gdt_value.keys():
+            self.gdt[index]["data"]["s"] = gdt_value["s"]
+        if "dpl" in gdt_value.keys():
+            self.gdt[index]["data"]["dpl"] = gdt_value["dpl"]
+        if "p" in gdt_value.keys():
+            self.gdt[index]["data"]["p"] = gdt_value["p"]
+        if "avl" in gdt_value.keys():
+            self.gdt[index]["data"]["avl"] = gdt_value["avl"]
+        if "l" in gdt_value.keys():
+            self.gdt[index]["data"]["l"] = gdt_value["l"]
+        if "db" in gdt_value.keys():
+            self.gdt[index]["data"]["db"] = gdt_value["db"]
+        if "g" in gdt_value.keys():
+            self.gdt[index]["data"]["g"] = gdt_value["g"]
+            
+    def show_gdt_info(self):
+        info("GDTR is %s"%(self.gdtr))
+        info("GDT is %s"%(self.gdt))
+        
+    def update_idt_entry(self,name,index,**idt_value):
+        if index <= len(self.idt)-1:
+                self.update_idt_one_entry(name,index,**idt_value)
+        else:
+            for i in range(0,(index-len(self.idt)+1)):
+                self.idt.append(deepcopy(self.idt[0]))
+            self.update_idt_one_entry(name,index,**idt_value)
+
+    def update_idt_one_entry(self,name,index,**idt_value):
+        self.idt[index]["name"] = name
+        if "offset" in idt_value.keys():
+            if idt_value["offset"] == 0x0:
+                self.idt[index]["data"]["offset"] = (self.int_handler["base"]+index*self.int_handler["size"]/256)
+        if "selector" in idt_value.keys():
+            self.idt[index]["data"]["selector"] = idt_value["selector"]
+        if "type" in idt_value.keys():
+            self.idt[index]["data"]["type"] = idt_value["type"]
+        if "ist" in idt_value.keys():
+            self.idt[index]["data"]["ist"] = idt_value["ist"]
+        if "dpl" in idt_value.keys():
+            self.idt[index]["data"]["dpl"] = idt_value["dpl"]
+        if "p" in idt_value.keys():
+            self.idt[index]["data"]["p"] = idt_value["p"]
+
+    def show_idt_info(self):
+        info("IDTR is %s"%(self.idtr))
+        info("IDT is %s"%(self.idt))
+
+        
     def update_msr_table(self,key_name,value_l,value_h,thread=0):
         if self.msr_table.has_key(key_name):
             self.msr_table[key_name]["value_l"][thread] = value_l

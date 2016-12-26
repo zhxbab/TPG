@@ -77,19 +77,18 @@ class Mem(Util):
         self.check_selected_mem(selected_mem["name"])
         return selected_mem    
     
-    def Apply_fix_mem(self,name,start,size,flag="pa"):
-        if flag == "va":
-            va_start = start
-            start = self.pa2va(va_start)
-        elif flag == "pa":
-            start = start
-        else:
-            self.Error_exit("Invalid flag %s",flag)
-        selected_mem = {"start":start,"size":size,"name":name}
+    def Apply_fix_mem(self,name,start,size,attr="WB"):
+        selected_mem = {"start":start,"size":size,"name":name,"attr":attr}
         self.selected.append(selected_mem)
         self.Update_mem(selected_mem)
         self.check_selected_mem(selected_mem["name"])
         return selected_mem
+    
+    def Apply_virtual_mem(self, thread, start, size, align, attr="WB"):
+        cond = {"start":0x1000000,"end":0xB0000000,"attr":attr}
+        self.Apply_mem(size, align, **cond)
+        return {"start":start,"size":size}
+    
     
     
     def Reset_mem(self):
@@ -150,30 +149,20 @@ class Mem(Util):
         else:
             cond["name"] = para["name"]
             
-        if "flag" not in para.keys():
-            cond["flag"] = "pa"
+        if "attr" not in para.keys():
+            cond["attr"] = "WB"
         else:
-            cond["flag"] = para["flag"]
-            
-        if cond["flag"] == "va":
-            va_start = cond["start"]
-            delta = cond["end"] - cond["start"]
-            cond["start"] = self.pa2va(va_start)
-            cond["end"] =  cond["start"] + delta
-        elif cond["flag"] == "pa":
-            pass
-        else:
-            self.Error_exit("Invalid flag %s",cond["flag"])
+            cond["attr"] = para["attr"]           
             
         size = size
         cond["start"] = int(align*math.ceil(cond["start"]/align))
         tmp_mem_start = int(align*math.ceil(mem["start"]/align))  
         if cond["start"] >= mem["start"] and cond["start"]+size <= cond["end"] <= mem["start"]+mem["size"]:#included case
             debug("mem match type 1")
-            return {"start":random.randrange(cond["start"],cond["end"]-size+1,align),"size":size, "name":cond["name"]}
+            return {"start":random.randrange(cond["start"],cond["end"]-size+1,align),"size":size, "name":cond["name"],"attr":cond["attr"]}
         elif mem["start"] <= cond["start"] and mem["size"]+mem["start"] >= cond["start"] + size:
             debug("mem match type 2")
-            return {"start":random.randrange(cond["start"],mem["start"]+mem["size"]-size+1,align),"size":size, "name":cond["name"]}
+            return {"start":random.randrange(cond["start"],mem["start"]+mem["size"]-size+1,align),"size":size, "name":cond["name"],"attr":cond["attr"]}
         elif cond["end"] >= tmp_mem_start >= cond["start"] and tmp_mem_start+size <= min(mem["start"]+mem["size"],cond["end"]):
             #debug("1 mem_start is %x"%(mem["start"]))
             debug("mem match type 3")
@@ -181,7 +170,7 @@ class Mem(Util):
             debug("mem type3: start addr is 0x%x and size is 0x%x"%(mem["start"],mem["size"]))
             debug("tmp_mem_start is 0x%x"%(tmp_mem_start))
             debug("range end is 0x%x"%(min(mem["start"]+mem["size"],cond["end"])-size+1))
-            random_mem_type3 = {"start":random.randrange(tmp_mem_start,(min(mem["start"]+mem["size"],cond["end"])-size+1),align),"size":size, "name":cond["name"]}
+            random_mem_type3 = {"start":random.randrange(tmp_mem_start,(min(mem["start"]+mem["size"],cond["end"])-size+1),align),"size":size, "name":cond["name"],"attr":cond["attr"]}
             debug("random mem type3: start addr is 0x%x and size is 0x%x"%(random_mem_type3["start"],random_mem_type3["size"]))
             return random_mem_type3
         else:

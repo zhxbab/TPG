@@ -100,10 +100,13 @@ class Mode(Util):
         idt_table_base = self.mpg.Apply_mem(0x1000,16,start=0,end=0x10000,name="idt_table_base") # 256 interrupt and every gate is 128bit
         self.Vars_write(gdt_table_base["name"],gdt_table_base["start"])
         self.Vars_write(idt_table_base["name"],idt_table_base["start"])
+        self.osystem.update_gdtr(gdt_table_base["start"])
+        self.osystem.update_idtr(idt_table_base["start"])
         self.gdt_table_base_pointer = self.Set_table_pointer(gdt_table_base["name"])
         self.idt_table_base_pointer = self.Set_table_pointer(idt_table_base["name"])
         self.Set_gdt_table(gdt_table_base,c_gen)
         self.Set_idt_table(idt_table_base)
+        #self.osystem.show_idt_info()
         self.Set_page_info()
         self.ptg.Gen_page()
         self.Set_user_code_stack(c_gen)
@@ -124,13 +127,16 @@ class Mode(Util):
         if self.mode == "protect_mode":
             idt_gate_type = "idt_gate_32"
             idt_selector = self.selector_name_cs32_0
+            idt_value = self.selector_value_cs32_0
         else:
             idt_gate_type = "idt_gate_64"
             idt_selector = self.selector_name_cs64_0
+            idt_value = self.selector_value_cs64_0
         self.Text_write("@idt = new std::%s[256]"%(idt_gate_type))
         for i in range(0,256):
             self.Text_write("@idt[%d].selector = &SELECTOR($%s)"%(i,idt_selector))
             self.Text_write("@idt[%d].offset = $int%i_handler"%(i,i))
+            self.osystem.update_idt_entry("int_%d"%(i),i,selector=idt_value,offset=0x0)
 
         
     def Set_gdt_table(self,gdt_table_base,c_gen):
@@ -143,21 +149,25 @@ class Mode(Util):
         self.Vars_write(self.selector_name_cs32_0,self.selector_value_cs32_0)
         self.Text_write("@gdt[$%s].type = 0xB"%(self.selector_name_cs32_0))
         self.Text_write("@gdt[$%s].db = 0x1"%(self.selector_name_cs32_0))
+        self.osystem.update_gdt_entry(self.selector_name_cs32_0,self.selector_value_cs32_0, type=0xB, db=0x1)
         self.selector_name_ds32_0 = "ds32"
         self.selector_value_ds32_0 = 0x2
         self.Vars_write(self.selector_name_ds32_0,self.selector_value_ds32_0)
         self.Text_write("@gdt[$%s].type = 0x3"%(self.selector_name_ds32_0))
         self.Text_write("@gdt[$%s].db = 0x1"%(self.selector_name_ds32_0))
+        self.osystem.update_gdt_entry(self.selector_name_ds32_0,self.selector_value_ds32_0, type=0x3, db=0x1)
         self.selector_name_cs64_0 = "cs64"
         self.selector_value_cs64_0 = 0x3
         self.Vars_write(self.selector_name_cs64_0,self.selector_value_cs64_0)
         self.Text_write("@gdt[$%s].type = 0xB"%(self.selector_name_cs64_0))
         self.Text_write("@gdt[$%s].l = 0x1"%(self.selector_name_cs64_0))
+        self.osystem.update_gdt_entry(self.selector_name_cs64_0,self.selector_value_cs64_0, type=0xB, db=0x1)
         self.selector_name_ds64_0 = "ds64"
         self.selector_value_ds64_0 = 0x4
         self.Vars_write(self.selector_name_ds64_0,self.selector_value_ds64_0)
         self.Text_write("@gdt[$%s].type = 0x3"%(self.selector_name_ds64_0))
-        self.Text_write("@gdt[$%s].l = 0x1"%(self.selector_name_ds64_0))               
+        self.Text_write("@gdt[$%s].l = 0x1"%(self.selector_name_ds64_0))     
+        self.osystem.update_gdt_entry(self.selector_name_ds64_0,self.selector_value_ds64_0, type=0x3, db=0x1)          
         if self.mode == "compatibility_mode" :
             self.selector_name_cs_0 = self.selector_name_cs32_0
             self.selector_name_ds_0 = self.selector_name_ds64_0

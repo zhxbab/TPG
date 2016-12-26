@@ -81,10 +81,13 @@ class Test_generator(Args,Util):
         #info(self.avp_dir_path)
     def Create_asm(self,index=0x0):
         self.asm_name = "%s_%s_%sT_%s_%d.asm"%(self.realbin_name,index,self.threads,self.mode,self.seed)
+        self.page_file_name = "%s_%s_%sT_%s_%d.page"%(self.realbin_name,index,self.threads,self.mode,self.seed)
         self.asm_path = os.path.join(self.avp_dir_path,self.asm_name)
+        self.page_file = os.path.join(self.avp_dir_path,self.page_file_name)
         self.asm_file = open(self.asm_path,"w")
         self.asm_list.append(self.asm_path)
         self.osystem.asm_file = self.asm_file
+        self.ptg.page_file = self.page_file
         self.ptg.asm_file = self.asm_file
         self.mpg.asm_file = self.asm_file
         self.simcmd.asm_file = self.asm_file
@@ -316,7 +319,9 @@ class Test_generator(Args,Util):
         self.int_handler_base = self.mpg.Apply_mem(0x100000,16,start=0xa00000,end=0x1000000,name="int_handler_base")
         self.int_handler_record_base = self.mpg.Apply_mem(0x800,16,start=0x0,end=0xA0000,name="int_handler_record_base")
         self.interrupt.Initial_interrupt_handler(self.int_handler_base,self.int_handler_record_base)
-        
+        self.osystem.int_handler["base"] = self.int_handler_base["start"]
+        self.osystem.int_handler["size"] = self.int_handler_base["size"]
+           
     def Start_user_code(self,thread):
         self.Comment("##Usr code")
         if self.multi_page:
@@ -507,3 +512,8 @@ class Test_generator(Args,Util):
         #ZXC don't support vmfun
         self.Instr_write("mov rax,0x0",thread)
         self.Instr_write("mov rcx,0x0",thread)            
+        
+    def Close_page_table(self):
+        if self.page_mode == "4KB_32bit":
+            self.ptg.Mapping_func()
+        #self.ptg.Check_page_frame_info()

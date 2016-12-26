@@ -992,573 +992,577 @@
    616                                          ; Read counters
    617                                  %assign i  0
    618                                  %rep    NUM_COUNTERS
-   619                                          mov     ecx, [Counters + i*4]
-   620                                          rdpmc
-   621                                          mov     [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
-   622                                  %assign i  i+1
-   623                                  %endrep
-   623 0000007B 8B0D(E4000000)      <1>  mov ecx, [Counters + i*4]
-   623 00000081 0F33                <1>  rdpmc
-   623 00000083 41894504            <1>  mov [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
-   623                              <1> %assign i i+1
-   624                                  
-   625                                          SERIALIZE
-   625 00000087 31C0                <1>  xor eax, eax
-   625 00000089 0FA2                <1>  cpuid
-   626                                  
-   627                                          ; read time stamp counter
-   628                                  ;        rdtsc
-   629                                  ;        mov     [r13 + (CountTemp-ThreadData)], eax
-   630                                  
-   631                                  ;        SERIALIZE
-   632                                  
-   633                                  ;##############################################################################
-   634                                  ;#
-   635                                  ;#                 Test code start
-   636                                  ;#
-   637                                  ;##############################################################################
-   638                                  
-   639                                  ; Put the assembly code to test here
-   640                                  ; Don't modify r13, r14, r15!
-   641                                  
-   642                                  ; !!
-   643                                  
-   644                                  %ifmacro testinit2
-   645                                          testinit2
-   645 0000008B 31C0                <1>  xor eax, eax
-   646                                  %endif
-   647                                  
-   648                                  %if repeat1 > 1
-   649 0000008D 41BC64000000                    mov r12d, repeat1
-   650 00000093 90<rept>                        align codealign
-   651                                  repeat1loop:
-   652                                  %endif
-   653                                  
-   654                                  %ifmacro testinit3
-   655                                          testinit3
-   656                                  %endif
-   657                                  
-   658                                  %rep repeat2
-   659                                          ; test code inserted as macro
-   660                                          testcode
-   661                                  %endrep
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000C0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000C4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000C8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000CC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000D0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000D4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000D8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000DC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000E0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000E4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000E8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000EC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000F0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000F4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000000F8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000000FC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000100 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000104 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000108 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000010C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000110 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000114 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000118 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000011C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000120 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000124 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000128 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000012C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000130 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000134 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000138 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000013C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000140 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000144 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000148 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000014C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000150 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000154 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000158 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000015C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000160 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000164 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000168 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000016C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000170 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000174 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000178 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000017C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000180 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000184 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000188 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000018C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000190 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000194 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000198 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000019C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001C0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001C4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001C8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001CC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001D0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001D4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001D8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001DC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001E0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001E4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001E8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001EC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001F0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001F4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000001F8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000001FC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000200 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000204 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000208 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000020C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000210 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000214 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000218 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000021C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000220 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000224 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000228 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000022C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000230 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000234 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000238 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000023C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000240 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000244 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000248 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000024C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000250 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000254 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000258 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000025C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000260 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000264 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000268 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000026C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000270 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000274 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000278 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000027C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000280 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000284 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000288 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000028C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000290 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000294 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000298 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000029C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002C0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002C4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002C8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002CC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002D0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002D4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002D8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002DC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002E0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002E4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002E8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002EC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002F0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002F4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000002F8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000002FC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000300 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000304 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000308 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000030C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000310 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000314 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000318 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000031C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000320 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000324 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000328 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000032C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000330 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000334 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000338 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000033C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000340 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000344 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000348 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000034C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000350 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000354 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000358 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000035C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000360 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000364 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000368 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000036C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000370 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000374 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000378 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000037C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000380 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000384 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000388 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000038C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000390 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 00000394 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 00000398 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 0000039C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000003A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000003A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000003A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000003AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000003B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000003B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   661                              <1> 
-   661                              <1>  testcode
-   661 000003B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
-   661 000003BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
-   662                                  
-   663                                  %ifmacro testafter1
-   664                                          testafter1
-   665                                  %endif
-   666                                  
-   667                                  %if repeat1 > 1
-   668 000003C0 41FFCC                          dec r12d
-   669 000003C3 0F85D7FCFFFF                    jnz repeat1loop
-   670                                  %endif
-   671                                  
-   672                                  %ifmacro testafter2
-   673                                          testafter2
-   674                                  %endif
-   675                                  
-   676                                  ;##############################################################################
-   677                                  ;#
-   678                                  ;#                 Test code end
-   679                                  ;#
-   680                                  ;##############################################################################
-   681                                  
-   682                                          SERIALIZE
-   682 000003C9 31C0                <1>  xor eax, eax
-   682 000003CB 0FA2                <1>  cpuid
-   683                                  
-   684                                          ; read time stamp counter
-   685                                  ;        rdtsc
-   686                                  ;        sub     [r13 + (CountTemp-ThreadData)], eax        ; CountTemp[0]
-   687                                  
-   688                                  ;        SERIALIZE
-   689                                  
-   690                                          ; Read counters
-   691                                  %assign i  0
-   692                                  %rep    NUM_COUNTERS
-   693                                          mov     ecx, [Counters + i*4]
-   694                                          rdpmc
-   695                                          sub     [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax  ; CountTemp[i+1]
-   696                                  %assign i  i+1
-   697                                  %endrep
-   697 000003CD 8B0D(E4000000)      <1>  mov ecx, [Counters + i*4]
-   697 000003D3 0F33                <1>  rdpmc
-   697 000003D5 41294504            <1>  sub [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
-   697                              <1> %assign i i+1
-   698                                  
-   699                                          SERIALIZE
-   699 000003D9 31C0                <1>  xor eax, eax
-   699 000003DB 0FA2                <1>  cpuid
+   619                                          ;mov     ecx, [Counters + i*4]
+   620                                          mov     ecx, 0
+   621                                          rdpmc
+   622                                          mov     [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
+   623                                  %assign i  i+1
+   624                                  %endrep
+   624                              <1> 
+   624 0000007B B900000000          <1>  mov ecx, 0
+   624 00000080 0F33                <1>  rdpmc
+   624 00000082 41894504            <1>  mov [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
+   624                              <1> %assign i i+1
+   625                                  
+   626                                          SERIALIZE
+   626 00000086 31C0                <1>  xor eax, eax
+   626 00000088 0FA2                <1>  cpuid
+   627                                  
+   628                                          ; read time stamp counter
+   629                                  ;        rdtsc
+   630                                  ;        mov     [r13 + (CountTemp-ThreadData)], eax
+   631                                  
+   632                                  ;        SERIALIZE
+   633                                  
+   634                                  ;##############################################################################
+   635                                  ;#
+   636                                  ;#                 Test code start
+   637                                  ;#
+   638                                  ;##############################################################################
+   639                                  
+   640                                  ; Put the assembly code to test here
+   641                                  ; Don't modify r13, r14, r15!
+   642                                  
+   643                                  ; !!
+   644                                  
+   645                                  %ifmacro testinit2
+   646                                          testinit2
+   646 0000008A 31C0                <1>  xor eax, eax
+   647                                  %endif
+   648                                  
+   649                                  %if repeat1 > 1
+   650 0000008C 41BC64000000                    mov r12d, repeat1
+   651 00000092 90<rept>                        align codealign
+   652                                  repeat1loop:
+   653                                  %endif
+   654                                  
+   655                                  %ifmacro testinit3
+   656                                          testinit3
+   657                                  %endif
+   658                                  
+   659                                  %rep repeat2
+   660                                          ; test code inserted as macro
+   661                                          testcode
+   662                                  %endrep
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000C0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000C4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000C8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000CC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000D0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000D4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000D8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000DC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000E0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000E4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000E8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000EC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000F0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000F4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000000F8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000000FC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000100 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000104 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000108 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000010C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000110 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000114 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000118 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000011C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000120 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000124 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000128 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000012C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000130 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000134 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000138 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000013C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000140 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000144 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000148 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000014C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000150 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000154 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000158 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000015C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000160 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000164 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000168 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000016C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000170 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000174 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000178 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000017C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000180 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000184 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000188 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000018C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000190 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000194 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000198 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000019C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001C0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001C4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001C8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001CC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001D0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001D4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001D8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001DC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001E0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001E4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001E8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001EC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001F0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001F4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000001F8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000001FC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000200 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000204 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000208 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000020C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000210 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000214 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000218 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000021C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000220 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000224 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000228 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000022C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000230 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000234 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000238 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000023C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000240 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000244 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000248 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000024C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000250 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000254 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000258 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000025C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000260 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000264 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000268 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000026C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000270 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000274 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000278 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000027C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000280 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000284 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000288 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000028C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000290 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000294 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000298 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000029C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002C0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002C4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002C8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002CC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002D0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002D4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002D8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002DC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002E0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002E4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002E8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002EC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002F0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002F4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000002F8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000002FC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000300 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000304 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000308 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000030C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000310 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000314 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000318 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000031C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000320 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000324 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000328 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000032C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000330 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000334 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000338 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000033C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000340 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000344 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000348 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000034C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000350 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000354 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000358 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000035C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000360 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000364 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000368 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000036C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000370 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000374 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000378 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000037C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000380 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000384 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000388 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000038C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000390 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 00000394 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 00000398 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 0000039C C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000003A0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000003A4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000003A8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000003AC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000003B0 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000003B4 C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   662                              <1> 
+   662                              <1>  testcode
+   662 000003B8 C5FFE606            <2>  instruct1 RB1, RA1 immoperands1
+   662 000003BC C5FFE60E            <2>  instruct1 RB2, RA1 immoperands1
+   663                                  
+   664                                  %ifmacro testafter1
+   665                                          testafter1
+   666                                  %endif
+   667                                  
+   668                                  %if repeat1 > 1
+   669 000003C0 41FFCC                          dec r12d
+   670 000003C3 0F85D7FCFFFF                    jnz repeat1loop
+   671                                  %endif
+   672                                  
+   673                                  %ifmacro testafter2
+   674                                          testafter2
+   675                                  %endif
+   676                                  
+   677                                  ;##############################################################################
+   678                                  ;#
+   679                                  ;#                 Test code end
+   680                                  ;#
+   681                                  ;##############################################################################
+   682                                  
+   683                                  ;        SERIALIZE
+   684                                  
+   685                                          ; read time stamp counter
+   686                                  ;        rdtsc
+   687                                  ;        sub     [r13 + (CountTemp-ThreadData)], eax        ; CountTemp[0]
+   688                                  
+   689                                          SERIALIZE
+   689 000003C9 31C0                <1>  xor eax, eax
+   689 000003CB 0FA2                <1>  cpuid
+   690                                  
+   691                                          ; Read counters
+   692                                  %assign i  0
+   693                                  %rep    NUM_COUNTERS
+   694                                          mov     ecx, 0
+   695                                          ;mov     ecx, [Counters + i*4]
+   696                                          rdpmc
+   697                                          sub     [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax  ; CountTemp[i+1]
+   698                                  %assign i  i+1
+   699                                  %endrep
+   699 000003CD B900000000          <1>  mov ecx, 0
+   699                              <1> 
+   699 000003D2 0F33                <1>  rdpmc
+   699 000003D4 41294504            <1>  sub [r13 + i*4 + 4 + (CountTemp-ThreadData)], eax
+   699                              <1> %assign i i+1
    700                                  
-   701                                          ; subtract counts before from counts after
-   702                                  ;        mov     eax, [r13 + (CountTemp-ThreadData)]            ; -count
-   703                                   ;       neg     eax
-   704                                  %if     SUBTRACT_OVERHEAD
-   705                                          sub     eax, [r13+(CountOverhead-ThreadData)]   ; overhead clock count        
-   706                                  %endif  ; SUBTRACT_OVERHEAD        
-   707                                    ;      mov     [r13+r14*4+(ClockResults-ThreadData)], eax      ; save clock count
-   708                                          
-   709                                  %assign i  0
-   710                                  %rep    NUM_COUNTERS
-   711                                          mov     eax, [r13 + i*4 + 4 + (CountTemp-ThreadData)]
-   712                                          neg     eax
-   713                                  %if     SUBTRACT_OVERHEAD
-   714                                          sub     eax, [r13+i*4+4+(CountOverhead-ThreadData)]   ; overhead pmc count        
-   715                                  %endif  ; SUBTRACT_OVERHEAD        
-   716                                          mov     [r13+r14*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax      ; save count        
-   717                                  %assign i  i+1
-   718                                  %endrep
-   718 000003DD 418B4504            <1>  mov eax, [r13 + i*4 + 4 + (CountTemp-ThreadData)]
-   718 000003E1 F7D8                <1>  neg eax
-   718                              <1> %if SUBTRACT_OVERHEAD
-   718                              <1>  sub eax, [r13+i*4+4+(CountOverhead-ThreadData)]
-   718                              <1> %endif
-   718 000003E3 438944B53C          <1>  mov [r13+r14*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax
-   718                              <1> %assign i i+1
-   719                                          
-   720                                          ; end second test loop
-   721 000003E8 41FFC6                          inc     r14d
-   722 000003EB 4183FE01                        cmp     r14d, REPETITIONS
-   723 000003EF 0F8282FCFFFF                    jb      TEST_LOOP_2
-   724                                  
-   725                                          ; clean up
-   726                                  EXITALL1:
-   727                                  
-   728                                  %ifmacro testafter3
-   729                                          testafter3
-   730                                  %endif
-   731                                  
-   732 000003F5 498B6558                        mov     rsp, [r13+(RSPSave-ThreadData)]   ; restore stack pointer        
-   733 000003F9 9BDBE3                          finit
-   734 000003FC FC                              cld
-   735                                  %if  USEAVX
-   736                                          ;VZEROALL                       ; clear all ymm registers
-   737                                  %endif
-   738                                  
-   739                                  EXITALL2:
-   740                                          ; return REPETITIONS;
-   741 000003FD B801000000                      mov     eax, REPETITIONS
-   742                                          
-   743                                  %if     WINDOWS                        ; Restore registers saved in Windows
-   744                                          movaps  xmm6, [rsp]
-   745                                          movaps  xmm7, [rsp+10H]
-   746                                          movaps  xmm8, [rsp+20H]
-   747                                          movaps  xmm9, [rsp+30H]
-   748                                          movaps  xmm10, [rsp+40H]
-   749                                          movaps  xmm11, [rsp+50H]
-   750                                          movaps  xmm12, [rsp+60H]
-   751                                          movaps  xmm13, [rsp+70H]
-   752                                          movaps  xmm14, [rsp+80H]
-   753                                          movaps  xmm15, [rsp+90H]
-   754                                          add     rsp, 0A8H           ; Free space for saving xmm6 - 15
-   755                                          pop     rdi
-   756                                          pop     rsi
-   757                                  %endif
-   758 00000402 415F                            pop     r15
-   759 00000404 415E                            pop     r14
-   760 00000406 415D                            pop     r13
-   761 00000408 415C                            pop     r12
-   762 0000040A 5D                              pop     rbp
-   763 0000040B 5B                              pop     rbx
-   764 0000040C C3                              ret
-   765                                          
-   766                                  ; End of TestLoop
+   701                                          SERIALIZE
+   701 000003D8 31C0                <1>  xor eax, eax
+   701 000003DA 0FA2                <1>  cpuid
+   702                                  
+   703                                          ; subtract counts before from counts after
+   704                                  ;        mov     eax, [r13 + (CountTemp-ThreadData)]            ; -count
+   705                                   ;       neg     eax
+   706                                  %if     SUBTRACT_OVERHEAD
+   707                                          sub     eax, [r13+(CountOverhead-ThreadData)]   ; overhead clock count        
+   708                                  %endif  ; SUBTRACT_OVERHEAD        
+   709                                    ;      mov     [r13+r14*4+(ClockResults-ThreadData)], eax      ; save clock count
+   710                                          
+   711                                  %assign i  0
+   712                                  %rep    NUM_COUNTERS
+   713                                          mov     eax, [r13 + i*4 + 4 + (CountTemp-ThreadData)]
+   714                                          neg     eax
+   715                                  %if     SUBTRACT_OVERHEAD
+   716                                          sub     eax, [r13+i*4+4+(CountOverhead-ThreadData)]   ; overhead pmc count        
+   717                                  %endif  ; SUBTRACT_OVERHEAD        
+   718                                          mov     [r13+r14*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax      ; save count        
+   719                                  %assign i  i+1
+   720                                  %endrep
+   720 000003DC 418B4504            <1>  mov eax, [r13 + i*4 + 4 + (CountTemp-ThreadData)]
+   720 000003E0 F7D8                <1>  neg eax
+   720                              <1> %if SUBTRACT_OVERHEAD
+   720                              <1>  sub eax, [r13+i*4+4+(CountOverhead-ThreadData)]
+   720                              <1> %endif
+   720 000003E2 438944B53C          <1>  mov [r13+r14*4+i*4*REPETITIONS+(PMCResults-ThreadData)], eax
+   720                              <1> %assign i i+1
+   721                                          
+   722                                          ; end second test loop
+   723 000003E7 41FFC6                          inc     r14d
+   724 000003EA 4183FE01                        cmp     r14d, REPETITIONS
+   725 000003EE 0F8283FCFFFF                    jb      TEST_LOOP_2
+   726                                  
+   727                                          ; clean up
+   728                                  EXITALL1:
+   729                                  
+   730                                  %ifmacro testafter3
+   731                                          testafter3
+   732                                  %endif
+   733                                  
+   734 000003F4 498B6558                        mov     rsp, [r13+(RSPSave-ThreadData)]   ; restore stack pointer        
+   735 000003F8 9BDBE3                          finit
+   736 000003FB FC                              cld
+   737                                  %if  USEAVX
+   738                                          ;VZEROALL                       ; clear all ymm registers
+   739                                  %endif
+   740                                  
+   741                                  EXITALL2:
+   742                                          ; return REPETITIONS;
+   743 000003FC B801000000                      mov     eax, REPETITIONS
+   744                                          
+   745                                  %if     WINDOWS                        ; Restore registers saved in Windows
+   746                                          movaps  xmm6, [rsp]
+   747                                          movaps  xmm7, [rsp+10H]
+   748                                          movaps  xmm8, [rsp+20H]
+   749                                          movaps  xmm9, [rsp+30H]
+   750                                          movaps  xmm10, [rsp+40H]
+   751                                          movaps  xmm11, [rsp+50H]
+   752                                          movaps  xmm12, [rsp+60H]
+   753                                          movaps  xmm13, [rsp+70H]
+   754                                          movaps  xmm14, [rsp+80H]
+   755                                          movaps  xmm15, [rsp+90H]
+   756                                          add     rsp, 0A8H           ; Free space for saving xmm6 - 15
+   757                                          pop     rdi
+   758                                          pop     rsi
+   759                                  %endif
+   760 00000401 415F                            pop     r15
+   761 00000403 415E                            pop     r14
+   762 00000405 415D                            pop     r13
+   763 00000407 415C                            pop     r12
+   764 00000409 5D                              pop     rbp
+   765 0000040A 5B                              pop     rbx
+   766 0000040B C3                              ret
+   767                                          
+   768                                  ; End of TestLoop

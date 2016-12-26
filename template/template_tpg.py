@@ -84,7 +84,10 @@ class Template_tpg(Test_generator):
         if self.page_mode != "4KB_32bit":
             self.pae = self.args_option.pae
         else:
-            self.Error_exit("Don't use pae in 4KB 32bit")
+            if self.args_option.pae:
+                self.Error_exit("Don't use pae in 4KB 32bit")
+            else:
+                self.pae = self.args_option.pae
 ##############################################MAIN##########################################
 if __name__ == "__main__":
     tests = Template_tpg(sys.argv[1:])
@@ -105,6 +108,7 @@ if __name__ == "__main__":
                 pass               
             tests.Gen_hlt_code(j)
             tests.Gen_sim_cmd(j)
+        tests.Close_page_table()
         tests.Gen_vector()
     tests.Gen_pclmsi_file_list()
 

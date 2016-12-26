@@ -7,7 +7,9 @@ __author__ = 'Ken Zhao'
 ########################################################
 from operator import eq, ne
 from util import Util
+from copy import deepcopy
 from logging import info, error, debug, warning, critical
+from pageframe import Pageframe
 class Page(Util):
     def __init__(self,page_mode,tpg_path,mpg,instr_manager,threads):
         self.page_mode = page_mode
@@ -22,7 +24,12 @@ class Page(Util):
         self.mode = "long_mode"
         self.pae = False
         self.vmx_client_pae = False
-        
+        self.page_file = None
+        self.Mapping_func_single = None
+        self.pageframe = None
+        self.Check_page_frame_info = None
+        self.Write_page_file = None
+                
     def Gen_page(self):
         self.Comment("######################gen page addr#######################")
 
@@ -30,8 +37,13 @@ class Page(Util):
             page_file = "%s/page_tables/64bit/ia32e_4K.rasm"%(self.tpg_path)
             self.Gen_page_4K_64(page_file)
         elif eq(self.page_mode,"4KB_32bit"):
-            page_file = "%s/page_tables/32bit/pde_4K.rasm"%(self.tpg_path)
-            self.Gen_page_4K_32(page_file)
+            #page_file = "%s/page_tables/32bit/pde_4K.rasm"%(self.tpg_path)
+            self.Gen_page_4K_32()
+            self.pageframe = Pageframe(self.page_mode)
+            self.Mapping_func_single = self.Map_page_4K_32
+            self.Check_page_frame_info = self.Check_page_frame_info_4K_32
+            self.Write_page_file = self.Write_page_file_4K_32
+            
         elif eq(self.page_mode,"4MB"):
             self.Gen_page_4M()
         elif eq(self.page_mode,"2MB"):
@@ -40,7 +52,91 @@ class Page(Util):
             self.Gen_page_1G()
         else:
             Util.Error_exit("Invalid page mode!")
-              
+            
+    def Mapping_func(self):
+        self.mpg.Apply_fix_mem("uc_space",0xFE000000,0x1FFFFFF,"UC")
+        for mem in self.mpg.selected:
+            #info(mem)
+            self.Mapping_func_single(mem)
+        self.Write_page_file()
+                
+    def Map_page_4K_32(self,mem):
+        page_num_max = (mem["start"]+mem["size"])/0x1000 + 1
+        page_num_min = mem["start"]/0x1000         
+        for i in range(page_num_min,page_num_max):
+            self.Check_page_frame_4K_32(i*0x1000,mem["attr"])
+
+    def Check_page_frame_4K_32_PDE(self,pde_index):
+        pde_exist_flag = 0
+        for pde in self.pageframe.pde_array:
+            if pde["index"] == pde_index:
+                pde_exist_flag += 1
+        if pde_exist_flag > 1:
+            self.Error_exit("PDE INDEX cannot be the same")                    
+        if pde_exist_flag == 0:
+            #info("Deepcopy")
+            if self.pageframe.pde_array[0]["index"] == None:
+                array_index = 0
+            else:
+                array_index = -1           
+                self.pageframe.pde_array.append(deepcopy(self.pageframe.pde_array[0]))    
+            self.pageframe.pde_array[array_index]["index"] = pde_index
+            self.pageframe.pde_array[array_index]["used"] = 1
+            self.pageframe.pde_array[array_index]["data"] = self.tlb_base["start"] + self.pageframe.single_page_size*(pde_index+1) + 0x7 
+ 
+    def Check_page_frame_4K_32_PTE(self,pde_index,pte_index,attr):           
+        pte_exist_flag = 0
+        if attr == "WB":
+            data_attr = 0x107
+        elif attr == "UC":
+            data_attr = 0x11F
+        else:
+            pass
+        data = data_attr + pte_index * 0x1000 + pde_index * 0x1000 * 1024
+        for pte in self.pageframe.pte_array:
+            if pte["pde"] == pde_index and pte["index"] == pte_index:
+                pte_exist_flag += 1
+                if pte["data"] == data:
+                    pass
+                else:
+                    self.Error_exit("One PTE map to different addr")
+        if pte_exist_flag > 1:
+            self.Error_exit("PTE INDEX cannot be the same")
+        if pte_exist_flag == 0:
+            if self.pageframe.pte_array[0]["index"] == None:
+                array_index = 0
+            else:
+                self.pageframe.pte_array.append(deepcopy(self.pageframe.pte_array[0]))
+                array_index = -1
+            self.pageframe.pte_array[array_index]["index"] = pte_index
+            self.pageframe.pte_array[array_index]["data"] = data   
+            self.pageframe.pte_array[array_index]["pde"] = pde_index
+            self.pageframe.pte_array[array_index]["used"] = 1       
+                                     
+    def Check_page_frame_4K_32(self,addr,attr):
+        [pde_index, pte_index] = divmod((addr/0x1000),1024)
+        #info([pde_index, pte_index])
+        self.Check_page_frame_4K_32_PDE(pde_index)
+        self.Check_page_frame_4K_32_PTE(pde_index,pte_index,attr)
+
+
+        
+            
+    def Check_page_frame_info_4K_32(self):
+        for pde in self.pageframe.pde_array:
+            info("PDE info: Name %s, Index %d, Data 0x%08x, Used %d"%(pde["name"],pde["index"],pde["data"],pde["used"]))
+        for pte in self.pageframe.pte_array:
+            info("PTE info: Name %s, Index %d, Data 0x%08x, Used %d, PDE %d"%(pte["name"],pte["index"],pte["data"],pte["used"],pte["pde"]))      
+        
+    def Write_page_file_4K_32(self):
+        for pde in self.pageframe.pde_array:
+            self.page_file_handler.write("%s\t%d\t\t0x%08x;\n"%(pde["name"],pde["index"],pde["data"]))
+        for pte in self.pageframe.pte_array:
+            self.page_file_handler.write("%s\t%d\t%d\t0x%08x;\n"%(pte["name"],pte["pde"],pte["index"],pte["data"]))        
+        self.page_file_handler.write("\nEND;\n")  #\n is essential 
+        self.page_file_handler.close()
+        del self.page_file_handler
+                 
     def Write_page(self):
         self.Comment("######################set page and cr3#######################")
         if eq(self.page_mode,"4KB_64bit"):
@@ -56,10 +152,18 @@ class Page(Util):
         else:
             Util.Error_exit("Invalid page mode!")
             
-    def Gen_page_4K_32(self,page_file):
+    def Gen_page_4K_32(self):
 
-        self.Text_write("include \"%s\""%(page_file))
-        self.tlb_base = self.mpg.Apply_fix_mem("tlb_base",0x100000,0x400000)
+        self.Text_write("include \"%s\""%(self.page_file))
+        self.tlb_base = self.mpg.Apply_fix_mem("tlb_base",0x100000,0x401000)
+        self.page_file_handler = open(self.page_file,"w")
+        self.page_file_handler.write("$ptgen_tlb_0_base = 0x100000;\n")
+        self.page_file_handler.write("$ptgen_tlb_0_pat_msr = 0x50700040106;\n")
+        self.page_file_handler.write("$ptgen_tlb_0_cr3 = 0x100000;\n")
+        self.page_file_handler.write("$ptgen_tlb_0_cr3_no_inv = 0x8000000000100000;\n")        
+        self.page_file_handler.write("$ptgen_tlb_0 = INIT_TLB $ptgen_tlb_0_base, $ptgen_tlb_0_pat_msr;\n")   
+
+
         
     def Write_page_4K_32(self):
         self.Instr_write("mov eax,$ptgen_tlb_0_base")

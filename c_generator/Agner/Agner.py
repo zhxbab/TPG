@@ -22,7 +22,7 @@ class Agner:
                          #{"cpu":"Intel_Skylake_6600","device":"4","fre":"2G","ref":"100M"},\
                          #{"cpu":"Intel_I5_4590","device":"4","fre":"2G","ref":"100M"},\
                          {"cpu":"ZX-D","device":"0","fre":"2G","ref":"100M"},\
-                         {"cpu":"Intel_Nehalem_K655","device":"2","fre":"2G","ref":"100M"},\
+                         #{"cpu":"Intel_Nehalem_K655","device":"2","fre":"2G","ref":"100M"},\
                          ]
             self.result_csv = os.path.join(self.current_dir_path,"result.csv")
             self.Agner2avp_cmd = "%s --disable_pcid -p 1"%(os.path.join(self.current_dir_path,"Agner2avp"))
