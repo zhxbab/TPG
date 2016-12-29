@@ -22,7 +22,7 @@ if __name__ == "__main__":
     tests.Gen_mode_code()
     for j in range(0,tests.args_option.thread_nums):
         tests.Start_user_code(j)
-        tests.Vmx_load_asm_code(j,i)
+        tests.Vmx_load_asm_code(j)
     tests.Gen_hlt_code()
     tests.c_parser.c_code_asm.close()
     tests.Gen_vector()

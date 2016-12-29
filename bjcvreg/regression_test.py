@@ -18,7 +18,6 @@ def Parse_input(args):
     args_parser.add_option("-s", dest="script", help="script path", type="str", default = None)
     args_parser.add_option("-d","--device", dest="device", help="device num", type="int", default = None)
     args_parser.add_option("--dual", dest="dual", help="For dual die", action="store_true", default = False)
-    args_parser.add_option("--all", dest="dual", help="For dual die", action="store_true", default = False)
     args_parser.add_option("--arch", dest="arch", help="Set architecture, for tune clk and feature list", type="str", default = None)
     (args_option, args_additions) = args_parser.parse_args(args)
     return (args_option, args_additions)

@@ -38,7 +38,8 @@ class Vmx_csmith(Test_generator):
         args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)
         args_parser.add_option("-g","--generator", dest="generator", help="0x0: Use Csmith, 0x1: Use randprog"\
                           , type = "int", default = 0)
-        args_parser.add_option("--pae", dest="vmx_client_pae", help="enable pae mode when guest in 32bit", action="store_true", default = False) 
+        args_parser.add_option("--pae", dest="vmx_client_pae", help="enable pae mode when guest in 32bit", action="store_true", default = False)
+        #args_parser.add_option("--one_page", dest="one_page", help="enable one_page mode", action="store_true", default = False)
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -49,10 +50,10 @@ class Vmx_csmith(Test_generator):
         else:
             self.seed = random.randint(1,0xFFFFFFFF)                  
         self.threads = self.args_option.thread_nums
-        if self.threads > 1:
-            self.multi_ept = 1
+        if self.threads>1:
+            self.multi_ept=1          
         else:
-            self.multi_ept = 0
+            self.multi_ept=0     
         self.intel = self.args_option.intel
         self.c_gen = 1
         self.mode = "long_mode"
@@ -103,7 +104,8 @@ class Vmx_csmith(Test_generator):
         self.multi_page = 0
         self.c_plus = self.args_option.c_plus
         self.generator = self.args_option.generator
-                
+        self.relo_sync_addr = None
+                      
     def Force_compiler_and_optimize(self):
         if self.force_gcc == 1:
             self.c_parser.c_compiler = self.c_parser.gcc
@@ -122,6 +124,7 @@ class Vmx_csmith(Test_generator):
         self.asm_path = os.path.join(self.avp_dir_path,self.asm_name)
         self.asm_file = open(self.asm_path,"w")
         self.asm_list.append(self.asm_path)
+        self.osystem.asm_file = self.asm_file
         self.ptg.asm_file = self.asm_file
         self.mpg.asm_file = self.asm_file
         self.simcmd.asm_file = self.asm_file
@@ -171,6 +174,7 @@ class Vmx_csmith(Test_generator):
         self.ptg.intel = self.intel
         self.ptg.vmx_client_mode = self.vmx_client_mode
         self.ptg.vmx_client_pae = self.vmx_client_pae
+        self.vmx_mode_code.osystem = self.osystem
         if self.c_gen:
             self.c_parser.multi_page = self.multi_page
             self.c_parser.multi_ept = self.multi_ept
@@ -257,10 +261,24 @@ class Vmx_csmith(Test_generator):
         self.Instr_write("mov [0x%x], 0x0"%(vmcs_pointer+4))
         self.Instr_write("mov [0x%x], eax"%(vmcs))
         
+    def Update_relo(self,thread):
+        self.Comment("####Update relo addr####")
+        for rel in self.c_parser.c_code_rel_info:
+            self.Instr_write("call 0x%08x"%(int(rel["relo_addr"],16)),thread)
+            if self.vmx_client_mode == "long_mode":
+                self.Instr_write("mov qword ptr [0x%08x], rax"%(rel["start"]))
+            else:
+                self.Instr_write("mov dword ptr [0x%08x], eax"%(rel["start"]))     
+
+
     def Set_guest_entry(self,thread):
         self.Text_write("org 0x%x"%(self.vmx_mode_code.vmx_guest_entry_0[thread]["start"]))
-        self.Text_write("use 64")
-        self.Instr_write("call $_init_%d"%(thread),0)
+        if self.vmx_client_mode == "long_mode":
+            self.Text_write("use 64")
+        else:
+            self.Text_write("use 32")
+        self.Update_relo(thread)         
+        #self.Instr_write("call $_init_%d"%(thread),0)
         self.Instr_write("call $main_%d"%(thread),0)  
         #self.Instr_write("mov qword ptr [0x40000000], r8")
         #self.Instr_write("mov rbx,0x%x"%(self.vmx_mode_code.vmcs_data["start"]))
@@ -295,7 +313,7 @@ if __name__ == "__main__":
         tests.Gen_mode_code()
         for j in range(0,tests.threads):
             tests.Start_user_code(j)
-            tests.Vmx_load_asm_code(j,i)
+            tests.Vmx_load_asm_code(j)
             tests.simcmd.Simcmd_write(j)
         #tests.Instr_write("vmxon [$vmxon_ptr]",0)
         tests.Gen_hlt_code()

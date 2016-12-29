@@ -23,7 +23,8 @@ class Vmx_mode(Mode):
         self.vmcs_initial_code = []
         self.vmx_exit_addr = []
         #self.multi_ept = 0
-        
+        self.osystem = None
+
     def Mode_code(self,mode,c_gen,vmx_client_mode,disable_avx,disable_pcid):
         self.mode = mode
         self.disable_avx = disable_avx
@@ -239,7 +240,11 @@ class Vmx_mode(Mode):
         self.ptg.thread_info_pointer = self.thread_info_pointer
         self.Text_write("org 0x%x"%(self.thread_info_pointer["start"]))
         self.Text_write("@%s = new std::thread_info[%d]"%(self.thread_info_pointer["name"],8))#support 8 threads
-        for i in range(0,self.threads):
+        if self.threads_flag == "random":
+            self.apic_id_list_all = [0]+self.apic_id_list
+        else:
+            self.apic_id_list_all = range(0,self.threads)
+        for i in self.apic_id_list_all:
             if c_gen == 0x0:
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
                 self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x1000000,end=0x40000000,name="user_code_seg_T%d"%(i))

@@ -49,6 +49,9 @@ class C_parser(Util):
         else:
             self.Error_exit("Invalid generator")
         self.wc_feature = False
+        self.relo_flag = 0
+        self.rela_dyn_flag = 0
+        self.relo_sync_addr = None
         
     def Gen_c_asm(self,thread,num,optimize=None):
         self.base_name = "c_code_%d"%(num)
@@ -62,6 +65,7 @@ class C_parser(Util):
         #self.disasm_file = disasm_file
         c_code_sec = "c_code_%d.sec"%(num)
         c_code_rel = elf_file.replace(".elf",".rel")
+        self.c_code_gplt = elf_file.replace(".elf",".gplt")
         if optimize == None:
             self.optimize = ["O2","O3","Os","O0","O1"][random.randint(0,4)]
         else:
@@ -90,7 +94,7 @@ class C_parser(Util):
         csmith_p = subprocess.Popen(csmith_cmd,stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         ret = csmith_p.poll()
         info("The csmith subprocess pid is %d"%(csmith_p.pid))
-        t = threading.Timer(5,self.timer_function,(csmith_p,))
+        t = threading.Timer(10,self.timer_function,(csmith_p,))
         t.start()
         while ret == None and self.stop_flag == 0:
             ret = csmith_p.poll()
@@ -106,6 +110,8 @@ class C_parser(Util):
             self.Error_exit("Execute %s -S error!"%(self.readelf))
         if os.system("%s -r %s > %s"%(self.readelf,elf_file,c_code_rel)):
             self.Error_exit("Execute %s -r error!"%(self.readelf))
+        if os.system("%s --section=.got.plt -s %s > %s"%(self.objdump,elf_file,self.c_code_gplt)):
+            self.Error_exit("Execute %s --section=.got.plt -s error!"%(self.objdump))
         else:
             self.c_code_sec_file = open(c_code_sec,"r")
             if self.mode == "long_mode":
@@ -134,16 +140,19 @@ class C_parser(Util):
         return 0
     
     def Get_fix_c_asm(self,elf_file):
-        self.base_name = elf_file.split(".")[0]
-        disasm_file = elf_file.split(".")[0]
+        self.base_name = elf_file.split("/")[-1].split(".")[0]
+        disasm_file = elf_file.split("/")[-1].split(".")[0]
         c_code_sec = elf_file.replace(".elf",".sec")
         c_code_rel = elf_file.replace(".elf",".rel")
+        self.c_code_gplt = elf_file.replace(".elf",".gplt")
         if os.system("%s -s -d %s > %s"%(self.objdump,elf_file,disasm_file)):
-            self.Error_exit("Execute %s -s -d error!"%(self.objdump))
+            self.Error_exit("Execute %s -s -d %s error!"%(self.objdump,elf_file))
         if os.system("%s -S %s > %s"%(self.readelf,elf_file,c_code_sec)):
             self.Error_exit("Execute %s -S error!"%(self.readelf))
         if os.system("%s -r %s > %s"%(self.readelf,elf_file,c_code_rel)):
             self.Error_exit("Execute %s -r error!"%(self.readelf))
+        if os.system("%s --section=.got.plt -s %s > %s"%(self.objdump,elf_file,self.c_code_gplt)):
+            self.Error_exit("Execute %s --section=.got.plt -s error!"%(self.objdump))
         else:
             self.c_code_sec_file = open(c_code_sec,"r")
             if self.mode == "long_mode":
@@ -191,6 +200,11 @@ class C_parser(Util):
                     #info(line)
                     addr = line.split(" ")[0]
                     relo_addr = line.split(" ")[-1]
+                    if relo_addr.find("R_") == -1:
+                        self.relo_flag = 1
+                    else:
+                        self.relo_flag = 0
+                        relo_addr = None 
                     if addr != "Offset" and addr != "":
                         if self.mode == "long_mode":
                             #self.mpg.check_spare_mem()
@@ -199,15 +213,49 @@ class C_parser(Util):
                         else:
                             addr_hash = self.mpg.Apply_fix_mem("rel_entry_%d"%(i),int(addr,16),0x4)
                         addr_hash["relo_addr"] = relo_addr
-                        addr_hash["real_addr"] = relo_addr
                         self.c_code_rel_info.append(addr_hash)
                         #info("real_addr is %s",real_addr)
                         del addr_hash
                         i = i+1
+                       
             else:
                 break
+        if self.relo_flag == 0:
+            self.Parse_got_plt()
         self.real_rel_entry = self.mpg.Apply_mem(0x20,0x10,start=0x1000,end=0xA0000,name="real_rel_entry")
         return rela_dyn_flag
+    
+    def Parse_got_plt(self):
+        self.c_code_gplt_file = open(self.c_code_gplt,"r")
+        start = 0
+        start_addr = 0
+        gplt_data = []
+        if self.mode == "long_mode":
+            step = 2
+        else:
+            step = 1
+        while True:
+            line = self.c_code_gplt_file.readline()
+            if line:
+                line = line.strip()
+                m = re.search("Contents of section .got.plt",line)
+                if m:
+                    start = 1
+                    continue
+                if start:
+                    line_list = line.split(" ")
+                    if start_addr == 0:
+                        start_addr = line_list[0]
+                    for i in range(1,5):
+                        gplt_data.append(line_list[i])
+            else:
+                break
+            
+        
+        for i in range(3*step,len(gplt_data),step):
+            index = int((i-3*step)/step)
+            self.c_code_rel_info[index]["relo_addr"] = gplt_data[i][6:8] + gplt_data[i][4:6] + gplt_data[i][2:4] +gplt_data[i][0:2]
+            #info("add 0x%08x relocate to %s"%(self.c_code_rel_info[index]["start"],self.c_code_rel_info[index]["relo_addr"]))
     
     def Load_c_rel(self):
 #        for rel in self.c_code_rel_info:
@@ -221,6 +269,10 @@ class C_parser(Util):
 #        else:
 #            self.Instr_write("add esp,0x8")
         self.Instr_write("ret")
+
+    def Set_relo_sync_addr(self,thread):
+        self.relo_sync_addr = self.mpg.Apply_mem(0x4,0x10,start=0x20000000,end=0x40000000,name="relo_sync_addr")
+
         
     def Load_c_asm(self,thread,hlt_code,num):
         self.Instr_write("mov eax,&SELECTOR($%s)"%(self.selector_name_c_gen_0),thread)
@@ -238,31 +290,53 @@ class C_parser(Util):
             self.Instr_write("btr eax, 0x2",thread)
             self.Instr_write("bts eax, 0x0",thread)
             self.Instr_write("wrmsr",thread)
-        self.Update_relo(thread);
-        #self.Instr_write("call $_init_%d"%(thread),thread)
-        self.Instr_write("call $main_%d"%(thread),thread)
-        self.Text_write("jmp $%s"%(hlt_code["name"]))
         if self.multi_page:
+            self.Update_relo(thread);
+        elif self.multi_page == False and thread == 0:
+            self.Set_relo_sync_addr(0)
+            self.Update_relo(0)
+        else:
+            pass
+        #self.Instr_write("call $_init_%d"%(thread),thread)
+        if self.multi_page == False:
+            self.Tag_write("relo_sync_T%d"%(thread))
+            self.Instr_write("cmp [0x%08x],01"%(self.relo_sync_addr["start"]),thread)
+            self.Instr_write("jne $relo_sync_T%d"%(thread),thread)
+            if thread == 0:
+                self.Instr_write("call $main_%d"%(thread),thread)
+            else:
+                self.Instr_write("call $ktpg_main_%d"%(thread),thread)                
+        elif self.multi_page == True:
+            self.Instr_write("call $main_%d"%(thread),thread)
             self.Text_write("PAGING $tlb_pointer_%d"%(thread))
-        self.Parse_c_asm(thread)
+        else:
+            pass
+        self.Text_write("jmp $%s"%(hlt_code["name"]))
+#        else:
+#            self.Text_write("PAGING $tlb_pointer")            
+        #self.Parse_c_asm(thread)
         return 0
 
     def Update_relo(self,thread):
         self.Comment("####Update relo addr####")
         for rel in self.c_code_rel_info:
-            if rel["relo_addr"].find("R_386") == -1:
-                self.Instr_write("call 0x%08x"%(int(rel["relo_addr"],16)),thread)
+            self.Instr_write("call 0x%08x"%(int(rel["relo_addr"],16)),thread)
+            if self.mode == "long_mode":
                 self.Instr_write("mov qword ptr [0x%08x], rax"%(rel["start"]))
+            else:
+                self.Instr_write("mov dword ptr [0x%08x], eax"%(rel["start"]))
+        if self.multi_page == False:
+            #self.Text_write("db 0xF0")
+            self.Instr_write("mov dword ptr [0x%08x],0x1"%(self.relo_sync_addr["start"]),thread)              
+                
                  
 
-    def Vmx_load_c_asm(self,thread,hlt_code,num):
+    def Vmx_load_c_asm(self,thread):
         if self.multi_ept:
             self.Text_write("EPT $ept_tlb_pointer_%d"%(thread))
-            self.Parse_c_asm(thread)
-        else:
-            self.Parse_c_asm(thread)
-    
-    def Parse_c_asm(self,thread):
+        self.Parse_c_asm(thread,1)
+
+    def Parse_c_asm(self,thread,vmx=0):
         #self.c_code_asm = open(self.disasm_file,"r")
         cnt = 0
         self.c_code_asm.seek(0,0)
@@ -281,19 +355,24 @@ class C_parser(Util):
                         if eq(m.group(2),"main"):
                             self.Tag_write("main_%d"%(thread))
                             debug("Main match")
+                        elif m.group(2).find("ktpg_main_") != -1 and self.multi_page == 0 and vmx == 0:
+                            self.Tag_write("%s"%(m.group(2)))
+                            debug("one page %s match"%(m.group(2)))                           
                         elif eq(m.group(2),"_init"):
-                            self.Tag_write("_init_%d"%(thread))
+                            ##self.Tag_write("_init_%d"%(thread))
                             if self.mode == "long_mode":
                                 self.Text_write("use 64")
                             else:
                                 self.Text_write("use 32")
                             debug("Init match")
-                        elif eq(m.group(2),"_start"):
-                            self.Tag_write("_start_%d"%(thread))
-                            debug("_start match")
+#                        elif eq(m.group(2),"_start"):
+#                            self.Tag_write("_start_%d"%(thread))
+#                            debug("_start match")
                         elif eq(m.group(2),"__init_cpu_features"):
                             self.Text_write("ret")
                             stop_asm_flag = 1
+                        else:
+                            pass
                     else:
                         if stop_asm_flag == 0:
                             asm_code_list = line.split("\t") # the data before program use " " split
@@ -351,7 +430,9 @@ class C_parser(Util):
     def Load_c_asm_NOBITS(self): # for .bss and .tbss
         for index in self.c_code_sec_info:
             if eq(index["Type"],"NOBITS"):
-                # in 32bit single thread, .tbss is overlap with .ctors and .dtors
+                if index["Name"] == ".tbss":
+                    continue
+                #.tbss is overlap with .ctors and .dtors, etc
                 default_line_num = int(index["Size"],16)//0x4
                 self.Comment("#####%s"%(index["Name"]))
                 self.Text_write("org 0x%08x"%(self.c_code_mem_info[index["Name"]]["start"]))
@@ -370,30 +451,29 @@ class C_parser(Util):
         elif sec_info["Name"] == ".got.plt":
             return
         else:
-            pass
-        line_num = int(math.ceil(int(sec_info["Size"],16)/0x10))
-        extra_data_size = int(sec_info["Size"],16)%0x10
-        self.Comment("#####%s"%(sec_info["Name"]))
-        self.Text_write("org 0x%08x"%(self.c_code_mem_info[sec_info["Name"]]["start"]))
-        for i in range(0,line_num):
-            line = self.c_code_asm.readline()
-            line = line.strip()
-            line_list = line.split()
-#             if eq(sec_info["Name"],"__libc_subfreeres"):
-#                 info(line_list)
-            del line_list[0]
-            if i < line_num-1 or extra_data_size == 0:
-                extra_data_size_num = 4
-            else:
-                extra_data_size_num = int(math.ceil(extra_data_size/0x4))
-            for j in line_list[0:extra_data_size_num]:
-                new_data_str = self.Convert_data(j)
-                #new_data_str = j
-                if len(new_data_str) == 0x8:
-                    self.Text_write("dd 0x%s"%(new_data_str))
+            line_num = int(math.ceil(int(sec_info["Size"],16)/0x10))
+            extra_data_size = int(sec_info["Size"],16)%0x10
+            self.Comment("#####%s"%(sec_info["Name"]))
+            self.Text_write("org 0x%08x"%(self.c_code_mem_info[sec_info["Name"]]["start"]))
+            for i in range(0,line_num):
+                line = self.c_code_asm.readline()
+                line = line.strip()
+                line_list = line.split()
+    #             if eq(sec_info["Name"],"__libc_subfreeres"):
+    #                 info(line_list)
+                del line_list[0]
+                if i < line_num-1 or extra_data_size == 0:
+                    extra_data_size_num = 4
                 else:
-                    for k in range(0,len(new_data_str),2):
-                        self.Text_write("db 0x%s"%(new_data_str[len(new_data_str)-2-k:len(new_data_str)-k]))
+                    extra_data_size_num = int(math.ceil(extra_data_size/0x4))
+                for j in line_list[0:extra_data_size_num]:
+                    new_data_str = self.Convert_data(j)
+                    #new_data_str = j
+                    if len(new_data_str) == 0x8:
+                        self.Text_write("dd 0x%s"%(new_data_str))
+                    else:
+                        for k in range(0,len(new_data_str),2):
+                            self.Text_write("db 0x%s"%(new_data_str[len(new_data_str)-2-k:len(new_data_str)-k]))
                         
 
     def Convert_data(self,data_str):

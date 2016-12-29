@@ -64,6 +64,7 @@ class Mode(Util):
                                 self.mpg.Apply_fix_mem("csmith_code_%d"%(k),0x8000000+128*k*0x200000,0x400000)                    
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
                 self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x20000000,end=0x40000000,name="user_code_seg_T%d"%(i))
+
 #                self.Comment("##########Initial stack###########")
 #                self.Text_write("org 0x%08x"%(self.stack_seg["start"]))
 #                for j in range(0,0x100000,8):
@@ -84,7 +85,7 @@ class Mode(Util):
             else:
                 self.Text_write("@%s[%d].stack = 0x%016x"%(self.thread_info_pointer["name"],i,self.stack_seg["end"]))
                 self.Text_write("@%s[%d].code = 0x%016x"%(self.thread_info_pointer["name"],i,self.user_code_seg["start"]))
-                
+    
     def Set_page_info(self):
         self.page_info_pointer = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="page_info_pointer")
         self.ptg.page_info_pointer = self.page_info_pointer

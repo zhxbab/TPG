@@ -59,7 +59,7 @@ class Regression_csmith(Csmith):
             self.c_plus = False            
         self.dual = self.args_option.dual 
         self.pae = False
-        sefl.wc_feature = False
+        self.wc_feature = False
         
         
     def Regression_vector(self):
@@ -85,6 +85,7 @@ if __name__ == "__main__":
     else:
         threads = [1,4][random.randint(0,1)]
     tests.wc_feature = [False,True][random.randint(0,1)]
+    tests.wc_feature = True
     if tests.wc_feature:
         tests.regression.rerun_times = 100
     #tests.generator = [0,1][random.randint(0,1)]

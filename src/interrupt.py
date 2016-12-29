@@ -28,7 +28,7 @@ class Interrupt(Util):
         return self.interrupt_handler[index]
         
     def Initial_interrupt_handler(self,int_handler_base,int_handler_record_base):
-        if self.mode == "protect_mode" or self.mode == "compatibility_mode":
+        if self.mode == "protect_mode":
             use_mode = "use 32"
             iret = "iretd"
         else:

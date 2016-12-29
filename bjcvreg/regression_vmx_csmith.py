@@ -116,7 +116,7 @@ if __name__ == "__main__":
         tests.Gen_mode_code()
         for j in range(0,tests.threads):
             tests.Start_user_code(j)
-            tests.Vmx_load_asm_code(j,i)
+            tests.Vmx_load_asm_code(j)
             tests.simcmd.Simcmd_write(j)
         #tests.Instr_write("vmxon [$vmxon_ptr]",0)
         tests.Gen_hlt_code()

@@ -188,13 +188,13 @@ class Test_generator(Args,Util):
             self.fail_list.append(avp_file)
             self.ic_file = avp_file.replace(".avp",".ic")
             if self.c_gen:
-                info("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
-                os.system("mv %s* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
-                info("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
-                os.system("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
+                os.system("cp %s* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
+                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                os.system("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
             else:
-                info("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
-                os.system("mv %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))   
+                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                os.system("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))   
         else:
             self.ic_file = avp_file.replace(".avp",".ic")
             gzip_cmd = "gzip %s"%(self.ic_file)
@@ -308,9 +308,15 @@ class Test_generator(Args,Util):
     
     def Load_asm_code(self,thread, num):
         self.c_parser.Load_c_asm(thread,self.hlt_code,num)
-        
-    def Vmx_load_asm_code(self,thread,num):
-        self.c_parser.Vmx_load_c_asm(thread,self.hlt_code,num)
+        if self.multi_page:
+            self.c_parser.Parse_c_asm(thread)
+        elif self.multi_page == 0 and thread == 0:
+            self.c_parser.Parse_c_asm(thread)
+        else:
+            pass            
+            
+    def Vmx_load_asm_code(self,thread):
+        self.c_parser.Vmx_load_c_asm(thread)
      
     def Updata_interrupt(self,index,handler):
         self.interrupt.Update_interrupt_handler(index,handler)

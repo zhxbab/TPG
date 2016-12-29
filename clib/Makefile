@@ -1,5 +1,7 @@
-DIRS = std start string
-OBJS = std/stdio.o string/string.o
+#DIRS = std start string
+#OBJS = std/stdio.o string/string.o threads/threads.o
+DIRS = threads
+OBJS = threads/ktpg_threads.o
 all:  
 	@for i in ${DIRS};\
 	do cd $${i} && make && cd ..; \

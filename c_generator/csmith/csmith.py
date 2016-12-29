@@ -43,7 +43,7 @@ class Csmith(Test_generator):
         args_parser.add_option("--instr_only", dest="instr_only", help="Cnsim instr only", action="store_true", default = False)
         args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)
         args_parser.add_option("--wc", dest="wc_feature", help="Enable PAT WC", action="store_true", default = False)
-        #args_parser.add_option("--pae", dest="pae", help="enable pae in 32bit mode", action="store_true", default = False)           
+        args_parser.add_option("--one_page", dest="one_page", help="enable one_page mode", action="store_true", default = False)           
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -87,7 +87,10 @@ class Csmith(Test_generator):
             
         self.threads = self.args_option.thread_nums
         if self.threads>1:
-            self.multi_page=1
+            if self.args_option.one_page == False:
+                self.multi_page=1
+            else:
+                self.multi_page=0                
         else:
             self.multi_page=0            
         self.intel = self.args_option.intel
@@ -172,7 +175,7 @@ if __name__ == "__main__":
         tests.Gen_mode_code()
         for j in range(0,tests.threads):
             tests.Start_user_code(j)
-            tests.Load_asm_code(j,i)
+            tests.Load_asm_code(j,i)             
             tests.Gen_hlt_code(j)
         tests.c_parser.c_code_asm.close()
         tests.Gen_vector()
