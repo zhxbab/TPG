@@ -189,7 +189,7 @@ class Test_generator(Args,Util):
         if ret != 0x0:
             error("Gen vector fail, Please check!")
             self.fail_list.append(avp_file)
-            self.ic_file = avp_file.replace(".avp",".ic")
+            self.ic_file = avp_file.replace(".avp",".ic.gz")
             if self.c_gen:
                 info("cp %s* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
                 os.system("cp %s* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
