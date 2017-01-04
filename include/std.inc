@@ -49,7 +49,73 @@ bitstruct std::idt_gate_32, 64 {
   47..47 p = 1;
   63..48 offset(31..16);
 }
+################# call gates ################
 
+bitstruct std::call_gate_64, 128 {
+  15..0  offset;
+  31..16 selector;
+  39..32 dummy1 = 0x0;
+  43..40 type = 0xC;
+  46..45 dpl = 0;
+  47..47 p = 1;
+  63..48 offset(31..16);
+  95..64 offset(63..32);
+  103..96 dummy2 = 0x0;
+  108..104 type1 = 0x0;
+  127..109 dummy3 = 0x0;
+}
+
+################## tss_64 ###################
+
+struct std::tss64{
+	uint32 dummy1 = 0x0;
+	uint32 rsp0_l;
+	uint32 rsp0_h;
+	uint32 rsp1_l;
+	uint32 rsp1_h;
+	uint32 rsp2_l;
+	uint32 rsp2_h;
+	uint32 dummy2 = 0x0;
+	uint32 dummy3 = 0x0;
+	uint32 ist1_l;
+	uint32 ist1_h;
+	uint32 ist2_l;
+	uint32 ist2_h;
+	uint32 ist3_l;
+	uint32 ist3_h;
+	uint32 ist4_l;
+	uint32 ist4_h;
+	uint32 ist5_l;
+	uint32 ist5_h;
+	uint32 ist6_l;
+	uint32 ist6_h;
+	uint32 ist7_l;
+	uint32 ist7_h;
+	uint32 dummy4 = 0x0;
+	uint32 dummy5 = 0x0;
+	uint16 dummy6 = 0x0;
+	uint16 io_map_base = 0x0;
+
+}
+################ tss64_descriptor ##########
+
+bitstruct std::tss64_descriptor, 128 {
+  15..0  limit = 0x68;
+  39..16 base  = 0x0;
+  43..40 type = 0x0;
+  44..44 s    = 0x0;
+  46..45 dpl  = 0x3;
+  47..47 p    = 0x1;
+  48 avl = 0;
+  49 l = 0;
+  50 db = 0;
+  51 g = 0;
+  63..56 base(31..24) = 0;
+  95..64 base(63..32) = 0;
+  103..96 dummy1 = 0;
+  107..104 dummy2 = 0;
+  127..108 dummy3 = 0;
+}
 
 ################ vmcs  #################
 

@@ -133,6 +133,9 @@ class Test_generator(Args,Util):
     def Gen_hlt_code(self,thread_num):
         #print("thread_num is %d"%(thread_num))
         if thread_num == 0:
+#            self.Text_write("mov rax,0x00530000")
+#            self.Text_write("push rax")
+#            self.Text_write("callf word ptr [esp]")
             self.Text_write("jmp $%s"%(self.hlt_code["name"]))
             self.Text_write("org 0x%x"%(self.hlt_code["start"]))
             self.Tag_write(self.hlt_code["name"])
@@ -188,13 +191,13 @@ class Test_generator(Args,Util):
             self.fail_list.append(avp_file)
             self.ic_file = avp_file.replace(".avp",".ic")
             if self.c_gen:
-                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
+                info("cp %s* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
                 os.system("cp %s* %s"%(os.path.join(self.avp_dir_path,self.c_parser.base_name),self.cnsim_fail_dir))
-                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
-                os.system("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                info("cp %s* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                os.system("cp %s* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
             else:
-                info("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
-                os.system("cp %s.* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))   
+                info("cp %s* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))
+                os.system("cp %s* %s"%(os.path.join(self.avp_dir_path,self.vector_base_name),self.cnsim_fail_dir))   
         else:
             self.ic_file = avp_file.replace(".avp",".ic")
             gzip_cmd = "gzip %s"%(self.ic_file)

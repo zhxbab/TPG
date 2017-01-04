@@ -104,6 +104,7 @@ if __name__ == "__main__":
             tests.Start_user_code(j)
             if j == 0:
                 pass
+                #tests.Instr_write("syscall")
             else:
                 pass               
             tests.Gen_hlt_code(j)

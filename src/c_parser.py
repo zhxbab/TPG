@@ -141,10 +141,11 @@ class C_parser(Util):
     
     def Get_fix_c_asm(self,elf_file):
         self.base_name = elf_file.split("/")[-1].split(".")[0]
-        disasm_file = elf_file.split("/")[-1].split(".")[0]
+        disasm_file = elf_file.replace(".elf","")
         c_code_sec = elf_file.replace(".elf",".sec")
         c_code_rel = elf_file.replace(".elf",".rel")
         self.c_code_gplt = elf_file.replace(".elf",".gplt")
+        info("%s -s -d %s > %s"%(self.objdump,elf_file,disasm_file))
         if os.system("%s -s -d %s > %s"%(self.objdump,elf_file,disasm_file)):
             self.Error_exit("Execute %s -s -d %s error!"%(self.objdump,elf_file))
         if os.system("%s -S %s > %s"%(self.readelf,elf_file,c_code_sec)):

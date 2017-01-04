@@ -32,7 +32,35 @@ class Mode(Util):
         self.Text_write("@%s.limit = 0xFFFF"%(table_pointer["name"]))
         return table_pointer
     
-
+    def Set_tss64_env(self):        
+        self.Instr_write("mov ax, 0x60")
+        self.Instr_write("ltr ax")
+        
+    def Set_system_call_handler(self):
+        self.osystem.set_org(self.system_call_addr["start"])
+        self.Text_write("use 64")
+        self.Text_write("hlt")
+        self.Text_write("db 0x48")
+        self.Text_write("sysret")
+        
+    def Init_system_call_addr(self):
+        self.system_call_addr = self.mpg.Apply_mem(0x100,0x10,start=0x1000,end=0xA0000,name="system_call_addr")
+        
+    def Init_tss64(self):
+        self.tss64_base_addr = self.mpg.Apply_mem(0x68,0x10,start=0x1000,end=0xA0000,name="tss64")
+        self.tss64_stack_ring0 = self.mpg.Apply_mem(0x20,0x100,start=0xB00000,end=0x1000000,name="tss64_stack_ring0")
+        self.osystem.set_org(self.tss64_base_addr["start"])
+        self.Text_write("@tss64 = new std::tss64")
+        self.Text_write("@tss64.rsp0_l = 0x%08x"%(self.tss64_stack_ring0["start"]))
+                
+    def Set_system_call_env(self):
+        system_call_addr_temp = self.system_call_addr["start"]
+        ia32_star_high = ((self.system_call_cs<<(8+3))&0xFF00) + ((self.system_ret_cs<<(24+3))&0xFF000000)
+        #info("value is 0x%08x",ia32_star_high)
+        self.Msr_Write(0xc0000081,edx=ia32_star_high)
+        self.Msr_Write(0xc0000082,eax=system_call_addr_temp,edx=0)        
+        self.Msr_Write(0xc0000083,eax=0)
+                        
     def Set_user_code_stack(self,c_gen):
         self.Comment("###########################Thread Info######################")
         stack_align = 0x100
@@ -105,13 +133,16 @@ class Mode(Util):
         self.osystem.update_idtr(idt_table_base["start"])
         self.gdt_table_base_pointer = self.Set_table_pointer(gdt_table_base["name"])
         self.idt_table_base_pointer = self.Set_table_pointer(idt_table_base["name"])
+        #self.Init_tss64()
         self.Set_gdt_table(gdt_table_base,c_gen)
         self.Set_idt_table(idt_table_base)
+        #self.Init_system_call_addr()
         #self.osystem.show_idt_info()
         self.Set_page_info()
         self.ptg.Gen_page()
         self.Set_user_code_stack(c_gen)
         self.Text_write("&TO_MEMORY_ALL()")
+        #self.Set_system_call_handler()
         self.Set_int_handler()
         if self.mode == "protect_mode":
             self.Protect_mode_code()
@@ -139,7 +170,27 @@ class Mode(Util):
             self.Text_write("@idt[%d].offset = $int%i_handler"%(i,i))
             self.osystem.update_idt_entry("int_%d"%(i),i,selector=idt_value,offset=0x0)
 
-        
+    def Set_call_gate_64(self,gdt_base_addr,index):
+        self.osystem.set_org(gdt_base_addr+index*8)
+        self.Text_write("@call_gate = new std::call_gate_64[1]")
+        self.call_gate_value_0 = 0x0
+        self.call_gate_name_0 = "call_gate0"
+        self.Vars_write(self.call_gate_name_0,self.call_gate_value_0)
+        self.Text_write("@call_gate[$%s].dpl = 0x3"%(self.call_gate_name_0))
+        self.Text_write("@call_gate[$%s].offset = 0x0"%(self.call_gate_name_0))
+        self.Text_write("@call_gate[$%s].selector = &SELECTOR($%s)"%(self.call_gate_name_0,self.selector_name_cs64_0))
+    
+    
+    def Set_tss64(self,gdt_base_addr,index):
+        self.osystem.set_org(gdt_base_addr+index*8)
+        self.Text_write("@tss64_descriptor = new std::tss64_descriptor[1]")
+        self.tss64_descriptor_value_0 = 0x0
+        self.tss64_descriptor_name_0 = "tss64_0"
+        self.Vars_write(self.tss64_descriptor_name_0,self.tss64_descriptor_value_0)
+        self.Text_write("@tss64_descriptor[$%s].dpl = 0x3"%(self.tss64_descriptor_name_0))
+        self.Text_write("@tss64_descriptor[$%s].base = 0x%08x"%(self.tss64_descriptor_name_0,self.tss64_base_addr["start"]))    
+        self.Text_write("@tss64_descriptor[$%s].type = 0x9"%(self.tss64_descriptor_name_0))
+                             
     def Set_gdt_table(self,gdt_table_base,c_gen):
         self.Comment("###########################GDT definition######################")
         self.osystem.set_org(gdt_table_base["start"])
@@ -167,14 +218,22 @@ class Mode(Util):
         self.selector_value_ds64_0 = 0x4
         self.Vars_write(self.selector_name_ds64_0,self.selector_value_ds64_0)
         self.Text_write("@gdt[$%s].type = 0x3"%(self.selector_name_ds64_0))
-        self.Text_write("@gdt[$%s].l = 0x1"%(self.selector_name_ds64_0))     
-        self.osystem.update_gdt_entry(self.selector_name_ds64_0,self.selector_value_ds64_0, type=0x3, db=0x1)          
+        self.Text_write("@gdt[$%s].l = 0x1"%(self.selector_name_ds64_0)) 
+        self.osystem.update_gdt_entry(self.selector_name_ds64_0,self.selector_value_ds64_0, type=0x3, db=0x1)    
+        self.system_call_cs = 0x6
+        self.system_call_ss = self.system_call_cs + 1
+        self.system_ret_cs = 0x8
+        self.system_ret_ss = self.system_ret_cs + 1
+        #self.Set_call_gate_64(gdt_table_base["start"],0xa)
+        #self.Set_tss64(gdt_table_base["start"],0xc)
         if self.mode == "compatibility_mode" :
             self.selector_name_cs_0 = self.selector_name_cs32_0
             self.selector_name_ds_0 = self.selector_name_ds64_0
         elif self.mode == "long_mode":
             self.selector_name_cs_0 = self.selector_name_cs64_0
             self.selector_name_ds_0 = self.selector_name_ds64_0
+            self.selector_value_cs_0 = self.selector_value_cs64_0
+            self.selector_value_ds_0 = self.selector_value_ds64_0
         elif self.mode == "protect_mode":
             self.selector_name_cs_0 = self.selector_name_cs32_0
             self.selector_name_ds_0 = self.selector_name_ds32_0
@@ -304,6 +363,8 @@ class Mode(Util):
         self.Instr_write("mov es,bx")#compatibility_mode need to set es
         self.Instr_write("mov fs,bx")
         self.Instr_write("mov gs,bx")
+        #self.Set_system_call_env()
+        #self.Set_tss64_env()
         self.Instr_write("mov eax,0xfee00020")
         self.Instr_write("mov eax,dword [eax]") # get apic id        
         self.Instr_write("shr eax, 24 - (8 / 2)")
