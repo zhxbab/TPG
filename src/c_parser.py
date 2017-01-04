@@ -36,9 +36,9 @@ class C_parser(Util):
         if generator == 0x0:
             self.generator = self.csmith
             if self.c_plus:
-                self.generator_extra_cmd = "--max-funcs 30 --lang-cpp -o" 
+                self.generator_extra_cmd = "--max-funcs 30 --bitfields --quiet --float --paranoid --inline-function --lang-cpp -o" 
             else:
-                self.generator_extra_cmd = "--max-funcs 30 -o" 
+                self.generator_extra_cmd = "--max-funcs 30 --bitfields --quiet --paranoid --float --inline-function -o" 
             self.compiler_extra_cmd = ""
         elif generator == 0x1:
             self.generator = self.randprog
