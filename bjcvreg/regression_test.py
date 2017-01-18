@@ -17,6 +17,7 @@ def Parse_input(args):
     args_parser = OptionParser(usage="%tpg *args, **kwargs", version="%tpg 0.1") #2016-04-25 version 0.1
     args_parser.add_option("-s", dest="script", help="script path", type="str", default = None)
     args_parser.add_option("-d","--device", dest="device", help="device num", type="int", default = None)
+    args_parser.add_option("-n", dest="counter", help="regression counter", type="int", default = None)
     args_parser.add_option("--dual", dest="dual", help="For dual die", action="store_true", default = False)
     args_parser.add_option("--arch", dest="arch", help="Set architecture, for tune clk and feature list", type="str", default = None)
     (args_option, args_additions) = args_parser.parse_args(args)
@@ -41,3 +42,7 @@ if __name__ == "__main__":
         n = n + 1
         if result != 0:
             sys.exit(0)
+        if args_option.conter != None:
+            if n > args_option.conter:
+                sys.exit(0)
+            

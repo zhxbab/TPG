@@ -49,9 +49,53 @@ class C_parser(Util):
         else:
             self.Error_exit("Invalid generator")
         self.wc_feature = False
-        self.relo_flag = 0
+        self.relo_flag = None
         self.rela_dyn_flag = 0
         self.relo_sync_addr = None
+        self.glibc = False
+        self.auxv = None
+        if self.mode != "long_mode":
+            self.heap_end = self.mpg.Apply_fix_mem("heap_end",0x8310000,0x10)
+            self.fake_stack = 0x8200000
+            self.fake_sysenter_addr = 0x8300000
+            self.elf_header_base = 0x8048000
+            self.elf_header_size = 0x34
+            self.AT_RANDOM = self.fake_stack
+            self.AT_RANDOM_data = [0,0,0,0]
+            self.AT_PLATFORM = self.fake_stack + 0x204
+            self.AT_PLATFORM_data = map(ord,"i686")
+            self.AT_EXECFN = self.fake_stack + 0x4
+            self.auxv = {"AT_SYSINFO":{"index":32,"value":self.fake_sysenter_addr,"comment":"Special system info/entry points"},\
+                         "AT_SYSINFO_EHDR":{"index":33,"value":0x110000,"comment":"System-supplied DSO's ELF header"},\
+                         "AT_HWCAP":{"index":16,"value":0xbfebfbff,"comment":"Machine-dependent CPU capability hints"},\
+                         "AT_PAGESZ":{"index":6,"value":4096,"comment":"System page size "},\
+                         "AT_CLKTCK":{"index":17,"value":100,"comment":"Frequency of times()"},\
+                         "AT_PHDR":{"index":3,"value":self.elf_header_base+self.elf_header_size,"comment":"Program headers for program"},\
+                         "AT_PHENT":{"index":4,"value":None,"comment":"Size of program header entry "},\
+                         "AT_PHNUM":{"index":5,"value":None,"comment":"Number of program headers"},\
+                         "AT_BASE":{"index":7,"value":0x0,"comment":"Base address of interpreter"},\
+                         "AT_FLAGS":{"index":8,"value":0x0,"comment":"Flags"},\
+                         "AT_ENTRY":{"index":9,"value":None,"comment":"Entry point of program"},\
+                         "AT_UID":{"index":11,"value":600,"comment":"Real user ID"},\
+                         "AT_EUID":{"index":12,"value":600,"comment":"Effective user ID"},\
+                         "AT_GID":{"index":13,"value":600,"comment":"Real group ID"},\
+                         "AT_EGID":{"index":14,"value":600,"comment":"Effective group ID"},\
+                         "AT_SECURE":{"index":23,"value":0x0,"comment":"Boolean, was exec setuid-like?"},\
+                         "AT_RANDOM":{"index":25,"value":self.AT_RANDOM,"comment":"Address of 16 random bytes"},\
+                         "AT_EXECFN":{"index":31,"value":self.AT_EXECFN,"comment":"File name of executable"},\
+                         "AT_PLATFORM":{"index":15,"value":self.AT_PLATFORM,"comment":"String identifying platform"},\
+                         "AT_NULL":{"index":0,"value":0x0,"comment":"End of vector"}                  
+                         }
+            self.auxv_array = ["AT_SYSINFO","AT_SYSINFO_EHDR","AT_HWCAP","AT_PAGESZ","AT_CLKTCK","AT_PHDR","AT_PHENT",\
+                               "AT_PHNUM","AT_BASE","AT_FLAGS","AT_ENTRY","AT_UID","AT_EUID","AT_GID","AT_EGID","AT_SECURE",\
+                               "AT_RANDOM","AT_EXECFN","AT_PLATFORM","AT_NULL"]
+            self.program_header_data = []
+            #31   AT_EXECFN            File name of executable        0xffffdfb4 "/media/Data_Linux/tools/tpg/c_generator/csmith/test_c/test_atoi.elf"
+            #15   AT_PLATFORM          String identifying platform    0xffffcc5b "i686" 
+     
+            
+            
+            
         
     def Gen_c_asm(self,thread,num,optimize=None):
         self.base_name = "c_code_%d"%(num)
@@ -66,10 +110,13 @@ class C_parser(Util):
         c_code_sec = "c_code_%d.sec"%(num)
         c_code_rel = elf_file.replace(".elf",".rel")
         self.c_code_gplt = elf_file.replace(".elf",".gplt")
+        self.header = elf_file.replace(".elf",".header")
+        sefl.program_header = elf_file.replace(".elf",".pheader")
         if optimize == None:
             self.optimize = ["O2","O3","Os","O0","O1"][random.randint(0,4)]
         else:
             self.optimize = optimize
+        self.elf_file = os.path.join(self.avp_dir_path,elf_file)
         os.chdir(self.avp_dir_path)
         if self.mode == "protect_mode" or self.mode == "compatibility_mode":
             self.compiler_extra_cmd = self.compiler_extra_cmd + " -m32"
@@ -112,6 +159,10 @@ class C_parser(Util):
             self.Error_exit("Execute %s -r error!"%(self.readelf))
         if os.system("%s --section=.got.plt -s %s > %s"%(self.objdump,elf_file,self.c_code_gplt)):
             self.Error_exit("Execute %s --section=.got.plt -s error!"%(self.objdump))
+        if os.system("%s -h %s > %s"%(self.readelf,elf_file,self.header)):
+            self.Error_exit("Execute %s -h error!"%(self.readelf))
+        if os.system("%s -l %s > %s"%(self.readelf,elf_file,self.program_header)):
+            self.Error_exit("Execute %s -l error!"%(self.readelf))
         else:
             self.c_code_sec_file = open(c_code_sec,"r")
             if self.mode == "long_mode":
@@ -120,10 +171,15 @@ class C_parser(Util):
                 self.Parse_c_sec()
             self.c_code_re_file = open(c_code_rel,"r")
             self.rela_dyn_flag = self.Parse_c_rel()
+            if self.mode != "long_mode":
+                self.Parse_elf32_header()
+                self.Parse_elf32_pheader()
             self.c_code_re_file.close()
             for list_index in self.c_code_sec_info:
                 #info(list_index) # for debug
-                if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss") and ne(list_index["Name"],".got.plt"):
+                if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss"):
+                    if eq(list_index["Name"],".got.plt") and self.relo_flag != None:
+                        continue
                     if self.rela_dyn_flag and eq(list_index["Name"],".got"):
                         continue
                     self.c_code_mem_info[list_index["Name"]] = self.mpg.Apply_fix_mem(list_index["Name"],int(list_index["Addr"],16),int(list_index["Size"],16))
@@ -140,11 +196,14 @@ class C_parser(Util):
         return 0
     
     def Get_fix_c_asm(self,elf_file):
+        self.elf_file = elf_file
         self.base_name = elf_file.split("/")[-1].split(".")[0]
         disasm_file = elf_file.replace(".elf","")
         c_code_sec = elf_file.replace(".elf",".sec")
         c_code_rel = elf_file.replace(".elf",".rel")
         self.c_code_gplt = elf_file.replace(".elf",".gplt")
+        self.header = elf_file.replace(".elf",".header")
+        self.program_header = elf_file.replace(".elf",".pheader")
         info("%s -s -d %s > %s"%(self.objdump,elf_file,disasm_file))
         if os.system("%s -s -d %s > %s"%(self.objdump,elf_file,disasm_file)):
             self.Error_exit("Execute %s -s -d %s error!"%(self.objdump,elf_file))
@@ -154,6 +213,10 @@ class C_parser(Util):
             self.Error_exit("Execute %s -r error!"%(self.readelf))
         if os.system("%s --section=.got.plt -s %s > %s"%(self.objdump,elf_file,self.c_code_gplt)):
             self.Error_exit("Execute %s --section=.got.plt -s error!"%(self.objdump))
+        if os.system("%s -h %s > %s"%(self.readelf,elf_file,self.header)):
+            self.Error_exit("Execute %s -h error!"%(self.readelf))
+        if os.system("%s -l %s > %s"%(self.readelf,elf_file,self.program_header)):
+            self.Error_exit("Execute %s -l error!"%(self.readelf))
         else:
             self.c_code_sec_file = open(c_code_sec,"r")
             if self.mode == "long_mode":
@@ -162,10 +225,15 @@ class C_parser(Util):
                 self.Parse_c_sec()
             self.c_code_re_file = open(c_code_rel,"r")
             self.rela_dyn_flag = self.Parse_c_rel()
+            if self.mode != "long_mode":
+                self.Parse_elf32_header()
+                self.Parse_elf32_pheader()
             self.c_code_re_file.close()
             for list_index in self.c_code_sec_info:
                 #info(list_index) # for debug
-                if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss") and ne(list_index["Name"],".got.plt"):
+                if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss"): 
+                    if eq(list_index["Name"],".got.plt") and self.relo_flag != None:
+                        continue
                 #and ne(list_index["Name"],".got"):
                     if self.rela_dyn_flag and eq(list_index["Name"],".got"):
                         continue
@@ -226,6 +294,100 @@ class C_parser(Util):
         self.real_rel_entry = self.mpg.Apply_mem(0x20,0x10,start=0x1000,end=0xA0000,name="real_rel_entry")
         return rela_dyn_flag
     
+    def Parse_elf32_header(self):
+        self.header_h = open(self.header,"r")
+        while True:
+            line = self.header_h.readline()
+            if line:
+                line = line.strip()
+                if line.split(":")[0] == "Entry point address":
+                    if self.auxv["AT_ENTRY"]["value"] == None:
+                        self.auxv["AT_ENTRY"]["value"] = int(line.split(":")[1],16)
+                    else:
+                        self.Error_exit("AT_ENTRY value isnot None")
+                    continue
+                if line.split(":")[0] == "Size of program headers":
+                    if self.auxv["AT_PHENT"]["value"] == None:
+                        self.auxv["AT_PHENT"]["value"] = int(line.split(":")[1].split(" ")[-2])
+                    else:
+                        self.Error_exit("AT_PHENT value isnot None")
+                    continue
+                if line.split(":")[0] == "Number of program headers":
+                    if self.auxv["AT_PHNUM"]["value"] == None:
+                        self.auxv["AT_PHNUM"]["value"] = int(line.split(":")[1])
+                    else:
+                        self.Error_exit("AT_PHNUM value isnot None")
+                    continue
+                if line.split(":")[0] == "Size of this header":
+                    self.elf_header_size = int(line.split(":")[1].split(" ")[-2])
+                    self.auxv["AT_PHDR"]["value"] = self.elf_header_base + self.elf_header_size
+                    continue
+            else:
+                break
+        self.header_h.close()
+        self.AT_EXECFN_data = map(ord,self.elf_file)           
+                
+    def Parse_elf32_pheader(self):
+        self.program_header_h = open(self.program_header,"r")
+        start = 0
+        while True:
+            line = self.program_header_h.readline()
+            if line:
+                line = line.strip()
+                m = re.search(r"Program Headers:",line)
+                if m:
+                    start = 1
+                    self.program_header_h.readline()
+                    continue
+                m = re.search(r"Section to Segment mapping:",line)
+                if m:
+                    start = 0
+                    break
+                if start == 1:
+                    line_list = filter(lambda x:x != "",line.split(" "))
+                    if len(line_list) == 9:
+                        line_list[6] = line_list[6] + " " + line_list[7]
+                        del line_list[7]
+                        self.format_program_header(line_list)
+                    elif len(line_list) == 8:
+                        self.format_program_header(line_list)
+                    elif len(line_list) == 0:
+                        pass
+                    else:
+                        self.Error_exit("program_header_item len error")
+                else:
+                    pass
+            else:
+                break
+        self.program_header_h.close() 
+
+    def format_program_header(self,program_header_item):
+        for i in range(0,len(program_header_item)):
+            if i == 0:
+                if program_header_item[i] == "LOAD":
+                    self.program_header_data.append("0x1")
+                elif program_header_item[i] == "NOTE":
+                    self.program_header_data.append("0x4")
+                elif program_header_item[i] == "TLS":
+                    self.program_header_data.append("0x7")
+                elif program_header_item[i] == "GNU_STACK":
+                    self.program_header_data.append("0x6474e551")
+                else:
+                    self.Error_exit("program_header_item[0] is %s"%(program_header_item[i]))
+            elif 1 <= i <= 5 or i == 7:
+                self.program_header_data.append(program_header_item[i])
+            elif i == 6:
+                if program_header_item[i] == "R E":
+                    self.program_header_data.append("0x5")
+                elif program_header_item[i] == "R":
+                    self.program_header_data.append("0x4")
+                elif program_header_item[i] == "RW":
+                    self.program_header_data.append("0x6")
+                else:
+                    self.Error_exit("program_header_item[6] is %s"%(program_header_item[i]))
+
+        #info(self.program_header_data)             
+        
     def Parse_got_plt(self):
         self.c_code_gplt_file = open(self.c_code_gplt,"r")
         start = 0
@@ -304,6 +466,8 @@ class C_parser(Util):
             self.Instr_write("cmp [0x%08x],01"%(self.relo_sync_addr["start"]),thread)
             self.Instr_write("jne $relo_sync_T%d"%(thread),thread)
             if thread == 0:
+                if self.glibc == True:
+                    self.Start_fun(thread)
                 self.Instr_write("call $main_%d"%(thread),thread)
             else:
                 self.Instr_write("call $ktpg_main_%d"%(thread),thread)                
@@ -317,7 +481,40 @@ class C_parser(Util):
 #            self.Text_write("PAGING $tlb_pointer")            
         #self.Parse_c_asm(thread)
         return 0
-
+    def Start_fun(self,thread):
+        if self.mode != "long_mode":
+            # Hope stack like this
+            # +20 ------- aux[AT_SYSINFO][index]
+            # +16 ------- Null
+            # +12 ------ env[0] = 1
+            # +8 ------ Null 
+            #  +4 ------ argv[0] =  in ktpg call user_code return addr
+            #  0  ------ argc = esi = esp
+            # but now
+            # 0 ------- user_code return addr = esp
+            self.Init_regs_and_stack(thread)
+            self.Instr_write("push 0x1",thread)            
+            self.Instr_write("jmp $_start_%d"%(thread),thread)
+            
+    def Init_regs_and_stack(self,thread):
+        if self.mode != "long_mode":
+            self.Instr_write("mov eax,0x0 ",thread)
+            self.Instr_write("mov ebx,0x0",thread)
+            self.Instr_write("mov ecx,0x0",thread)    
+            self.Instr_write("mov edx,0x0",thread)    
+            self.Instr_write("mov esi,0x0",thread)    
+            self.Instr_write("mov edi,0x0",thread)    
+            self.Instr_write("mov ebp,0x0",thread)
+            self.Instr_write("mov ebp,esp",thread)
+            self.Instr_write("mov dword ptr [0x%08x],0x%08x"%(self.heap_end["start"],(self.c_code_mem_info[".bss"]["start"]+self.c_code_mem_info[".bss"]["size"])))
+            self.Instr_write("mov [ebp],0x0",thread)            
+            self.Instr_write("mov [ebp+0x4],0x1",thread)
+            self.Instr_write("mov [ebp+0x8],0x0",thread)
+            for i,j in enumerate(self.auxv_array):
+                self.Instr_write("mov [ebp+0xC+8*%d],0x%x"%(i,self.auxv[j]["index"]),thread)
+                self.Instr_write("mov [ebp+0x10+8*%d],0x%x"%(i,self.auxv[j]["value"]),thread)
+            self.Instr_write("mov ebp,0x0",thread)
+                                                            
     def Update_relo(self,thread):
         self.Comment("####Update relo addr####")
         for rel in self.c_code_rel_info:
@@ -366,12 +563,25 @@ class C_parser(Util):
                             else:
                                 self.Text_write("use 32")
                             debug("Init match")
-#                        elif eq(m.group(2),"_start"):
-#                            self.Tag_write("_start_%d"%(thread))
-#                            debug("_start match")
+                        elif eq(m.group(2),"_start"):
+                            self.Tag_write("_start_%d"%(thread))
+                            debug("_start match")
+#                        elif eq(m.group(2),"__pthread_initialize_minimal"):
+#                            self.Tag_write("__pthread_initialize_minimal_%d"%(thread))
+#                            debug("__pthread_initialize_minimal match")
                         elif eq(m.group(2),"__init_cpu_features"):
                             self.Text_write("ret")
                             stop_asm_flag = 1
+                        elif eq(m.group(2),"_dl_discover_osversion"):
+                            self.Text_write("mov eax,0x20620")#linux version
+                            self.Text_write("ret")
+                            stop_asm_flag = 1
+                        elif eq(m.group(2),"__libc_csu_irel"):
+                            self.Text_write("ret")
+                            stop_asm_flag = 1
+#                        elif eq(m.group(2),"__sbrk"):
+#                            self.Text_write("ret")
+#                            stop_asm_flag = 1
                         else:
                             pass
                     else:
@@ -423,11 +633,49 @@ class C_parser(Util):
                     break
         self.Load_c_asm_NOBITS()
         self.Load_c_rel()
-
+        if self.mode != "long_mode":
+            self.Load_fake_stack_32()
+            self.Load_program_header()
+            self.Load_fake_sysentery()
 #
 #        for index in self.c_code_sec_info:
 #            if not index["Load"]:
 #                info("%s is not in dis"%(index["Name"]))
+    def Load_program_header(self):
+        self.Text_write("org 0x%x"%(self.auxv["AT_PHDR"]["value"]))
+        for i in self.program_header_data:
+            data = int(i,16)
+            #info(data)
+            self.Text_write("dd 0x%08x"%(data))
+        
+    def Load_fake_stack_32(self):
+        self.Text_write("org 0x%x"%(self.AT_RANDOM))
+        for i in range(0,len(self.AT_RANDOM_data)):
+            self.Text_write("db 0x%x"%(self.AT_RANDOM_data[i]))
+            
+        self.Text_write("org 0x%x"%(self.AT_PLATFORM))
+        for i in range(0,len(self.AT_PLATFORM_data)):
+            self.Text_write("db 0x%x"%(self.AT_RANDOM_data[i]))
+            
+        self.Text_write("org 0x%x"%(self.AT_EXECFN))
+        for i in range(0,len(self.AT_EXECFN_data)):
+            self.Text_write("db 0x%x"%(self.AT_EXECFN_data[i]))    
+            
+    def Load_fake_sysentery(self):
+        self.Text_write("org 0x%x"%(self.auxv["AT_SYSINFO"]["value"]))
+        self.Instr_write("cmp ebx,0x0")
+        self.Instr_write("jne $use_esi")
+        self.Instr_write("mov eax, dword ptr [0x%08x]"%(self.heap_end["start"]))
+        self.Instr_write("add eax,esi")
+        self.Instr_write("sub eax,0x70")
+        self.Instr_write("mov dword ptr [0x%08x], eax"%(self.heap_end["start"]))
+        self.Instr_write("jmp $sysenter_return")
+        self.Tag_write("use_esi")
+        self.Instr_write("mov eax,esi")
+        self.Instr_write("mov dword ptr [0x%08x], eax"%(self.heap_end["start"]))
+        self.Tag_write("sysenter_return")        
+        self.Instr_write("ret")            
+        
     def Load_c_asm_NOBITS(self): # for .bss and .tbss
         for index in self.c_code_sec_info:
             if eq(index["Type"],"NOBITS"):
@@ -449,7 +697,7 @@ class C_parser(Util):
     def Load_c_asm_sec(self,sec_info):
         if sec_info["Name"] == ".got" and self.rela_dyn_flag:
             return
-        elif sec_info["Name"] == ".got.plt":
+        elif sec_info["Name"] == ".got.plt" and self.relo_flag != None:
             return
         else:
             line_num = int(math.ceil(int(sec_info["Size"],16)/0x10))

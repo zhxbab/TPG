@@ -111,7 +111,7 @@ class Test_generator(Args,Util):
         self.mode_code.pae = self.pae
         self.mode_code.threads_flag = self.threads_flag
         self.mode_code.apic_id_list = self.apic_id_list
-        [self.stack_segs,self.user_code_segs] = self.mode_code.Mode_code(self.mode,self.c_gen,self.disable_avx,self.disable_pcid)
+        [self.stack_segs,self.user_code_segs] = self.mode_code.Mode_code(self.mode,self.c_gen,self.disable_avx,self.disable_pcid)             
 
     def Gen_cnsim_param(self):
         if self.intel:

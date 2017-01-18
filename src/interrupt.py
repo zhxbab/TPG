@@ -35,15 +35,28 @@ class Interrupt(Util):
             use_mode = "use 64"
             iret = "iretq"
         for i in range(0,256):
-            self.interrupt_handler[i]["constant"] = \
-            self.Pretty_instr("org 0x%x"%(int_handler_base["start"]+i*int_handler_base["size"]/256)) + \
-            self.Pretty_Tag("int%d_handler"%(i)) + \
-            self.Pretty_instr("%s"%(use_mode))
-            self.interrupt_handler[i]["block"] = \
-            self.Pretty_instr("mov ax,0x%x"%(i)) + \
-            self.Pretty_instr("out 0x80,ax") + \
-            self.Pretty_instr("mov ebx,[0x%08x]"%(int_handler_record_base["start"]+int_handler_record_base["size"]/256*i)) + \
-            self.Pretty_instr("inc ebx") + \
-            self.Pretty_instr("mov [0x%08x],ebx"%(int_handler_record_base["start"]+int_handler_record_base["size"]/256*i)) + \
-            self.Pretty_instr("%s"%(iret))
+            if i == 0x80:
+                self.interrupt_handler[i]["constant"] = \
+                self.Pretty_instr("org 0x%x"%(int_handler_base["start"]+i*int_handler_base["size"]/256)) + \
+                self.Pretty_Tag("int%d_handler"%(i)) + \
+                self.Pretty_instr("%s"%(use_mode))
+                self.interrupt_handler[i]["block"] = \
+                self.Pretty_instr("cmp eax,0xf3") + \
+                self.Pretty_instr("je $int80_0xf3") + \
+                self.Pretty_instr("%s"%(iret)) + \
+                self.Pretty_instr("int80_0xf3:") + \
+                self.Pretty_instr("mov eax,0x0") + \
+                self.Pretty_instr("%s"%(iret))                
+            else:
+                self.interrupt_handler[i]["constant"] = \
+                self.Pretty_instr("org 0x%x"%(int_handler_base["start"]+i*int_handler_base["size"]/256)) + \
+                self.Pretty_Tag("int%d_handler"%(i)) + \
+                self.Pretty_instr("%s"%(use_mode))
+                self.interrupt_handler[i]["block"] = \
+                self.Pretty_instr("mov ax,0x%x"%(i)) + \
+                self.Pretty_instr("out 0x80,ax") + \
+                self.Pretty_instr("mov ebx,[0x%08x]"%(int_handler_record_base["start"]+int_handler_record_base["size"]/256*i)) + \
+                self.Pretty_instr("inc ebx") + \
+                self.Pretty_instr("mov [0x%08x],ebx"%(int_handler_record_base["start"]+int_handler_record_base["size"]/256*i)) + \
+                self.Pretty_instr("%s"%(iret))
             

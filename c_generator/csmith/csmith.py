@@ -43,7 +43,8 @@ class Csmith(Test_generator):
         args_parser.add_option("--instr_only", dest="instr_only", help="Cnsim instr only", action="store_true", default = False)
         args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)
         args_parser.add_option("--wc", dest="wc_feature", help="Enable PAT WC", action="store_true", default = False)
-        args_parser.add_option("--one_page", dest="one_page", help="enable one_page mode", action="store_true", default = False)           
+        args_parser.add_option("--one_page", dest="one_page", help="enable one_page mode", action="store_true", default = False)
+        args_parser.add_option("--glibc", dest="glibc", help="support glibc", action="store_true", default = False)           
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -128,6 +129,7 @@ class Csmith(Test_generator):
         self.wc_feature = self.args_option.wc_feature
         self.pae = False
         self.generator = self.args_option.generator
+        self.glibc = self.args_option.glibc
 #        if self.page_mode != "4KB_32bit":
 #            self.pae = self.args_option.pae
 #        else:
@@ -150,6 +152,7 @@ class Csmith(Test_generator):
         self.c_parser = C_parser(self.bin_path,self.avp_dir_path,self.mode,self.instr_manager,self.mpg, self.c_plus, self.generator)
         self.c_parser.asm_file = self.asm_file
         self.c_parser.wc_feature = self.wc_feature
+        self.c_parser.glibc = self.glibc
         if self.elf_file != None:
             ret_gen_asm_code = self.c_parser.Get_fix_c_asm(self.elf_file)
         else:

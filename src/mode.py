@@ -63,7 +63,7 @@ class Mode(Util):
                         
     def Set_user_code_stack(self,c_gen):
         self.Comment("###########################Thread Info######################")
-        stack_align = 0x100
+        stack_align = 0x1000 # 0x1000 is for elf reserve
         self.stack_segs = [{},]*8
         self.user_code_segs = [{},]*8
         self.thread_info_pointer = self.mpg.Apply_mem(0x100,16,start=0x0,end=0x10000,name="thread_info_pointer")
@@ -89,7 +89,7 @@ class Mode(Util):
                     if i == 0:
                         for k in range(0,self.threads):
                             if k != 0:
-                                self.mpg.Apply_fix_mem("csmith_code_%d"%(k),0x8000000+128*k*0x200000,0x400000)                    
+                                self.mpg.Apply_fix_mem("csmith_code_%d"%(k),0x8000000+128*k*0x200000,0x400000)              
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
                 self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x20000000,end=0x40000000,name="user_code_seg_T%d"%(i))
 
