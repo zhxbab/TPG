@@ -317,11 +317,11 @@ class C_parser(Util):
                 self.Error_exit("Don't find the tls base addr!")
                 
     def Load_tls_data(self):
-        self.tls_data.reverse()
+        tls_data = self.tls_data[::-1]
         self.Text_write("org 0x%x"%(self.tls_base - self.tls_data_size + 0x4))
-        info("tls size is %d"%(int(self.tls_data_size/4)))
+        #info("tls size is %d"%(int(self.tls_data_size/4)))
         for i in range(0,int(self.tls_data_size/4)):
-            self.Text_write("dd 0x%08x"%(self.tls_data[i]))
+            self.Text_write("dd 0x%08x"%(tls_data[i]))
                           
     def Parse_c_main(self):
         with open(self.mainfile,"r") as fc:
