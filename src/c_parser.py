@@ -54,44 +54,50 @@ class C_parser(Util):
         self.relo_sync_addr = None
         self.glibc = False
         self.auxv = None
+        self.main_addr = None
         if self.mode != "long_mode":
-            self.heap_end = self.mpg.Apply_fix_mem("heap_end",0x8310000,0x10)
-            self.fake_stack = 0x8200000
-            self.fake_sysenter_addr = 0x8300000
-            self.elf_header_base = 0x8048000
-            self.elf_header_size = 0x34
-            self.AT_RANDOM = self.fake_stack
-            self.AT_RANDOM_data = [0,0,0,0]
-            self.AT_PLATFORM = self.fake_stack + 0x204
-            self.AT_PLATFORM_data = map(ord,"i686")
-            self.AT_EXECFN = self.fake_stack + 0x4
-            self.auxv = {"AT_SYSINFO":{"index":32,"value":self.fake_sysenter_addr,"comment":"Special system info/entry points"},\
-                         "AT_SYSINFO_EHDR":{"index":33,"value":0x110000,"comment":"System-supplied DSO's ELF header"},\
-                         "AT_HWCAP":{"index":16,"value":0xbfebfbff,"comment":"Machine-dependent CPU capability hints"},\
-                         "AT_PAGESZ":{"index":6,"value":4096,"comment":"System page size "},\
-                         "AT_CLKTCK":{"index":17,"value":100,"comment":"Frequency of times()"},\
-                         "AT_PHDR":{"index":3,"value":self.elf_header_base+self.elf_header_size,"comment":"Program headers for program"},\
-                         "AT_PHENT":{"index":4,"value":None,"comment":"Size of program header entry "},\
-                         "AT_PHNUM":{"index":5,"value":None,"comment":"Number of program headers"},\
-                         "AT_BASE":{"index":7,"value":0x0,"comment":"Base address of interpreter"},\
-                         "AT_FLAGS":{"index":8,"value":0x0,"comment":"Flags"},\
-                         "AT_ENTRY":{"index":9,"value":None,"comment":"Entry point of program"},\
-                         "AT_UID":{"index":11,"value":600,"comment":"Real user ID"},\
-                         "AT_EUID":{"index":12,"value":600,"comment":"Effective user ID"},\
-                         "AT_GID":{"index":13,"value":600,"comment":"Real group ID"},\
-                         "AT_EGID":{"index":14,"value":600,"comment":"Effective group ID"},\
-                         "AT_SECURE":{"index":23,"value":0x0,"comment":"Boolean, was exec setuid-like?"},\
-                         "AT_RANDOM":{"index":25,"value":self.AT_RANDOM,"comment":"Address of 16 random bytes"},\
-                         "AT_EXECFN":{"index":31,"value":self.AT_EXECFN,"comment":"File name of executable"},\
-                         "AT_PLATFORM":{"index":15,"value":self.AT_PLATFORM,"comment":"String identifying platform"},\
-                         "AT_NULL":{"index":0,"value":0x0,"comment":"End of vector"}                  
-                         }
-            self.auxv_array = ["AT_SYSINFO","AT_SYSINFO_EHDR","AT_HWCAP","AT_PAGESZ","AT_CLKTCK","AT_PHDR","AT_PHENT",\
-                               "AT_PHNUM","AT_BASE","AT_FLAGS","AT_ENTRY","AT_UID","AT_EUID","AT_GID","AT_EGID","AT_SECURE",\
-                               "AT_RANDOM","AT_EXECFN","AT_PLATFORM","AT_NULL"]
-            self.program_header_data = []
-            #31   AT_EXECFN            File name of executable        0xffffdfb4 "/media/Data_Linux/tools/tpg/c_generator/csmith/test_c/test_atoi.elf"
-            #15   AT_PLATFORM          String identifying platform    0xffffcc5b "i686" 
+            self.ptrace = "%s/ptrace32"%(bin_path)
+            self.tls_base = 0x8100000
+        else:
+            self.ptrace = "%s/ptrace64"%(bin_path)
+            self.tls_base = 0x700000
+#            self.heap_end = self.mpg.Apply_fix_mem("heap_end",0x8310000,0x10)
+#            self.fake_stack = 0x8200000
+#            self.fake_sysenter_addr = 0x8300000
+#            self.elf_header_base = 0x8048000
+#            self.elf_header_size = 0x34
+#            self.AT_RANDOM = self.fake_stack
+#            self.AT_RANDOM_data = [0,0,0,0]
+#            self.AT_PLATFORM = self.fake_stack + 0x204
+#            self.AT_PLATFORM_data = map(ord,"i686")
+#            self.AT_EXECFN = self.fake_stack + 0x4
+#            self.auxv = {"AT_SYSINFO":{"index":32,"value":self.fake_sysenter_addr,"comment":"Special system info/entry points"},\
+#                         "AT_SYSINFO_EHDR":{"index":33,"value":0x110000,"comment":"System-supplied DSO's ELF header"},\
+#                         "AT_HWCAP":{"index":16,"value":0xbfebfbff,"comment":"Machine-dependent CPU capability hints"},\
+#                         "AT_PAGESZ":{"index":6,"value":4096,"comment":"System page size "},\
+#                         "AT_CLKTCK":{"index":17,"value":100,"comment":"Frequency of times()"},\
+#                         "AT_PHDR":{"index":3,"value":self.elf_header_base+self.elf_header_size,"comment":"Program headers for program"},\
+#                         "AT_PHENT":{"index":4,"value":None,"comment":"Size of program header entry "},\
+#                         "AT_PHNUM":{"index":5,"value":None,"comment":"Number of program headers"},\
+#                         "AT_BASE":{"index":7,"value":0x0,"comment":"Base address of interpreter"},\
+#                         "AT_FLAGS":{"index":8,"value":0x0,"comment":"Flags"},\
+#                         "AT_ENTRY":{"index":9,"value":None,"comment":"Entry point of program"},\
+#                         "AT_UID":{"index":11,"value":600,"comment":"Real user ID"},\
+#                         "AT_EUID":{"index":12,"value":600,"comment":"Effective user ID"},\
+#                         "AT_GID":{"index":13,"value":600,"comment":"Real group ID"},\
+#                         "AT_EGID":{"index":14,"value":600,"comment":"Effective group ID"},\
+#                         "AT_SECURE":{"index":23,"value":0x0,"comment":"Boolean, was exec setuid-like?"},\
+#                         "AT_RANDOM":{"index":25,"value":self.AT_RANDOM,"comment":"Address of 16 random bytes"},\
+#                         "AT_EXECFN":{"index":31,"value":self.AT_EXECFN,"comment":"File name of executable"},\
+#                         "AT_PLATFORM":{"index":15,"value":self.AT_PLATFORM,"comment":"String identifying platform"},\
+#                         "AT_NULL":{"index":0,"value":0x0,"comment":"End of vector"}                  
+#                         }
+#            self.auxv_array = ["AT_SYSINFO","AT_SYSINFO_EHDR","AT_HWCAP","AT_PAGESZ","AT_CLKTCK","AT_PHDR","AT_PHENT",\
+#                               "AT_PHNUM","AT_BASE","AT_FLAGS","AT_ENTRY","AT_UID","AT_EUID","AT_GID","AT_EGID","AT_SECURE",\
+#                               "AT_RANDOM","AT_EXECFN","AT_PLATFORM","AT_NULL"]
+#            self.program_header_data = []
+#            #31   AT_EXECFN            File name of executable        0xffffdfb4 "/media/Data_Linux/tools/tpg/c_generator/csmith/test_c/test_atoi.elf"
+#            #15   AT_PLATFORM          String identifying platform    0xffffcc5b "i686" 
      
             
             
@@ -110,8 +116,10 @@ class C_parser(Util):
         c_code_sec = "c_code_%d.sec"%(num)
         c_code_rel = elf_file.replace(".elf",".rel")
         self.c_code_gplt = elf_file.replace(".elf",".gplt")
-        self.header = elf_file.replace(".elf",".header")
-        sefl.program_header = elf_file.replace(".elf",".pheader")
+        self.mainfile = elf_file.replace(".elf",".main")
+        self.tls = elf_file.replace(".elf",".tls")
+#        self.header = elf_file.replace(".elf",".header")
+#        sefl.program_header = elf_file.replace(".elf",".pheader")
         if optimize == None:
             self.optimize = ["O2","O3","Os","O0","O1"][random.randint(0,4)]
         else:
@@ -153,16 +161,18 @@ class C_parser(Util):
             return 1
         if os.system("%s -s -d %s > %s"%(self.objdump,elf_file,disasm_file)):
             self.Error_exit("Execute %s -s -d error!"%(self.objdump))
+        if os.system("%s -d %s | egrep \"<main>\" > %s"%(self.objdump,elf_file, self.mainfile)):
+            self.Error_exit("Execute %s -d %s | egrep \"<main>\" > %s error!"%(self.objdump,elf_file))
         if os.system("%s -S %s > %s"%(self.readelf,elf_file,c_code_sec)):
             self.Error_exit("Execute %s -S error!"%(self.readelf))
         if os.system("%s -r %s > %s"%(self.readelf,elf_file,c_code_rel)):
             self.Error_exit("Execute %s -r error!"%(self.readelf))
         if os.system("%s --section=.got.plt -s %s > %s"%(self.objdump,elf_file,self.c_code_gplt)):
             self.Error_exit("Execute %s --section=.got.plt -s error!"%(self.objdump))
-        if os.system("%s -h %s > %s"%(self.readelf,elf_file,self.header)):
-            self.Error_exit("Execute %s -h error!"%(self.readelf))
-        if os.system("%s -l %s > %s"%(self.readelf,elf_file,self.program_header)):
-            self.Error_exit("Execute %s -l error!"%(self.readelf))
+#        if os.system("%s -h %s > %s"%(self.readelf,elf_file,self.header)):
+#            self.Error_exit("Execute %s -h error!"%(self.readelf))
+#        if os.system("%s -l %s > %s"%(self.readelf,elf_file,self.program_header)):
+#            self.Error_exit("Execute %s -l error!"%(self.readelf))
         else:
             self.c_code_sec_file = open(c_code_sec,"r")
             if self.mode == "long_mode":
@@ -171,10 +181,14 @@ class C_parser(Util):
                 self.Parse_c_sec()
             self.c_code_re_file = open(c_code_rel,"r")
             self.rela_dyn_flag = self.Parse_c_rel()
-            if self.mode != "long_mode":
-                self.Parse_elf32_header()
-                self.Parse_elf32_pheader()
             self.c_code_re_file.close()
+#            if self.mode != "long_mode":
+#                self.Parse_elf32_header()
+#                self.Parse_elf32_pheader()
+            self.Parse_c_main()
+            if os.system("%s -f %s -a %s"%(self.ptrace,elf_file,self.main_addr)):
+                self.Error_exit("Execute %s error!"%(self.ptrace))
+            self.Parse_c_tls()
             for list_index in self.c_code_sec_info:
                 #info(list_index) # for debug
                 if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss"):
@@ -199,24 +213,28 @@ class C_parser(Util):
         self.elf_file = elf_file
         self.base_name = elf_file.split("/")[-1].split(".")[0]
         disasm_file = elf_file.replace(".elf","")
+        self.mainfile = elf_file.replace(".elf",".main")
         c_code_sec = elf_file.replace(".elf",".sec")
         c_code_rel = elf_file.replace(".elf",".rel")
         self.c_code_gplt = elf_file.replace(".elf",".gplt")
-        self.header = elf_file.replace(".elf",".header")
-        self.program_header = elf_file.replace(".elf",".pheader")
+#        self.header = elf_file.replace(".elf",".header")
+#        self.program_header = elf_file.replace(".elf",".pheader")
+        self.tls = elf_file.replace(".elf",".tls")
         info("%s -s -d %s > %s"%(self.objdump,elf_file,disasm_file))
         if os.system("%s -s -d %s > %s"%(self.objdump,elf_file,disasm_file)):
             self.Error_exit("Execute %s -s -d %s error!"%(self.objdump,elf_file))
+        if os.system("%s -d %s | egrep \"<main>\" > %s"%(self.objdump,elf_file, self.mainfile)):
+            self.Error_exit("Execute %s -d %s | egrep \"<main>\" > %s error!"%(self.objdump,elf_file))
         if os.system("%s -S %s > %s"%(self.readelf,elf_file,c_code_sec)):
             self.Error_exit("Execute %s -S error!"%(self.readelf))
         if os.system("%s -r %s > %s"%(self.readelf,elf_file,c_code_rel)):
             self.Error_exit("Execute %s -r error!"%(self.readelf))
         if os.system("%s --section=.got.plt -s %s > %s"%(self.objdump,elf_file,self.c_code_gplt)):
             self.Error_exit("Execute %s --section=.got.plt -s error!"%(self.objdump))
-        if os.system("%s -h %s > %s"%(self.readelf,elf_file,self.header)):
-            self.Error_exit("Execute %s -h error!"%(self.readelf))
-        if os.system("%s -l %s > %s"%(self.readelf,elf_file,self.program_header)):
-            self.Error_exit("Execute %s -l error!"%(self.readelf))
+#        if os.system("%s -h %s > %s"%(self.readelf,elf_file,self.header)):
+#            self.Error_exit("Execute %s -h error!"%(self.readelf))
+#        if os.system("%s -l %s > %s"%(self.readelf,elf_file,self.program_header)):
+#            self.Error_exit("Execute %s -l error!"%(self.readelf))
         else:
             self.c_code_sec_file = open(c_code_sec,"r")
             if self.mode == "long_mode":
@@ -225,10 +243,14 @@ class C_parser(Util):
                 self.Parse_c_sec()
             self.c_code_re_file = open(c_code_rel,"r")
             self.rela_dyn_flag = self.Parse_c_rel()
-            if self.mode != "long_mode":
-                self.Parse_elf32_header()
-                self.Parse_elf32_pheader()
             self.c_code_re_file.close()
+#            if self.mode != "long_mode":
+#                self.Parse_elf32_header()
+#                self.Parse_elf32_pheader()
+            self.Parse_c_main()
+            if os.system("%s -f %s -a %s"%(self.ptrace,elf_file,self.main_addr)):
+                self.Error_exit("Execute %s error!"%(self.ptrace))
+            self.Parse_c_tls()
             for list_index in self.c_code_sec_info:
                 #info(list_index) # for debug
                 if ne(int(list_index["Addr"],16),0x0) and ne(list_index["Name"],".tbss"): 
@@ -251,6 +273,69 @@ class C_parser(Util):
         self.c_code_asm = open(disasm_file,"r")
         return 0
     
+    def Parse_c_tls(self):
+        start = 0
+        self.tls_data = []
+        self.tls_data_size = 0
+        change_tls_flag = 0
+        with open(self.tls,"r") as ftls:
+            while True:
+                line = ftls.readline()
+                if line:
+                    line = line.strip()
+                    m =  re.search(r"MAIN ADDR: (\w+)",line)
+                    if m:
+                        if int(self.main_addr,16) != int(m.group(1),16):
+                            self.Error_exit("main addr %s(tls_file) is different from %s(main_file)"%(m.group(1),self.main_addr))
+                        continue
+                    m =  re.search(r".S\[base\]: (\w+)",line)
+                    if m:
+                        fake_tls_base = m.group(1)
+                        info("fake_tls_base is %s"%(fake_tls_base))
+                        continue
+                    m =  re.search(r"TLS_MEM_DUMP",line)
+                    if m:
+                        start = 1
+                        continue 
+                    if start == 1:
+                        m =  re.search(r"(\w+):(\w+)",line)
+                        if m:
+                            addr = m.group(1)
+                            data = m.group(2)
+                            #info("addr is %s and data is %s"%(addr,data))
+                            if addr == data and addr == fake_tls_base:
+                                data = self.tls_base
+                                change_tls_flag = 1
+                            else:
+                                data = int(data,16)
+                            self.tls_data.append(data)
+                            self.tls_data_size = self.tls_data_size + 4
+                    
+                else:
+                    break
+            if change_tls_flag != 1:
+                self.Error_exit("Don't find the tls base addr!")
+                
+    def Load_tls_data(self):
+        self.tls_data.reverse()
+        self.Text_write("org 0x%x"%(self.tls_base - self.tls_data_size + 0x4))
+        info("tls size is %d"%(int(self.tls_data_size/4)))
+        for i in range(0,int(self.tls_data_size/4)):
+            self.Text_write("dd 0x%08x"%(self.tls_data[i]))
+                          
+    def Parse_c_main(self):
+        with open(self.mainfile,"r") as fc:
+            while True:
+                line = fc.readline()
+                if line:
+                    line = line.strip()
+                    m =  re.search(r"(\w+) <main>:",line)
+                    if m:
+                        self.main_addr = "0x%s"%(m.group(1))
+                        info("main addr is %s"%(self.main_addr))
+                else:
+                    break
+                        
     def Parse_c_rel(self):
         i = 0
         start = 0
@@ -466,8 +551,8 @@ class C_parser(Util):
             self.Instr_write("cmp [0x%08x],01"%(self.relo_sync_addr["start"]),thread)
             self.Instr_write("jne $relo_sync_T%d"%(thread),thread)
             if thread == 0:
-                if self.glibc == True:
-                    self.Start_fun(thread)
+#                if self.glibc == True:
+#                    self.Start_fun(thread)
                 self.Instr_write("call $main_%d"%(thread),thread)
             else:
                 self.Instr_write("call $ktpg_main_%d"%(thread),thread)                
@@ -556,29 +641,29 @@ class C_parser(Util):
                         elif m.group(2).find("ktpg_main_") != -1 and self.multi_page == 0 and vmx == 0:
                             self.Tag_write("%s"%(m.group(2)))
                             debug("one page %s match"%(m.group(2)))                           
-                        elif eq(m.group(2),"_init"):
-                            ##self.Tag_write("_init_%d"%(thread))
-                            if self.mode == "long_mode":
-                                self.Text_write("use 64")
-                            else:
-                                self.Text_write("use 32")
-                            debug("Init match")
-                        elif eq(m.group(2),"_start"):
-                            self.Tag_write("_start_%d"%(thread))
-                            debug("_start match")
+#                        elif eq(m.group(2),"_init"):
+#                            ##self.Tag_write("_init_%d"%(thread))
+#                            if self.mode == "long_mode":
+#                                self.Text_write("use 64")
+#                            else:
+#                                self.Text_write("use 32")
+#                            debug("Init match")
+#                        elif eq(m.group(2),"_start"):
+#                            self.Tag_write("_start_%d"%(thread))
+#                            debug("_start match")
 #                        elif eq(m.group(2),"__pthread_initialize_minimal"):
 #                            self.Tag_write("__pthread_initialize_minimal_%d"%(thread))
 #                            debug("__pthread_initialize_minimal match")
                         elif eq(m.group(2),"__init_cpu_features"):
                             self.Text_write("ret")
                             stop_asm_flag = 1
-                        elif eq(m.group(2),"_dl_discover_osversion"):
-                            self.Text_write("mov eax,0x20620")#linux version
-                            self.Text_write("ret")
-                            stop_asm_flag = 1
-                        elif eq(m.group(2),"__libc_csu_irel"):
-                            self.Text_write("ret")
-                            stop_asm_flag = 1
+#                        elif eq(m.group(2),"_dl_discover_osversion"):
+#                            self.Text_write("mov eax,0x20620")#linux version
+#                            self.Text_write("ret")
+#                            stop_asm_flag = 1
+#                        elif eq(m.group(2),"__libc_csu_irel"):
+#                            self.Text_write("ret")
+#                            stop_asm_flag = 1
 #                        elif eq(m.group(2),"__sbrk"):
 #                            self.Text_write("ret")
 #                            stop_asm_flag = 1
@@ -633,10 +718,11 @@ class C_parser(Util):
                     break
         self.Load_c_asm_NOBITS()
         self.Load_c_rel()
-        if self.mode != "long_mode":
-            self.Load_fake_stack_32()
-            self.Load_program_header()
-            self.Load_fake_sysentery()
+#        if self.mode != "long_mode":
+#            self.Load_fake_stack_32()
+#            self.Load_program_header()
+#            self.Load_fake_sysentery()
+        self.Load_tls_data()
 #
 #        for index in self.c_code_sec_info:
 #            if not index["Load"]:

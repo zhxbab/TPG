@@ -249,7 +249,7 @@ class Mode(Util):
                 self.Text_write("@gdt[$%s].type = 0x3"%(self.c_parser.selector_name_c_gen_0))
                 self.Text_write("@gdt[$%s].l = 0x1"%(self.c_parser.selector_name_c_gen_0))
                 if self.c_parser.c_code_mem_info.has_key(".tbss"):
-                    self.Text_write("@gdt[$%s].base = 0x%08x"%(self.c_parser.selector_name_c_gen_0,self.c_parser.c_code_mem_info[".tbss"]["start"]))
+                    self.Text_write("@gdt[$%s].base = 0x%08x"%(self.c_parser.selector_name_c_gen_0,self.c_parser.tls_base))
                 else:
                     #self.Text_write("@gdt[$%s].base = 0x%08x"%(self.c_parser.selector_name_c_gen_0,self.c_parser.c_code_mem_info[".tbss"]["start"]))
                     warning("This elf file don't have tbss seg")
@@ -260,7 +260,7 @@ class Mode(Util):
                 self.Text_write("@gdt[$%s].type = 0x3"%(self.c_parser.selector_name_c_gen_0))
                 self.Text_write("@gdt[$%s].db = 0x1"%(self.c_parser.selector_name_c_gen_0))
                 if self.c_parser.c_code_mem_info.has_key(".tbss"):
-                    self.Text_write("@gdt[$%s].base = 0x%08x"%(self.c_parser.selector_name_c_gen_0,self.c_parser.c_code_mem_info[".tbss"]["start"]))
+                    self.Text_write("@gdt[$%s].base = 0x%08x"%(self.c_parser.selector_name_c_gen_0,self.c_parser.tls_base))
                 else:
                     warning("This elf file don't have tbss seg")
 
