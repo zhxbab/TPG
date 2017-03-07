@@ -71,7 +71,8 @@ class Mode(Util):
         self.osystem.set_org(self.thread_info_pointer["start"])
         self.Text_write("@%s = new std::thread_info[%d]"%(self.thread_info_pointer["name"],8))#support 8 threads
         if self.threads_flag == "random":
-            self.apic_id_list_all = [0]+self.apic_id_list
+            self.apic_id_list_num = [int(i) for i in self.apic_id_list]
+            self.apic_id_list_all = [0]+self.apic_id_list_num
         else:
             self.apic_id_list_all = range(0,self.threads)
         for i in self.apic_id_list_all:
@@ -91,7 +92,7 @@ class Mode(Util):
                             if k != 0:
                                 self.mpg.Apply_fix_mem("csmith_code_%d"%(k),0x8000000+128*k*0x200000,0x400000)              
                 self.stack_seg = self.mpg.Apply_mem(0x40000,stack_align,start=0xB00000,end=0x1000000,name="stack_seg_T%d"%(i))
-                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x20000000,end=0x40000000,name="user_code_seg_T%d"%(i))
+                self.user_code_seg = self.mpg.Apply_mem(0x800000,stack_align,start=0x20000000,end=0x80000000,name="user_code_seg_T%d"%(i))
 
 #                self.Comment("##########Initial stack###########")
 #                self.Text_write("org 0x%08x"%(self.stack_seg["start"]))
@@ -313,7 +314,7 @@ class Mode(Util):
             self.Comment("#####Set ICR(0x300,0x310), and INIT AP")
             if self.threads_flag == "random":
                 self.Comment("#####Random AP#####")
-                for i in self.apic_id_list:
+                for i in self.apic_id_list_num:
                     self.Instr_write("mov eax,0xfee00310")
                     self.Instr_write("mov dword [eax],0x%08x"%(i<<24))
                     self.Instr_write("mov eax,0xfee00300")
@@ -411,9 +412,9 @@ class Mode(Util):
             self.Instr_write("jmp 0x0:0x%x"%(real_mode_code_start["start"]))
         ########################################################################
         self.Comment("##real mode code")    
-        self.osystem.set_org(real_mode_code_start["start"])
+        self.osystem.set_org(real_mode_code_start["start"])  
         self.Instr_write("lgdt [&@%s]"%(self.gdt_table_base_pointer["name"]))
-        self.Instr_write("lidt [&@%s]"%(self.idt_table_base_pointer["name"]))
+        self.Instr_write("lidt [&@%s]"%(self.idt_table_base_pointer["name"]))  
         self.Comment("##enable 32bit mode")
         protect_mode_code_start = self.mpg.Apply_mem(0x1000,16,start=0x1000,end=0xA0000,name="protect_mode_code_start")#0xA0000-0x100000 is for BIOS
 #        self.Instr_write("mov edx,cr0")

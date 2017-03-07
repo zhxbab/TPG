@@ -53,8 +53,10 @@ class C_parser(Util):
         self.rela_dyn_flag = 0
         self.relo_sync_addr = None
         self.glibc = False
+        self.nobss = False
         self.auxv = None
         self.main_addr = None
+        self.cnsim_param_mem = "-mem 0xF4 "
         if self.mode != "long_mode":
             self.ptrace = "%s/ptrace32"%(bin_path)
             self.tls_base = 0x8100000
@@ -716,6 +718,7 @@ class C_parser(Util):
                     continue
                 else:
                     break
+
         self.Load_c_asm_NOBITS()
         self.Load_c_rel()
 #        if self.mode != "long_mode":
@@ -771,13 +774,22 @@ class C_parser(Util):
                 default_line_num = int(index["Size"],16)//0x4
                 self.Comment("#####%s"%(index["Name"]))
                 self.Text_write("org 0x%08x"%(self.c_code_mem_info[index["Name"]]["start"]))
-                for i in range(0,default_line_num):
-                    self.Text_write("dd 0x00000000")
-                for j in range(0,int(index["Size"],16)%0x4):
-                    self.Text_write("db 0x00")
+                if self.nobss == False:
+                    for i in range(0,default_line_num):
+                        self.Text_write("dd 0x00000000")
+                    for j in range(0,int(index["Size"],16)%0x4):
+                        self.Text_write("db 0x00")
+                else:
+                    self.cnsim_param_mem = "-mem 0x00 "
                     
                     
-        
+    def Load_pmc(self):
+        #info(self.c_code_sec_info)
+        for index in self.c_code_sec_info:
+            if eq(index["Name"],".pmc"):
+                addr = index["Addr"]
+                size = index["Size"]
+        return [addr,size]
         
         
     def Load_c_asm_sec(self,sec_info):

@@ -21,12 +21,13 @@ from interrupt import Interrupt
 class Test_generator(Args,Util):
     def __init__(self,args):
         signal.signal(signal.SIGINT,self.Sigint_handler)
-        Args.__init__(self,args)
         self.total_threads = 8
         self.threads_flag = "fix"
         self.spin_lock_num = 0x0 
         self.apic_id_list = []
         self.apic_id_list_all = []
+        self.perf_flag = False
+        Args.__init__(self,args)
         
     def Create_dir(self):
         self.avp_dir_seed = random.randint(1,0xFFFF)
@@ -121,6 +122,8 @@ class Test_generator(Args,Util):
         cnsim_param_pclmsi = " "
         cnsim_param_normal = "-ma %s  -va -no-mask-page -trait-change %s "%(self.very_short_num,self.very_short_cmd)
         cnsim_param_mem = "-mem 0xF4 "
+        if self.c_gen:
+            cnsim_param_mem = self.c_parser.cnsim_param_mem
         if self.total_threads != self.threads and self.threads_flag == "random":
             cnsim_param_thread = "-threads %d "%(self.total_threads)
         else:
@@ -180,6 +183,28 @@ class Test_generator(Args,Util):
         ret = rasm_p.poll()
         while ret == None:
             ret = rasm_p.poll()
+        if self.perf_flag == True:
+            if self.mode == "long_mode":
+                avp2pavp_mode_str = "long"
+            elif self.mode == "protect_mode":
+                avp2pavp_mode_str = "protect"
+            elif self.mode == "compatability_mode":
+                avp2pavp_mode_str = "compatability"
+            else:
+                error("avp2pavp_mode_str don't match!")
+            self.apic_id_list_all = ["0"] + self.apic_id_list
+            apic_str = ""
+            for i in self.apic_id_list_all:
+                if  apic_str == "":
+                    apic_str = apic_str + i
+                else:
+                    apic_str =  apic_str + "," + i
+            [pmc_addr,pmc_size] = self.c_parser.Load_pmc()
+            pmc_info = str(pmc_addr) +","+ str(pmc_size)
+            avp2pavp_cmd = "%s/avp2pavp -f %s -m %s --apic %s -p %s --hlt 0x%x"\
+            %(self.bin_path,avp_file,avp2pavp_mode_str,apic_str,pmc_info,self.hlt_code["start"])
+            info(avp2pavp_cmd)
+            os.system(avp2pavp_cmd)
         cnsim_cmd = "%s/cnsim %s %s"%(self.bin_path,self.cnsim_param,avp_file)     
         info(cnsim_cmd)
         cnsim_p = subprocess.Popen(cnsim_cmd,stdout=None, stderr=None, shell=True)

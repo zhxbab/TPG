@@ -20,7 +20,8 @@ if __name__ == "__main__":
     tests.Gen_asm_code(0,i)
     tests.Gen_mode_code()
         ################## Thread 0 Code#################
-    for j in range(0,tests.args_option.thread_nums):
+    #for j in range(0,tests.args_option.thread_nums):
+    for j in tests.apic_id_list_all:
         tests.Start_user_code(j)
         tests.Load_asm_code(j,i)   
         tests.Gen_hlt_code(j)

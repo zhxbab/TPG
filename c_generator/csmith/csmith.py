@@ -44,7 +44,12 @@ class Csmith(Test_generator):
         args_parser.add_option("--c_plus", dest="c_plus", help="Gen c++ code", action="store_true", default = False)
         args_parser.add_option("--wc", dest="wc_feature", help="Enable PAT WC", action="store_true", default = False)
         args_parser.add_option("--one_page", dest="one_page", help="enable one_page mode", action="store_true", default = False)
-        args_parser.add_option("--glibc", dest="glibc", help="support glibc", action="store_true", default = False)           
+        args_parser.add_option("--glibc", dest="glibc", help="support glibc", action="store_true", default = False)
+        args_parser.add_option("--perf", dest="perf_flag", help="generator performance avp", action="store_true", default = False)
+        args_parser.add_option("--random", dest="random_flag", help="random apic id", action="store_true", default = False)
+        args_parser.add_option("--nobss", dest="nobss", help="if bss is too big, don't put bss in asm. need cnsim -mem 0x00", action="store_true", default = False)
+        args_parser.add_option("--apic", dest="apic_id", help="apic id like 1,2,3, don't include 0(bsp)"\
+                      , type = "str", default = "0")         
         (self.args_option, self.args_additions) = args_parser.parse_args(args)
         if not self.args_option.elf_file == None:
             self.elf_file = os.path.join(self.current_dir_path,self.args_option.elf_file)
@@ -130,6 +135,16 @@ class Csmith(Test_generator):
         self.pae = False
         self.generator = self.args_option.generator
         self.glibc = self.args_option.glibc
+        self.nobss = self.args_option.nobss
+        self.perf_flag = self.args_option.perf_flag
+        self.apic_id_list = self.args_option.apic_id.split(",")
+        if self.args_option.random_flag == True:
+            self.threads_flag = "random"
+            self.apic_id_list_num = [int(i) for i in self.args_option.apic_id.split(",")]
+            self.apic_id_list_all = [0] + self.apic_id_list_num
+        else:
+            #self.apic_id_list_num = range(1,self.threads)
+            self.apic_id_list_all = range(0,self.threads)
 #        if self.page_mode != "4KB_32bit":
 #            self.pae = self.args_option.pae
 #        else:
@@ -153,6 +168,7 @@ class Csmith(Test_generator):
         self.c_parser.asm_file = self.asm_file
         self.c_parser.wc_feature = self.wc_feature
         self.c_parser.glibc = self.glibc
+        self.c_parser.nobss = self.nobss
         if self.elf_file != None:
             ret_gen_asm_code = self.c_parser.Get_fix_c_asm(self.elf_file)
         else:
@@ -176,7 +192,8 @@ if __name__ == "__main__":
         if tests.Gen_asm_code(0,i):
             continue
         tests.Gen_mode_code()
-        for j in range(0,tests.threads):
+        #for j in range(0,tests.threads):
+        for j in tests.apic_id_list_all:
             tests.Start_user_code(j)
             tests.Load_asm_code(j,i)             
             tests.Gen_hlt_code(j)
